@@ -1,4 +1,4 @@
-"""CLI entry point: python -m jsdeob input.js [-o output.js]"""
+"""CLI entry point: python -m pyjsclear input.js [-o output.js]"""
 import argparse
 import sys
 from . import deobfuscate

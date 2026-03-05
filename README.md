@@ -1,4 +1,4 @@
-# jsdeob
+# PyJSClear
 
 Pure Python JavaScript deobfuscator. Combines the functionality of
 [obfuscator-io-deobfuscator](https://github.com/ben-sb/obfuscator-io-deobfuscator)
@@ -11,7 +11,7 @@ into a single Python library with no Node.js dependency.
 
 ```bash
 pip install pyjsparser   # only runtime dependency
-pip install -e .          # install jsdeob
+pip install -e .          # install PyJSClear
 ```
 
 ## Usage
@@ -19,7 +19,7 @@ pip install -e .          # install jsdeob
 ### Python API
 
 ```python
-from jsdeob import deobfuscate, deobfuscate_file
+from pyjsclear import deobfuscate, deobfuscate_file
 
 # From a string
 cleaned = deobfuscate(obfuscated_code)
@@ -35,21 +35,21 @@ cleaned = deobfuscate_file("input.js")
 
 ```bash
 # File to stdout
-python -m jsdeob input.js
+python -m pyjsclear input.js
 
 # File to file
-python -m jsdeob input.js -o output.js
+python -m pyjsclear input.js -o output.js
 
 # Stdin to stdout
-cat input.js | python -m jsdeob -
+cat input.js | python -m pyjsclear -
 
 # With custom iteration limit
-python -m jsdeob input.js --max-iterations 20
+python -m pyjsclear input.js --max-iterations 20
 ```
 
 ## What it does
 
-jsdeob applies 14 transforms in a multi-pass loop until no further changes
+PyJSClear applies 14 transforms in a multi-pass loop until no further changes
 are made (up to 50 iterations by default):
 
 | # | Transform | Description |
@@ -112,7 +112,7 @@ dependency while matching or exceeding their deobfuscation quality.
 
 ### Testing methodology
 
-The library was validated against four datasets:
+The library was validated against five datasets:
 
 | Dataset | Files | Crashes | Expanded | Reduced | Source |
 |---------|-------|---------|----------|---------|--------|
@@ -124,12 +124,12 @@ The library was validated against four datasets:
 
 **Head-to-head vs Node.js tools** (obfuscator-io-deobfuscator v1.0.6):
 
-- E1 samples: jsdeob wins 17, ob-io wins 0 (out of 17 changed files)
-- MalJS sample: jsdeob wins 20, ob-io wins 0 (out of 20 compared)
+- E1 samples: PyJSClear wins 17, ob-io wins 0 (out of 17 changed files)
+- MalJS sample: PyJSClear wins 20, ob-io wins 0 (out of 20 compared)
 - Zero regressions detected across all tested datasets
 
 The Node.js tools expand most files due to Babel's verbose code generator,
-while jsdeob's compact generator and "never expand" safety guarantee avoid this.
+while PyJSClear's compact generator and "never expand" safety guarantee avoid this.
 
 **"Do no harm" validation**: Tested against 500 BenignJS files and 1,885
 NotObfuscated files. Zero files were expanded or corrupted — transforms only
@@ -138,7 +138,7 @@ fire when genuine obfuscation patterns are detected.
 ## Architecture
 
 ```
-jsdeob/
+pyjsclear/
 ├── __init__.py              # Public API: deobfuscate(), deobfuscate_file()
 ├── __main__.py              # CLI entry point
 ├── parser.py                # pyjsparser wrapper
