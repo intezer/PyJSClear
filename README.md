@@ -7,7 +7,7 @@
 Pure Python JavaScript deobfuscator. Combines the functionality of
 [obfuscator-io-deobfuscator](https://github.com/ben-sb/obfuscator-io-deobfuscator)
 (13 AST transforms for obfuscator.io output) and
-[javascript-deobfuscator](https://github.com/saucesteals/javascript-deobfuscator)
+[javascript-deobfuscator](https://github.com/ben-sb/javascript-deobfuscator)
 (hex escape decoding, static array unpacking, property access cleanup)
 into a single Python library with no Node.js dependency.
 
@@ -100,7 +100,7 @@ The low Kaggle reduction rate (39/500) reflects the dataset's lightweight obfusc
 
 ## Architecture
 
-Built on [pyjsparser](https://github.com/nickoala/pyjsparser) (ESTree-compatible JS parser) with a custom code generator, AST traverser (enter/exit/replace/remove), and scope analysis. Transforms run in a fixed order within a convergence loop; StringRevealer runs both first and last to handle string arrays before and after other transforms modify wrapper function structure.
+Built on [pyjsparser](https://github.com/PiotrDabkowski/pyjsparser) (ESTree-compatible JS parser) with a custom code generator, AST traverser (enter/exit/replace/remove), and scope analysis. Transforms run in a fixed order within a convergence loop; StringRevealer runs both first and last to handle string arrays before and after other transforms modify wrapper function structure.
 
 ## Limitations
 
@@ -119,6 +119,6 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 This project is a derivative work based on
 [obfuscator-io-deobfuscator](https://github.com/ben-sb/obfuscator-io-deobfuscator)
 (Apache 2.0) and
-[javascript-deobfuscator](https://github.com/saucesteals/javascript-deobfuscator)
-(MIT). See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and
+[javascript-deobfuscator](https://github.com/ben-sb/javascript-deobfuscator)
+(Apache 2.0). See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and
 [NOTICE](NOTICE) for full attribution.

@@ -8,10 +8,10 @@ This product is a derivative work based on the following projects:
    Licensed under the Apache License, Version 2.0
    https://github.com/ben-sb/obfuscator-io-deobfuscator
 
-2. javascript-deobfuscator (v1.0.3)
-   Copyright (c) 2021 Daniel (saucesteals)
-   Licensed under the MIT License
-   https://github.com/saucesteals/javascript-deobfuscator
+2. javascript-deobfuscator
+   Copyright Ben (ben-sb)
+   Licensed under the Apache License, Version 2.0
+   https://github.com/ben-sb/javascript-deobfuscator
 
 This Python library re-implements the deobfuscation algorithms and transform
 logic from the above Node.js/Babel-based tools in pure Python. No source code
