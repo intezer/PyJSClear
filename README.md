@@ -82,108 +82,25 @@ A pre-AST pass also decodes `\xHH` hex escape sequences in source text.
 - **Never crashes on valid JS**: parse errors fall back to returning the original
   source. Transform exceptions are caught per-transform and skipped.
 
-## How it was built
-
-This library was developed as a pure Python re-implementation of two established
-Node.js deobfuscation tools. The goal was to eliminate the Node.js/Babel
-dependency while matching or exceeding their deobfuscation quality.
-
-### Approach
-
-1. **Algorithm analysis**: The transform logic in
-   [obfuscator-io-deobfuscator](https://github.com/ben-sb/obfuscator-io-deobfuscator)
-   (13 Babel transforms) and
-   [javascript-deobfuscator](https://github.com/saucesteals/javascript-deobfuscator)
-   (3 modules: `--he`, `--su`, `--tp`) was studied to understand the
-   deobfuscation algorithms — pattern detection, AST rewriting strategies,
-   and transform ordering.
-
-2. **Python infrastructure**: A lightweight AST toolchain was built on
-   [pyjsparser](https://github.com/nickoala/pyjsparser) (ESTree-compatible
-   JS parser), with a custom code generator, AST traverser with
-   enter/exit/replace/remove support, and scope analysis for variable binding.
-
-3. **Transform re-implementation**: Each transform was written from scratch
-   in Python following the same algorithmic approach as the originals, adapted
-   to work with pyjsparser's ESTree AST (vs. Babel's AST). Key differences
-   include the string revealer's obfuscator.io pattern handling (rotation IIFE
-   evaluation, two-level wrapper indirection) and the control flow recoverer.
-
-4. **Multi-pass orchestrator**: Transforms run in a fixed order within a
-   convergence loop, matching the obfuscator-io-deobfuscator architecture.
-   StringRevealer runs both first and last to handle string arrays before
-   other transforms modify wrapper function structure.
-
-### Testing methodology
+## Testing
 
 The library was validated against five datasets:
 
 | Dataset | Files | Crashes | Expanded | Reduced | Source |
 |---------|-------|---------|----------|---------|--------|
 | E1 technique samples | 20 | 0 | 0 | 13 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
-| Obfuscated JS dataset | 500 | 0 | 0 | 39 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) ¹ |
+| Obfuscated JS dataset | 500 | 0 | 0 | 39 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) |
 | MalJS (malware) | 200 | 0 | 0 | 79 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
-| BenignJS | 500 | 0 | 0 | 112 | [JSIMPLIFIER](https://zenodo.org/records/17531662) ² |
-| NotObfuscated | 1,885 | 0 | 0 | 191 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) ³ |
+| BenignJS | 500 | 0 | 0 | 112 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
+| NotObfuscated | 1,885 | 0 | 0 | 191 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) |
 
-¹ The Kaggle obfuscated set uses lightweight string-array obfuscation (plaintext
-strings, `while(--counter)` rotation, no `parseInt` checksums). Most files only
-have renamed variables and a string lookup table — the low reduction rate
-reflects the limited obfuscation depth, not a tool gap.
+The low Kaggle reduction rate (39/500) reflects the dataset's lightweight obfuscation (plaintext string arrays, no `parseInt` checksums), not a tool gap. BenignJS reductions are genuine deobfuscation of obfuscated JS scraped from benign websites. 3 files in the Kaggle NotObfuscated set are mislabeled (genuinely obfuscated Angular test specs).
 
-² BenignJS files are web-scraped from live sites and include genuinely obfuscated
-JS (obfuscator.io, string array rotation, hex encoding) used in production by
-benign websites. Reductions here are true deobfuscation, not false triggers.
-
-³ 3 files in the Kaggle NotObfuscated set (`ngModelSpec-obfuscated.js`,
-`ngOptionsSpec-obfuscated.js`, `ngRepeatSpec-obfuscated.js`) are mislabeled —
-they contain `_0x` variable naming and `\x` hex escapes (genuinely obfuscated
-Angular test specs placed in the wrong folder).
-
-**Head-to-head vs Node.js tools** (obfuscator-io-deobfuscator v1.0.6):
-
-- E1 samples: PyJSClear wins 17, ob-io wins 0 (out of 17 changed files)
-- MalJS sample: PyJSClear wins 20, ob-io wins 0 (out of 20 compared)
-- Zero regressions detected across all tested datasets
-
-The Node.js tools expand most files due to Babel's verbose code generator,
-while PyJSClear's compact generator and "never expand" safety guarantee avoid this.
-
-**"Do no harm" validation**: Tested against 500 BenignJS files and 1,885
-NotObfuscated files. Zero files were expanded or corrupted — transforms only
-fire when genuine obfuscation patterns are detected.
+**Head-to-head vs Node.js tools** (obfuscator-io-deobfuscator v1.0.6): PyJSClear wins 37/37 compared files (17 E1 + 20 MalJS), zero regressions. The Node.js tools expand most files due to Babel's verbose code generator.
 
 ## Architecture
 
-```
-pyjsclear/
-├── __init__.py              # Public API: deobfuscate(), deobfuscate_file()
-├── __main__.py              # CLI entry point
-├── parser.py                # pyjsparser wrapper
-├── generator.py             # ESTree AST -> JavaScript source
-├── traverser.py             # AST visitor (enter/exit, replace, remove)
-├── scope.py                 # Scope tree & variable binding analysis
-├── deobfuscator.py          # Multi-pass transform orchestrator
-├── transforms/
-│   ├── base.py              # Transform base class with change tracking
-│   ├── string_revealer.py   # String array decode (basic/base64/RC4/obfuscator.io)
-│   ├── control_flow.py      # Control flow flattening recovery
-│   ├── proxy_functions.py   # Proxy function inlining
-│   ├── constant_prop.py     # Constant propagation
-│   ├── expression_simplifier.py
-│   ├── property_simplifier.py
-│   ├── dead_branch.py
-│   ├── object_simplifier.py
-│   ├── object_packer.py
-│   ├── unused_vars.py
-│   ├── reassignment.py
-│   ├── sequence_splitter.py
-│   ├── anti_tamper.py
-│   └── hex_escapes.py
-└── utils/
-    ├── string_decoders.py   # Base64, RC4 decoders
-    └── ast_helpers.py        # AST node construction & inspection
-```
+Built on [pyjsparser](https://github.com/nickoala/pyjsparser) (ESTree-compatible JS parser) with a custom code generator, AST traverser (enter/exit/replace/remove), and scope analysis. Transforms run in a fixed order within a convergence loop; StringRevealer runs both first and last to handle string arrays before and after other transforms modify wrapper function structure.
 
 ## Limitations
 
