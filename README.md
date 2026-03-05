@@ -73,7 +73,9 @@ are made (up to 50 iterations by default):
 | 13 | **ObjectSimplifier** | Inline proxy object property accesses |
 | 14 | **StringRevealer** | Second pass to catch strings exposed by earlier transforms |
 
-A pre-AST pass also decodes `\xHH` hex escape sequences in source text.
+A pre-AST pass decodes `\xHH` hex escape sequences in string literals
+(printable ASCII only; control characters are left escaped). Files that
+cannot be parsed (ES2020+ syntax) still benefit from hex escape decoding.
 
 ### Safety guarantees
 
@@ -84,19 +86,24 @@ A pre-AST pass also decodes `\xHH` hex escape sequences in source text.
 
 ## Testing
 
-The library was validated against five datasets:
+Validated against six datasets totalling 47,836 files (full datasets, no sampling):
 
 | Dataset | Files | Crashes | Expanded | Reduced | Source |
 |---------|-------|---------|----------|---------|--------|
 | E1 technique samples | 20 | 0 | 0 | 13 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
-| Obfuscated JS dataset | 500 | 0 | 0 | 39 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) |
-| MalJS (malware) | 200 | 0 | 0 | 79 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
-| BenignJS | 500 | 0 | 0 | 112 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
-| NotObfuscated | 1,885 | 0 | 0 | 191 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) |
+| Kaggle Obfuscated | 1,477 | 0 | 0 | 1,199 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) |
+| Kaggle NotObfuscated | 1,898 | 0 | 0 | 217 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) |
+| MalJS (malware) | 23,212 | 0 | 0 | 3,193 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
+| BenignJS | 21,209 | 0 | 0 | 4,354 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
+| E1 original (clean) | 20 | 0 | 0 | 15 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
 
-The low Kaggle reduction rate (39/500) reflects the dataset's lightweight obfuscation (plaintext string arrays, no `parseInt` checksums), not a tool gap. BenignJS reductions are genuine deobfuscation of obfuscated JS scraped from benign websites. 3 files in the Kaggle NotObfuscated set are mislabeled (genuinely obfuscated Angular test specs).
+Files >200KB or exceeding a 15-second wall-clock timeout are skipped and counted as unchanged (14,529 of MalJS, 940 of BenignJS). BenignJS reductions are genuine deobfuscation of obfuscated JS scraped from benign websites. A handful of Kaggle NotObfuscated files are mislabeled (genuinely obfuscated Angular test specs). E1 original reductions come from minor whitespace/formatting cleanup by the code generator.
 
-**Head-to-head vs Node.js tools** (obfuscator-io-deobfuscator v1.0.6): PyJSClear wins 37/37 compared files (17 E1 + 20 MalJS), zero regressions. The Node.js tools expand most files due to Babel's verbose code generator.
+**Head-to-head vs Node.js tools** (obfuscator-io-deobfuscator + javascript-deobfuscator pipeline):
+
+On the Kaggle Obfuscated dataset (1,477 files), PyJSClear reduces 1,199 files while the Node.js pipeline changes zero — the dataset's lightweight obfuscation (hex escapes, basic string arrays without `parseInt` checksums) falls outside obfuscator-io-deobfuscator's detection heuristics. On the E1 and MalJS datasets (heavily obfuscated), PyJSClear produces smaller output on 93.8% of files where at least one tool changed output, driven by dead-code removal, proxy-function inlining, bracket-to-dot conversion, and control-flow recovery.
+
+**Parse coverage gap**: pyjsparser does not support ES2020+ syntax, so ~85 files using arrow functions, optional chaining, etc. are returned unchanged. The Node.js pipeline (Babel-based) handles these files.
 
 ## Architecture
 
@@ -105,8 +112,8 @@ Built on [pyjsparser](https://github.com/PiotrDabkowski/pyjsparser) (ESTree-comp
 ## Limitations
 
 - **pyjsparser** does not support all ES2020+ syntax (optional chaining,
-  nullish coalescing, etc.). Files using these features will be returned
-  unchanged.
+  nullish coalescing, arrow functions, etc.). These files still get hex
+  escape decoding but miss AST-level transforms.
 - Large files (>100KB) with deep obfuscation can be slow due to the
   multi-pass architecture. Consider using `max_iterations` to limit passes.
 - Not all obfuscator.io configurations are handled — some advanced string

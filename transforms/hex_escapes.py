@@ -28,14 +28,32 @@ class HexEscapes(Transform):
 
 
 def decode_hex_escapes_source(code):
-    """Decode hex escapes in source code string (pre-parse pass)."""
+    """Decode hex escapes in source code string (pre-parse pass).
+
+    Only decodes hex escapes that produce printable characters (0x20-0x7e),
+    excluding the backslash (0x5c) and quote characters which would break
+    string literal syntax. Control characters (newlines, tabs, nulls etc.)
+    are left as \\xHH to avoid breaking the parser.
+    """
     def replace_hex(m):
-        return chr(int(m.group(1), 16))
+        val = int(m.group(1), 16)
+        # Only decode printable ASCII (space through tilde), excluding
+        # backslash and the quote character that delimits this string
+        # (quote char is handled at the string level below).
+        if 0x20 <= val <= 0x7e and val != 0x5c:  # exclude backslash
+            return chr(val)
+        return m.group(0)  # keep original \xHH
 
     def replace_in_string(m):
         quote = m.group(1)
         content = m.group(2)
-        decoded = re.sub(r'\\x([0-9a-fA-F]{2})', replace_hex, content)
+        # Decode hex escapes, but skip the quote character for this string
+        def replace_hex_in_context(hm):
+            val = int(hm.group(1), 16)
+            if 0x20 <= val <= 0x7e and val != 0x5c and chr(val) != quote:
+                return chr(val)
+            return hm.group(0)
+        decoded = re.sub(r'\\x([0-9a-fA-F]{2})', replace_hex_in_context, content)
         return quote + decoded + quote
 
     # Match string literals and decode hex escapes within them

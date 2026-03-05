@@ -57,11 +57,16 @@ class Deobfuscator:
             ast = parse(code)
         except SyntaxError:
             try:
+                ast = parse(self.original_code)
+                # Original parses but decoded doesn't — discard hex decode
                 code = self.original_code
                 hex_changed = False
-                ast = parse(code)
             except SyntaxError:
-                return code
+                # Neither parses. Return hex-decoded version if it changed
+                # (still a useful deobfuscation even without AST transforms).
+                if hex_changed:
+                    return code
+                return self.original_code
 
         # Multi-pass transform loop
         any_transform_changed = False
@@ -88,10 +93,19 @@ class Deobfuscator:
         try:
             output = generate(ast)
         except Exception:
-            return code
+            # If only hex decoding changed the source, return the decoded
+            # version directly rather than falling back to the original.
+            if hex_changed:
+                return code
+            return self.original_code
 
         # Never return output larger than the input — the code generator
         # adds whitespace/newlines that can inflate minified code.
         if len(output) > len(self.original_code):
+            # If hex decoding made the code smaller and the generator inflated
+            # it, return the hex-decoded source directly (still smaller than
+            # original since each \xHH → single char saves 3 bytes).
+            if hex_changed and len(code) < len(self.original_code):
+                return code
             return self.original_code
         return output
