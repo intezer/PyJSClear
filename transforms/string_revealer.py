@@ -1,0 +1,756 @@
+"""String array detection, rotation, and decoding for obfuscator.io patterns."""
+
+import re
+import math
+from .base import Transform
+from ..traverser import traverse, simple_traverse
+from ..scope import build_scope_tree
+from ..generator import generate
+from ..utils.ast_helpers import (
+    is_literal, is_string_literal, is_numeric_literal, is_identifier, make_literal,
+    get_child_keys
+)
+from ..utils.string_decoders import (
+    DecoderType, BasicStringDecoder, Base64StringDecoder, Rc4StringDecoder
+)
+
+_BASE_64_REGEX = re.compile(
+    r"""['"]abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\+/=['"]\.indexOf"""
+)
+_RC4_REGEX = re.compile(
+    r"""[a-zA-Z$_]?[a-zA-Z0-9$_]+\s?\+=\s?String\.fromCharCode\("""
+)
+
+
+def _eval_numeric(node):
+    """Evaluate an AST node to a numeric value if it's a constant expression."""
+    if not isinstance(node, dict):
+        return None
+    ntype = node.get('type', '')
+    if ntype == 'Literal':
+        val = node.get('value')
+        if isinstance(val, (int, float)):
+            return val
+        return None
+    if ntype == 'UnaryExpression':
+        op = node.get('operator')
+        arg = _eval_numeric(node.get('argument'))
+        if arg is None:
+            return None
+        if op == '-':
+            return -arg
+        if op == '+':
+            return +arg
+        return None
+    if ntype == 'BinaryExpression':
+        op = node.get('operator')
+        left = _eval_numeric(node.get('left'))
+        right = _eval_numeric(node.get('right'))
+        if left is None or right is None:
+            return None
+        if op == '+': return left + right
+        if op == '-': return left - right
+        if op == '*': return left * right
+        if op == '/': return left / right if right != 0 else None
+        if op == '%': return left % right if right != 0 else None
+        return None
+    return None
+
+
+def _js_parse_int(s):
+    """Mimic JavaScript's parseInt: extract leading integer from string."""
+    if not isinstance(s, str):
+        return float('nan')
+    s = s.strip()
+    m = re.match(r'^[+-]?\d+', s)
+    if m:
+        return int(m.group())
+    return float('nan')
+
+
+class WrapperInfo:
+    """Info about a wrapper function that calls the decoder."""
+    def __init__(self, name, param_index, wrapper_offset, func_node, key_param_index=None):
+        self.name = name
+        self.param_index = param_index
+        self.wrapper_offset = wrapper_offset
+        self.func_node = func_node
+        self.key_param_index = key_param_index
+
+    def get_effective_index(self, call_args):
+        """Given call argument values, compute the effective decoder index."""
+        if self.param_index >= len(call_args):
+            return None
+        val = call_args[self.param_index]
+        if not isinstance(val, (int, float)):
+            return None
+        return int(val) + self.wrapper_offset
+
+    def get_key(self, call_args):
+        """Get the RC4 key argument if applicable."""
+        if self.key_param_index is not None and self.key_param_index < len(call_args):
+            return call_args[self.key_param_index]
+        return None
+
+
+class StringRevealer(Transform):
+    """Decode obfuscated string arrays and replace wrapper calls with literals."""
+
+    rebuild_scope = True
+
+    def execute(self):
+        scope_tree, node_scope = build_scope_tree(self.ast)
+
+        # Strategy 1: Direct string array declarations (var arr = ["a","b","c"])
+        self._process_direct_arrays(scope_tree)
+
+        # Strategy 2: Obfuscator.io function-wrapped string arrays
+        self._process_obfuscatorio_pattern()
+
+        # Strategy 3: Simple static array unpacking (js-deob --su)
+        self._process_static_arrays()
+
+        return self.has_changed()
+
+    # ================================================================
+    # Strategy 2: Obfuscator.io pattern
+    # ================================================================
+
+    def _process_obfuscatorio_pattern(self):
+        """Handle obfuscator.io: array func -> decoder func -> wrapper funcs -> rotation."""
+        body = self.ast.get('body', [])
+
+        # Step 1: Find string array function
+        array_func_name, string_array, array_func_idx = self._find_string_array_function(body)
+        if array_func_name is None:
+            return
+
+        # Step 2: Find decoder function (calls the array function)
+        decoder_name, decoder_offset, decoder_idx, decoder_type = (
+            self._find_decoder_function(body, array_func_name))
+        if decoder_name is None:
+            return
+
+        # Step 3: Create base decoder
+        decoder = self._create_base_decoder(string_array, decoder_offset, decoder_type)
+
+        # Step 4: Find ALL wrapper functions that call the decoder
+        wrappers = self._find_all_wrappers(decoder_name)
+
+        # Step 5: Find and execute rotation
+        rotation_idx = self._find_and_execute_rotation(
+            body, array_func_name, string_array, decoder, wrappers)
+
+        # Update the AST array to reflect rotation so future passes
+        # re-extract the correct (rotated) array.
+        if rotation_idx is not None:
+            self._update_ast_array(body[array_func_idx], string_array)
+
+        # Step 6: Replace all wrapper calls with decoded strings
+        all_replaced = self._replace_all_wrapper_calls(wrappers, decoder)
+
+        # Step 7: Replace direct decoder calls
+        self._replace_direct_decoder_calls(decoder_name, decoder)
+
+        # Step 8: Remove rotation IIFE only.
+        # Keep array func and decoder func alive — ProxyFunctionInliner may
+        # create new direct decoder calls in later passes that StringRevealer
+        # needs to handle. UnusedVariableRemover will clean them up when done.
+        if rotation_idx is not None:
+            self._remove_body_indices(body, rotation_idx)
+
+    def _find_string_array_function(self, body):
+        """Find the string array function declaration.
+
+        Pattern: function X() { var a = ['s1','s2',...]; X = function(){return a;}; return X(); }
+        """
+        for i, stmt in enumerate(body):
+            if stmt.get('type') != 'FunctionDeclaration':
+                continue
+            func_name = stmt.get('id', {}).get('name')
+            if not func_name:
+                continue
+            func_body = stmt.get('body', {}).get('body', [])
+            if len(func_body) < 2:
+                continue
+
+            string_array = self._extract_array_from_statement(func_body[0])
+            if string_array is not None and len(string_array) >= 5:
+                return func_name, string_array, i
+
+        return None, None, None
+
+    def _extract_array_from_statement(self, stmt):
+        """Extract string array from a variable declaration or assignment."""
+        if stmt.get('type') == 'VariableDeclaration':
+            for d in stmt.get('declarations', []):
+                init = d.get('init')
+                if init and init.get('type') == 'ArrayExpression':
+                    elements = init.get('elements', [])
+                    if elements and all(is_string_literal(e) for e in elements):
+                        return [e['value'] for e in elements]
+        elif stmt.get('type') == 'ExpressionStatement':
+            expr = stmt.get('expression')
+            if expr and expr.get('type') == 'AssignmentExpression':
+                right = expr.get('right')
+                if right and right.get('type') == 'ArrayExpression':
+                    elements = right.get('elements', [])
+                    if elements and all(is_string_literal(e) for e in elements):
+                        return [e['value'] for e in elements]
+        return None
+
+    def _find_decoder_function(self, body, array_func_name):
+        """Find the decoder function that calls the array function.
+
+        Pattern: function D(a,b) { var arr = ARRAY_FUNC(); D = function(i,k){i=i-OFFSET; return arr[i];}; return D(a,b); }
+        """
+        for i, stmt in enumerate(body):
+            if stmt.get('type') != 'FunctionDeclaration':
+                continue
+            func_name = stmt.get('id', {}).get('name')
+            if not func_name or func_name == array_func_name:
+                continue
+
+            if not self._function_calls(stmt, array_func_name):
+                continue
+
+            offset = self._extract_decoder_offset(stmt)
+
+            src = generate(stmt)
+            if _BASE_64_REGEX.search(src):
+                dtype = DecoderType.RC4 if _RC4_REGEX.search(src) else DecoderType.BASE_64
+            else:
+                dtype = DecoderType.BASIC
+
+            return func_name, offset, i, dtype
+
+        return None, None, None, None
+
+    def _function_calls(self, func_node, callee_name):
+        """Check if a function body contains a call to callee_name."""
+        found = [False]
+        def visitor(node, parent):
+            if found[0]:
+                return
+            if (node.get('type') == 'CallExpression' and
+                    is_identifier(node.get('callee')) and
+                    node['callee']['name'] == callee_name):
+                found[0] = True
+        simple_traverse(func_node, visitor)
+        return found[0]
+
+    def _extract_decoder_offset(self, func_node):
+        """Extract offset from decoder's inner param = param OP EXPR pattern."""
+        found_offset = [None]
+
+        def find_offset(node, parent):
+            if found_offset[0] is not None:
+                return
+            if node.get('type') != 'AssignmentExpression':
+                return
+            left = node.get('left')
+            right = node.get('right')
+            if not left or not right:
+                return
+            if not is_identifier(left):
+                return
+            if right.get('type') != 'BinaryExpression':
+                return
+            if not (is_identifier(right.get('left')) and right['left']['name'] == left['name']):
+                return
+            op = right.get('operator')
+            if op not in ('+', '-'):
+                return
+            rval = _eval_numeric(right.get('right'))
+            if rval is not None:
+                found_offset[0] = int(-rval) if op == '-' else int(rval)
+
+        simple_traverse(func_node, find_offset)
+        return found_offset[0] if found_offset[0] is not None else 0
+
+    def _create_base_decoder(self, string_array, offset, dtype):
+        """Create the appropriate decoder instance."""
+        if dtype == DecoderType.RC4:
+            return Rc4StringDecoder(string_array, offset)
+        elif dtype == DecoderType.BASE_64:
+            return Base64StringDecoder(string_array, offset)
+        return BasicStringDecoder(string_array, offset)
+
+    def _find_all_wrappers(self, decoder_name):
+        """Find all wrapper functions throughout the AST that call the decoder.
+
+        Pattern: function W(p0,..,pN) { return DECODER(p_i OP OFFSET, p_j); }
+        """
+        wrappers = {}
+
+        def visitor(node, parent):
+            if node.get('type') == 'FunctionDeclaration':
+                info = self._analyze_wrapper(node, decoder_name)
+                if info:
+                    wrappers[info.name] = info
+            elif node.get('type') == 'VariableDeclarator':
+                init = node.get('init')
+                name_node = node.get('id')
+                if (init and init.get('type') in ('FunctionExpression', 'ArrowFunctionExpression')
+                        and is_identifier(name_node)):
+                    info = self._analyze_wrapper_expr(
+                        name_node['name'], init, decoder_name)
+                    if info:
+                        wrappers[info.name] = info
+
+        simple_traverse(self.ast, visitor)
+        return wrappers
+
+    def _analyze_wrapper(self, func_node, decoder_name):
+        """Check if a FunctionDeclaration is a wrapper. Returns WrapperInfo or None."""
+        func_name = func_node.get('id', {}).get('name')
+        if not func_name:
+            return None
+        return self._analyze_wrapper_expr(func_name, func_node, decoder_name)
+
+    def _analyze_wrapper_expr(self, func_name, func_node, decoder_name):
+        """Analyze a function node (declaration or expression) as a potential wrapper."""
+        func_body = func_node.get('body', {})
+        if func_body.get('type') == 'BlockStatement':
+            stmts = func_body.get('body', [])
+        else:
+            return None
+
+        if len(stmts) != 1:
+            return None
+
+        ret_stmt = stmts[0]
+        if ret_stmt.get('type') != 'ReturnStatement':
+            return None
+
+        arg = ret_stmt.get('argument')
+        if not arg or arg.get('type') != 'CallExpression':
+            return None
+
+        callee = arg.get('callee')
+        if not (is_identifier(callee) and callee['name'] == decoder_name):
+            return None
+
+        call_args = arg.get('arguments', [])
+        if not call_args:
+            return None
+
+        params = func_node.get('params', [])
+        param_names = [p['name'] for p in params if is_identifier(p)]
+
+        param_index, wrapper_offset = self._extract_wrapper_offset(
+            call_args[0], param_names)
+        if param_index is None:
+            return None
+
+        key_param_index = None
+        if len(call_args) > 1:
+            second = call_args[1]
+            if is_identifier(second) and second['name'] in param_names:
+                key_param_index = param_names.index(second['name'])
+
+        return WrapperInfo(func_name, param_index, wrapper_offset,
+                           func_node, key_param_index)
+
+    def _extract_wrapper_offset(self, expr, param_names):
+        """Extract (param_index, offset) from wrapper's first argument to decoder.
+
+        Handles: p_N, p_N + LIT, p_N - LIT, p_N - -LIT, p_N + -LIT
+        """
+        if is_identifier(expr) and expr['name'] in param_names:
+            return param_names.index(expr['name']), 0
+
+        if expr.get('type') != 'BinaryExpression':
+            return None, None
+        op = expr.get('operator')
+        if op not in ('+', '-'):
+            return None, None
+
+        left = expr.get('left')
+        if not (is_identifier(left) and left['name'] in param_names):
+            return None, None
+
+        rval = _eval_numeric(expr.get('right'))
+        if rval is None:
+            return None, None
+
+        param_idx = param_names.index(left['name'])
+        offset = int(-rval) if op == '-' else int(rval)
+        return param_idx, offset
+
+    # ---- Rotation ----
+
+    def _find_and_execute_rotation(self, body, array_func_name, string_array,
+                                   decoder, wrappers):
+        """Find rotation IIFE and execute it. Returns body index or None."""
+        for i, stmt in enumerate(body):
+            if stmt.get('type') != 'ExpressionStatement':
+                continue
+            expr = stmt.get('expression')
+            if not expr or expr.get('type') != 'CallExpression':
+                continue
+
+            callee = expr.get('callee')
+            args = expr.get('arguments', [])
+
+            if not callee or callee.get('type') != 'FunctionExpression':
+                continue
+            if len(args) != 2:
+                continue
+
+            if not (is_identifier(args[0]) and args[0]['name'] == array_func_name):
+                continue
+
+            stop_value = _eval_numeric(args[1])
+            if stop_value is None:
+                continue
+            stop_value = int(stop_value)
+
+            rotation_expr = self._extract_rotation_expression(callee)
+            if rotation_expr is None:
+                continue
+
+            operation = self._parse_rotation_op(rotation_expr, wrappers)
+            if operation is None:
+                continue
+
+            self._execute_rotation(string_array, operation, wrappers, decoder, stop_value)
+            return i
+
+        return None
+
+    def _extract_rotation_expression(self, iife_func):
+        """Extract the arithmetic expression from the try block in the rotation loop."""
+        func_body = iife_func.get('body', {}).get('body', [])
+        if not func_body:
+            return None
+
+        loop = None
+        for stmt in func_body:
+            if stmt.get('type') in ('WhileStatement', 'ForStatement'):
+                loop = stmt
+
+        if loop is None:
+            return None
+
+        loop_body = loop.get('body', {})
+        stmts = (loop_body.get('body', [])
+                 if loop_body.get('type') == 'BlockStatement'
+                 else [loop_body])
+
+        for stmt in stmts:
+            if stmt.get('type') == 'TryStatement':
+                block = stmt.get('block', {}).get('body', [])
+                if block:
+                    first = block[0]
+                    if first.get('type') == 'VariableDeclaration':
+                        decls = first.get('declarations', [])
+                        if decls:
+                            return decls[0].get('init')
+                    elif first.get('type') == 'ExpressionStatement':
+                        expr = first.get('expression')
+                        if expr and expr.get('type') == 'AssignmentExpression':
+                            return expr.get('right')
+        return None
+
+    def _parse_rotation_op(self, expr, wrappers):
+        """Parse a rotation expression into an operation tree."""
+        if not isinstance(expr, dict):
+            return None
+        ntype = expr.get('type', '')
+
+        if ntype == 'Literal' and isinstance(expr.get('value'), (int, float)):
+            return {'op': 'literal', 'value': expr['value']}
+
+        if ntype == 'UnaryExpression' and expr.get('operator') == '-':
+            child = self._parse_rotation_op(expr.get('argument'), wrappers)
+            if child:
+                return {'op': 'negate', 'child': child}
+            return None
+
+        if ntype == 'BinaryExpression' and expr.get('operator') in ('+', '-', '*', '/', '%'):
+            left = self._parse_rotation_op(expr.get('left'), wrappers)
+            right = self._parse_rotation_op(expr.get('right'), wrappers)
+            if left and right:
+                return {'op': 'binary', 'operator': expr['operator'],
+                        'left': left, 'right': right}
+            return None
+
+        if ntype == 'CallExpression':
+            callee = expr.get('callee')
+            args = expr.get('arguments', [])
+            if is_identifier(callee) and callee['name'] == 'parseInt' and len(args) == 1:
+                inner = args[0]
+                if inner.get('type') == 'CallExpression':
+                    inner_callee = inner.get('callee')
+                    if is_identifier(inner_callee) and inner_callee['name'] in wrappers:
+                        inner_args = inner.get('arguments', [])
+                        arg_values = []
+                        for a in inner_args:
+                            val = _eval_numeric(a)
+                            if val is not None:
+                                arg_values.append(int(val))
+                            elif is_string_literal(a):
+                                arg_values.append(a['value'])
+                            else:
+                                return None
+                        return {'op': 'call',
+                                'wrapper_name': inner_callee['name'],
+                                'args': arg_values}
+            return None
+
+        return None
+
+    def _apply_rotation_op(self, operation, wrappers, decoder):
+        """Evaluate a parsed rotation operation tree."""
+        op = operation['op']
+
+        if op == 'literal':
+            return operation['value']
+
+        if op == 'negate':
+            return -self._apply_rotation_op(operation['child'], wrappers, decoder)
+
+        if op == 'binary':
+            left = self._apply_rotation_op(operation['left'], wrappers, decoder)
+            right = self._apply_rotation_op(operation['right'], wrappers, decoder)
+            o = operation['operator']
+            if o == '+': return left + right
+            if o == '-': return left - right
+            if o == '*': return left * right
+            if o == '/': return left / right if right != 0 else 0
+            if o == '%': return left % right if right != 0 else 0
+
+        if op == 'call':
+            wrapper = wrappers[operation['wrapper_name']]
+            call_args = operation['args']
+            effective_idx = wrapper.get_effective_index(call_args)
+            if effective_idx is None:
+                raise ValueError('Invalid wrapper args')
+            key = wrapper.get_key(call_args)
+            if key is not None:
+                decoded = decoder.get_string(int(effective_idx), key)
+            else:
+                decoded = decoder.get_string(int(effective_idx))
+            if decoded is None:
+                raise ValueError('Decoder returned None')
+            result = _js_parse_int(decoded)
+            if math.isnan(result):
+                raise ValueError('NaN from parseInt')
+            return result
+
+        raise ValueError(f'Unknown op: {op}')
+
+    def _execute_rotation(self, string_array, operation, wrappers, decoder, stop_value):
+        """Rotate array until the expression evaluates to stop_value."""
+        for _ in range(100001):
+            try:
+                value = self._apply_rotation_op(operation, wrappers, decoder)
+                if int(value) == stop_value:
+                    return True
+                string_array.append(string_array.pop(0))
+            except Exception:
+                string_array.append(string_array.pop(0))
+        return False
+
+    # ---- Replacement ----
+
+    def _replace_all_wrapper_calls(self, wrappers, decoder):
+        """Replace all calls to wrapper functions with decoded string literals."""
+        if not wrappers:
+            return True
+        all_replaced = [True]
+
+        def enter(node, parent, key, index):
+            if node.get('type') != 'CallExpression':
+                return
+            callee = node.get('callee')
+            if not is_identifier(callee):
+                return
+            if callee['name'] not in wrappers:
+                return
+
+            wrapper = wrappers[callee['name']]
+            call_args = node.get('arguments', [])
+
+            # Only need the active param (index) and optionally the key param
+            if wrapper.param_index >= len(call_args):
+                all_replaced[0] = False
+                return
+
+            idx_val = _eval_numeric(call_args[wrapper.param_index])
+            if idx_val is None:
+                all_replaced[0] = False
+                return
+
+            effective_idx = int(idx_val) + wrapper.wrapper_offset
+
+            key = None
+            if wrapper.key_param_index is not None and wrapper.key_param_index < len(call_args):
+                ka = call_args[wrapper.key_param_index]
+                if is_string_literal(ka):
+                    key = ka['value']
+                else:
+                    kv = _eval_numeric(ka)
+                    if kv is not None:
+                        key = str(int(kv))
+
+            try:
+                decoded = (decoder.get_string(int(effective_idx), key)
+                           if key is not None
+                           else decoder.get_string(int(effective_idx)))
+                if isinstance(decoded, str):
+                    self.set_changed()
+                    return make_literal(decoded)
+                all_replaced[0] = False
+            except Exception:
+                all_replaced[0] = False
+
+        traverse(self.ast, {'enter': enter})
+        return all_replaced[0]
+
+    def _replace_direct_decoder_calls(self, decoder_name, decoder):
+        """Replace direct calls to the decoder function with literals."""
+        def enter(node, parent, key, index):
+            if node.get('type') != 'CallExpression':
+                return
+            callee = node.get('callee')
+            if not (is_identifier(callee) and callee['name'] == decoder_name):
+                return
+            args = node.get('arguments', [])
+            if not args:
+                return
+
+            first_val = _eval_numeric(args[0])
+            if first_val is None:
+                return
+
+            key = None
+            if len(args) > 1 and is_string_literal(args[1]):
+                key = args[1]['value']
+
+            try:
+                decoded = (decoder.get_string(int(first_val), key)
+                           if key is not None
+                           else decoder.get_string(int(first_val)))
+                if isinstance(decoded, str):
+                    self.set_changed()
+                    return make_literal(decoded)
+            except Exception:
+                pass
+
+        traverse(self.ast, {'enter': enter})
+
+    def _extract_call_arg_values(self, call_args):
+        """Extract numeric/string values from call arguments. Returns list or None."""
+        values = []
+        for a in call_args:
+            val = _eval_numeric(a)
+            if val is not None:
+                values.append(val)
+            elif is_string_literal(a):
+                values.append(a['value'])
+            else:
+                return None
+        return values
+
+    def _update_ast_array(self, func_node, rotated_array):
+        """Update the AST's array function to contain the rotated string array."""
+        func_body = func_node.get('body', {}).get('body', [])
+        if not func_body:
+            return
+        first = func_body[0]
+        # Find the ArrayExpression and update its elements
+        arr_expr = None
+        if first.get('type') == 'VariableDeclaration':
+            for d in first.get('declarations', []):
+                init = d.get('init')
+                if init and init.get('type') == 'ArrayExpression':
+                    arr_expr = init
+                    break
+        elif first.get('type') == 'ExpressionStatement':
+            expr = first.get('expression')
+            if expr and expr.get('type') == 'AssignmentExpression':
+                right = expr.get('right')
+                if right and right.get('type') == 'ArrayExpression':
+                    arr_expr = right
+        if arr_expr is not None:
+            arr_expr['elements'] = [make_literal(s) for s in rotated_array]
+
+    def _remove_body_indices(self, body, *indices):
+        """Remove statements at given indices from body."""
+        for idx in sorted(set(i for i in indices if i is not None), reverse=True):
+            if 0 <= idx < len(body):
+                body.pop(idx)
+                self.set_changed()
+
+    # ================================================================
+    # Strategy 1: Direct string array declarations
+    # ================================================================
+
+    def _process_direct_arrays(self, scope_tree):
+        """Find direct array declarations and replace indexed accesses."""
+        for name, binding in list(scope_tree.bindings.items()):
+            node = binding.node
+            if not isinstance(node, dict) or node.get('type') != 'VariableDeclarator':
+                continue
+            init = node.get('init')
+            if not init or init.get('type') != 'ArrayExpression':
+                continue
+            elements = init.get('elements', [])
+            if not elements or not all(is_string_literal(e) for e in elements):
+                continue
+
+            string_array = [e['value'] for e in elements]
+            for ref_node, ref_parent, ref_key, ref_index in binding.references[:]:
+                if (ref_parent and ref_parent.get('type') == 'MemberExpression' and
+                        ref_key == 'object' and ref_parent.get('computed')):
+                    prop = ref_parent.get('property')
+                    if is_numeric_literal(prop):
+                        idx = int(prop['value'])
+                        if 0 <= idx < len(string_array):
+                            literal = make_literal(string_array[idx])
+                            self._replace_node_in_ast(ref_parent, literal)
+                            self.set_changed()
+            for child in scope_tree.children:
+                self._process_direct_arrays_in_scope(child, name, string_array)
+
+    def _process_direct_arrays_in_scope(self, scope, name, string_array):
+        """Process direct array accesses in child scopes."""
+        binding = scope.get_binding(name)
+        if binding:
+            for ref_node, ref_parent, ref_key, ref_index in binding.references[:]:
+                if (ref_parent and ref_parent.get('type') == 'MemberExpression' and
+                        ref_key == 'object' and ref_parent.get('computed')):
+                    prop = ref_parent.get('property')
+                    if is_numeric_literal(prop):
+                        idx = int(prop['value'])
+                        if 0 <= idx < len(string_array):
+                            literal = make_literal(string_array[idx])
+                            self._replace_node_in_ast(ref_parent, literal)
+                            self.set_changed()
+
+    def _replace_node_in_ast(self, target, replacement):
+        """Replace a node in the AST with a replacement."""
+        from ..traverser import find_parent
+        result = find_parent(self.ast, target)
+        if result:
+            parent, key, index = result
+            if index is not None:
+                parent[key][index] = replacement
+            else:
+                parent[key] = replacement
+
+    # ================================================================
+    # Strategy 3: Simple static array unpacking
+    # ================================================================
+
+    def _process_static_arrays(self):
+        """Process simple static array unpacking (js-deob --su style)."""
+        def enter(node, parent, key, index):
+            if node.get('type') != 'MemberExpression':
+                return
+            if not node.get('computed'):
+                return
+            # Handled by _process_direct_arrays via scope analysis
+        traverse(self.ast, {'enter': enter})
