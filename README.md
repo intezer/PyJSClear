@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="PyJSClear.png" alt="PyJSClear" width="200">
+</p>
+
 # PyJSClear
 
 Pure Python JavaScript deobfuscator. Combines the functionality of
