@@ -121,10 +121,24 @@ The library was validated against five datasets:
 | Dataset | Files | Crashes | Expanded | Reduced | Source |
 |---------|-------|---------|----------|---------|--------|
 | E1 technique samples | 20 | 0 | 0 | 13 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
-| Obfuscated JS dataset | 500 | 0 | 0 | 39 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) |
+| Obfuscated JS dataset | 500 | 0 | 0 | 39 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) ¹ |
 | MalJS (malware) | 200 | 0 | 0 | 79 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
-| BenignJS | 500 | 0 | 0 | 112 | [JSIMPLIFIER](https://zenodo.org/records/17531662) |
-| NotObfuscated | 1,885 | 0 | 0 | 191 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) |
+| BenignJS | 500 | 0 | 0 | 112 | [JSIMPLIFIER](https://zenodo.org/records/17531662) ² |
+| NotObfuscated | 1,885 | 0 | 0 | 191 | [Kaggle](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset) ³ |
+
+¹ The Kaggle obfuscated set uses lightweight string-array obfuscation (plaintext
+strings, `while(--counter)` rotation, no `parseInt` checksums). Most files only
+have renamed variables and a string lookup table — the low reduction rate
+reflects the limited obfuscation depth, not a tool gap.
+
+² BenignJS files are web-scraped from live sites and include genuinely obfuscated
+JS (obfuscator.io, string array rotation, hex encoding) used in production by
+benign websites. Reductions here are true deobfuscation, not false triggers.
+
+³ 3 files in the Kaggle NotObfuscated set (`ngModelSpec-obfuscated.js`,
+`ngOptionsSpec-obfuscated.js`, `ngRepeatSpec-obfuscated.js`) are mislabeled —
+they contain `_0x` variable naming and `\x` hex escapes (genuinely obfuscated
+Angular test specs placed in the wrong folder).
 
 **Head-to-head vs Node.js tools** (obfuscator-io-deobfuscator v1.0.6):
 
