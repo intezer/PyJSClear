@@ -1,8 +1,8 @@
 """Remove unreferenced variables."""
 
-from .base import Transform
-from ..traverser import traverse, REMOVE
 from ..scope import build_scope_tree
+from ..traverser import REMOVE, traverse
+from .base import Transform
 
 
 class UnusedVariableRemover(Transform):
@@ -42,6 +42,7 @@ class UnusedVariableRemover(Transform):
 
     def _batch_remove(self, declarators_to_remove, functions_to_remove):
         """Remove all collected unused declarations in a single traversal."""
+
         def enter(node, parent, key, index):
             ntype = node.get('type')
             if ntype == 'FunctionDeclaration' and id(node) in functions_to_remove:
@@ -56,6 +57,7 @@ class UnusedVariableRemover(Transform):
                         if not new_decls:
                             return REMOVE
                         node['declarations'] = new_decls
+
         traverse(self.ast, {'enter': enter})
 
     def _has_side_effects(self, node):
@@ -73,11 +75,16 @@ class UnusedVariableRemover(Transform):
             return True
         if ntype in ('Literal', 'Identifier', 'ThisExpression'):
             return False
-        if ntype in ('ArrayExpression', 'ObjectExpression', 'FunctionExpression',
-                      'ArrowFunctionExpression'):
+        if ntype in (
+            'ArrayExpression',
+            'ObjectExpression',
+            'FunctionExpression',
+            'ArrowFunctionExpression',
+        ):
             return False
         # For binary/unary, check children
         from ..utils.ast_helpers import get_child_keys
+
         for key in get_child_keys(node):
             child = node.get(key)
             if child is None:

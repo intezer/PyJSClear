@@ -4,8 +4,8 @@ Detects: var o = {}; o.x = 1; o.y = 2;
 Replaces: var o = {x: 1, y: 2};
 """
 
-from .base import Transform
 from ..utils.ast_helpers import is_identifier, is_literal, make_literal
+from .base import Transform
 
 
 class ObjectPacker(Transform):
@@ -45,9 +45,12 @@ class ObjectPacker(Transform):
             if stmt.get('type') == 'VariableDeclaration':
                 for d in stmt.get('declarations', []):
                     init = d.get('init')
-                    if (init and init.get('type') == 'ObjectExpression' and
-                            len(init.get('properties', [])) == 0 and
-                            d.get('id', {}).get('type') == 'Identifier'):
+                    if (
+                        init
+                        and init.get('type') == 'ObjectExpression'
+                        and len(init.get('properties', [])) == 0
+                        and d.get('id', {}).get('type') == 'Identifier'
+                    ):
                         obj_name = d['id']['name']
                         obj_decl = d
                         obj_expr = init
@@ -65,7 +68,11 @@ class ObjectPacker(Transform):
                 if not isinstance(s, dict) or s.get('type') != 'ExpressionStatement':
                     break
                 expr = s.get('expression')
-                if not expr or expr.get('type') != 'AssignmentExpression' or expr.get('operator') != '=':
+                if (
+                    not expr
+                    or expr.get('type') != 'AssignmentExpression'
+                    or expr.get('operator') != '='
+                ):
                     break
                 left = expr.get('left')
                 if not left or left.get('type') != 'MemberExpression':
@@ -103,7 +110,7 @@ class ObjectPacker(Transform):
                     }
                     obj_expr['properties'].append(prop)
                 # Remove the assignment statements
-                del body[i + 1:j]
+                del body[i + 1 : j]
                 self.set_changed()
 
             i += 1
@@ -115,6 +122,7 @@ class ObjectPacker(Transform):
         if node.get('type') == 'Identifier' and node.get('name') == name:
             return True
         from ..utils.ast_helpers import get_child_keys
+
         for key in get_child_keys(node):
             child = node.get(key)
             if child is None:

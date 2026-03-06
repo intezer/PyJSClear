@@ -1,7 +1,7 @@
 """Remove unreachable if/ternary branches based on literal tests."""
 
+from ..traverser import REMOVE, traverse
 from .base import Transform
-from ..traverser import traverse, REMOVE
 
 
 def _is_truthy_literal(node):
@@ -55,39 +55,18 @@ class DeadBranchRemover(Transform):
                 truthy = _is_truthy_literal(node.get('test'))
                 if truthy is None:
                     return
+                self.set_changed()
                 if truthy:
-                    # Replace with consequent
-                    cons = node.get('consequent')
-                    if cons and cons.get('type') == 'BlockStatement':
-                        # Return a block statement that will be inlined
-                        self.set_changed()
-                        return cons
-                    elif cons:
-                        self.set_changed()
-                        return cons
-                else:
-                    # Replace with alternate or remove
-                    alt = node.get('alternate')
-                    if alt:
-                        if alt.get('type') == 'BlockStatement':
-                            self.set_changed()
-                            return alt
-                        self.set_changed()
-                        return alt
-                    else:
-                        self.set_changed()
-                        return REMOVE
+                    return node.get('consequent')
+                alt = node.get('alternate')
+                return alt if alt else REMOVE
 
-            elif ntype == 'ConditionalExpression':
+            if ntype == 'ConditionalExpression':
                 truthy = _is_truthy_literal(node.get('test'))
                 if truthy is None:
                     return
-                if truthy:
-                    self.set_changed()
-                    return node.get('consequent')
-                else:
-                    self.set_changed()
-                    return node.get('alternate')
+                self.set_changed()
+                return node.get('consequent' if truthy else 'alternate')
 
         traverse(self.ast, {'enter': enter})
         return self.has_changed()

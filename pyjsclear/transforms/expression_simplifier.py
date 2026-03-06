@@ -1,16 +1,33 @@
 """Evaluate static unary/binary expressions to literals."""
 
 import math
-from .base import Transform
-from ..traverser import traverse
-from ..utils.ast_helpers import is_literal, is_identifier, make_literal
 
+from ..traverser import traverse
+from ..utils.ast_helpers import is_identifier, is_literal, make_literal
+from .base import Transform
 
 _RESOLVABLE_UNARY = {'-', '+', '!', '~', 'typeof', 'void'}
 _RESOLVABLE_BINARY = {
-    '==', '!=', '===', '!==', '<', '<=', '>', '>=',
-    '<<', '>>', '>>>', '+', '-', '*', '/', '%', '**',
-    '|', '^', '&'
+    '==',
+    '!=',
+    '===',
+    '!==',
+    '<',
+    '<=',
+    '>',
+    '>=',
+    '<<',
+    '>>',
+    '>>>',
+    '+',
+    '-',
+    '*',
+    '/',
+    '%',
+    '**',
+    '|',
+    '^',
+    '&',
 }
 
 
@@ -41,27 +58,35 @@ class ExpressionSimplifier(Transform):
                 return
             cons = node.get('consequent')
             alt = node.get('alternate')
-            if (is_literal(cons) and cons.get('value') is False and
-                    is_literal(alt) and alt.get('value') is True):
+            if (
+                is_literal(cons)
+                and cons.get('value') is False
+                and is_literal(alt)
+                and alt.get('value') is True
+            ):
                 self.set_changed()
                 return {
                     'type': 'UnaryExpression',
                     'operator': '!',
                     'prefix': True,
-                    'argument': node['test']
+                    'argument': node['test'],
                 }
+
         traverse(self.ast, {'enter': simplify_conditional})
 
         # Simplify AwaitExpression with SequenceExpression argument:
         # await (0x0, expr) → await expr
         def simplify_await(node, parent, key, index):
-            if (node.get('type') == 'AwaitExpression' and
-                    isinstance(node.get('argument'), dict) and
-                    node['argument'].get('type') == 'SequenceExpression'):
+            if (
+                node.get('type') == 'AwaitExpression'
+                and isinstance(node.get('argument'), dict)
+                and node['argument'].get('type') == 'SequenceExpression'
+            ):
                 exprs = node['argument'].get('expressions', [])
                 if len(exprs) > 1:
                     node['argument'] = exprs[-1]
                     self.set_changed()
+
         traverse(self.ast, {'enter': simplify_await})
 
         return self.has_changed()
@@ -71,7 +96,11 @@ class ExpressionSimplifier(Transform):
         if op not in _RESOLVABLE_UNARY:
             return None
         # Skip negative numeric literals (already in normal form)
-        if op == '-' and is_literal(node.get('argument')) and isinstance(node['argument'].get('value'), (int, float)):
+        if (
+            op == '-'
+            and is_literal(node.get('argument'))
+            and isinstance(node['argument'].get('value'), (int, float))
+        ):
             return None
 
         arg = node.get('argument')
@@ -126,11 +155,13 @@ class ExpressionSimplifier(Transform):
         return node
 
     def _is_negative_numeric(self, node):
-        return (isinstance(node, dict) and
-                node.get('type') == 'UnaryExpression' and
-                node.get('operator') == '-' and
-                is_literal(node.get('argument')) and
-                isinstance(node['argument'].get('value'), (int, float)))
+        return (
+            isinstance(node, dict)
+            and node.get('type') == 'UnaryExpression'
+            and node.get('operator') == '-'
+            and is_literal(node.get('argument'))
+            and isinstance(node['argument'].get('value'), (int, float))
+        )
 
     def _get_resolvable_value(self, node):
         if not isinstance(node, dict):
@@ -168,7 +199,7 @@ class ExpressionSimplifier(Transform):
             if isinstance(val, list):
                 return 0
             if val is None:
-                return None  # NaN
+                return float('nan')  # +undefined → NaN
             return 0
         if op == '!':
             # JS truthiness
@@ -209,9 +240,13 @@ class ExpressionSimplifier(Transform):
         if op == '^':
             return int(self._js_to_number(left)) ^ int(self._js_to_number(right))
         if op == '<<':
-            return int(self._js_to_number(left)) << (int(self._js_to_number(right)) & 31)
+            return int(self._js_to_number(left)) << (
+                int(self._js_to_number(right)) & 31
+            )
         if op == '>>':
-            return int(self._js_to_number(left)) >> (int(self._js_to_number(right)) & 31)
+            return int(self._js_to_number(left)) >> (
+                int(self._js_to_number(right)) & 31
+            )
         if op == '>>>':
             l = int(self._js_to_number(left)) & 0xFFFFFFFF
             r = int(self._js_to_number(right)) & 31
@@ -240,7 +275,9 @@ class ExpressionSimplifier(Transform):
         if isinstance(val, bool):
             return val
         if isinstance(val, (int, float)):
-            return val != 0 and not math.isnan(val) if isinstance(val, float) else val != 0
+            return (
+                val != 0 and not math.isnan(val) if isinstance(val, float) else val != 0
+            )
         if isinstance(val, str):
             return len(val) > 0
         if isinstance(val, (list, dict)):
@@ -269,7 +306,11 @@ class ExpressionSimplifier(Transform):
             return val
         if isinstance(val, str):
             try:
-                return int(val) if val.isdigit() or (val.startswith('-') and val[1:].isdigit()) else float(val)
+                return (
+                    int(val)
+                    if val.isdigit() or (val.startswith('-') and val[1:].isdigit())
+                    else float(val)
+                )
             except (ValueError, IndexError):
                 return 0
         if isinstance(val, list):
@@ -317,7 +358,7 @@ class ExpressionSimplifier(Transform):
                     'type': 'UnaryExpression',
                     'operator': '-',
                     'prefix': True,
-                    'argument': make_literal(abs(val))
+                    'argument': make_literal(abs(val)),
                 }
             return make_literal(val)
         if isinstance(val, str):

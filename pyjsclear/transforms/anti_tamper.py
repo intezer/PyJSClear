@@ -7,9 +7,10 @@ Detects common obfuscator.io patterns:
 """
 
 import re
-from .base import Transform
-from ..traverser import traverse, REMOVE
+
 from ..generator import generate
+from ..traverser import REMOVE, traverse
+from .base import Transform
 
 
 class AntiTamperRemover(Transform):
@@ -31,8 +32,12 @@ class AntiTamperRemover(Transform):
     ]
 
     _CONSOLE_PATTERNS = [
-        re.compile(r'console\s*\[\s*[\'"](?:log|warn|error|info|debug|trace|exception|table)'),
-        re.compile(r'console\s*\.\s*(?:log|warn|error|info|debug|trace|exception|table)\s*='),
+        re.compile(
+            r'console\s*\[\s*[\'"](?:log|warn|error|info|debug|trace|exception|table)'
+        ),
+        re.compile(
+            r'console\s*\.\s*(?:log|warn|error|info|debug|trace|exception|table)\s*='
+        ),
     ]
 
     def execute(self):
@@ -49,8 +54,10 @@ class AntiTamperRemover(Transform):
             call = None
             if expr.get('type') == 'CallExpression':
                 call = expr
-            elif (expr.get('type') == 'UnaryExpression' and
-                  expr.get('argument', {}).get('type') == 'CallExpression'):
+            elif (
+                expr.get('type') == 'UnaryExpression'
+                and expr.get('argument', {}).get('type') == 'CallExpression'
+            ):
                 call = expr.get('argument')
 
             if not call:
@@ -59,7 +66,10 @@ class AntiTamperRemover(Transform):
             callee = call.get('callee')
             if not callee:
                 return
-            if callee.get('type') not in ('FunctionExpression', 'ArrowFunctionExpression'):
+            if callee.get('type') not in (
+                'FunctionExpression',
+                'ArrowFunctionExpression',
+            ):
                 return
 
             # Generate code and check against patterns
@@ -78,7 +88,8 @@ class AntiTamperRemover(Transform):
             if any(p.search(src) for p in self._DEBUG_PATTERNS):
                 # Only remove if it looks like a debug trap (has debugger + loop/interval)
                 if re.search(r'\bdebugger\b', src) and (
-                        re.search(r'\bwhile\b|\bfor\b|\bsetInterval\b', src)):
+                    re.search(r'\bwhile\b|\bfor\b|\bsetInterval\b', src)
+                ):
                     nodes_to_remove.append(node)
                     return
 

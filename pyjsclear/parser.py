@@ -1,8 +1,8 @@
 """JavaScript parser wrapper around esprima2."""
 
 import re
-import esprima
 
+import esprima
 
 _ASYNC_MAP = {'isAsync': 'async', 'allowAwait': 'await'}
 
@@ -37,4 +37,4 @@ def parse(code):
     try:
         return _fast_to_dict(esprima.parseScript(code))
     except Exception as e:
-        raise SyntaxError(f"Failed to parse JavaScript: {e}") from e
+        raise SyntaxError(f'Failed to parse JavaScript: {e}') from e

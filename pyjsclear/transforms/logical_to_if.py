@@ -8,8 +8,8 @@ Converts:
   return await x(), y  →  await x(); return y;
 """
 
+from ..utils.ast_helpers import make_block_statement, make_expression_statement
 from .base import Transform
-from ..utils.ast_helpers import make_expression_statement, make_block_statement
 
 
 class LogicalToIf(Transform):
@@ -47,14 +47,14 @@ class LogicalToIf(Transform):
                     if expr.get('type') == 'LogicalExpression':
                         replacement = self._logical_to_if(expr)
                         if replacement:
-                            stmts[i:i+1] = replacement
+                            stmts[i : i + 1] = replacement
                             self.set_changed()
                             i += len(replacement)
                             continue
                     elif expr.get('type') == 'ConditionalExpression':
                         replacement = self._ternary_to_if(expr)
                         if replacement:
-                            stmts[i:i+1] = replacement
+                            stmts[i : i + 1] = replacement
                             self.set_changed()
                             i += len(replacement)
                             continue
@@ -68,7 +68,10 @@ class LogicalToIf(Transform):
                         new_stmts = []
                         for e in exprs[:-1]:
                             # If sub-expression is a logical, convert to if
-                            if isinstance(e, dict) and e.get('type') == 'LogicalExpression':
+                            if (
+                                isinstance(e, dict)
+                                and e.get('type') == 'LogicalExpression'
+                            ):
                                 converted = self._logical_to_if(e)
                                 if converted:
                                     new_stmts.extend(converted)
@@ -80,7 +83,7 @@ class LogicalToIf(Transform):
                         last = exprs[-1]
                         ret = {'type': 'ReturnStatement', 'argument': last}
                         new_stmts.append(ret)
-                        stmts[i:i+1] = new_stmts
+                        stmts[i : i + 1] = new_stmts
                         self.set_changed()
                         i += len(new_stmts)
                         continue
@@ -89,17 +92,26 @@ class LogicalToIf(Transform):
                 # (Only when the right side has side effects — sequence expressions)
                 if isinstance(arg, dict) and arg.get('type') == 'LogicalExpression':
                     right = arg.get('right')
-                    if isinstance(right, dict) and right.get('type') == 'SequenceExpression':
+                    if (
+                        isinstance(right, dict)
+                        and right.get('type') == 'SequenceExpression'
+                    ):
                         exprs = right.get('expressions', [])
                         if len(exprs) > 1:
                             op = arg.get('operator')
                             test = arg.get('left')
                             if op == '||':
-                                test = {'type': 'UnaryExpression', 'operator': '!',
-                                        'prefix': True, 'argument': test}
+                                test = {
+                                    'type': 'UnaryExpression',
+                                    'operator': '!',
+                                    'prefix': True,
+                                    'argument': test,
+                                }
                             # elif op == '&&': test stays as-is
 
-                            body_stmts = [make_expression_statement(e) for e in exprs[:-1]]
+                            body_stmts = [
+                                make_expression_statement(e) for e in exprs[:-1]
+                            ]
                             if_stmt = {
                                 'type': 'IfStatement',
                                 'test': test,
@@ -107,7 +119,7 @@ class LogicalToIf(Transform):
                                 'alternate': None,
                             }
                             ret = {'type': 'ReturnStatement', 'argument': exprs[-1]}
-                            stmts[i:i+1] = [if_stmt, ret]
+                            stmts[i : i + 1] = [if_stmt, ret]
                             self.set_changed()
                             i += 2
                             continue
@@ -123,8 +135,12 @@ class LogicalToIf(Transform):
         if op == '&&':
             test = left
         elif op == '||':
-            test = {'type': 'UnaryExpression', 'operator': '!',
-                    'prefix': True, 'argument': left}
+            test = {
+                'type': 'UnaryExpression',
+                'operator': '!',
+                'prefix': True,
+                'argument': left,
+            }
         else:
             return None
 
@@ -161,23 +177,3 @@ class LogicalToIf(Transform):
         if isinstance(expr, dict) and expr.get('type') == 'SequenceExpression':
             return [make_expression_statement(e) for e in expr.get('expressions', [])]
         return [make_expression_statement(expr)]
-
-    def _fold_else_if(self, node):
-        """Fold `else { if (...) {} }` into `else if (...) {}`."""
-        if not isinstance(node, dict):
-            return
-        for key, child in node.items():
-            if isinstance(child, dict) and 'type' in child:
-                self._fold_else_if(child)
-            elif isinstance(child, list):
-                for item in child:
-                    if isinstance(item, dict):
-                        self._fold_else_if(item)
-
-        if node.get('type') == 'IfStatement':
-            alt = node.get('alternate')
-            if (alt and alt.get('type') == 'BlockStatement'):
-                body = alt.get('body', [])
-                if len(body) == 1 and body[0].get('type') == 'IfStatement':
-                    node['alternate'] = body[0]
-                    self.set_changed()

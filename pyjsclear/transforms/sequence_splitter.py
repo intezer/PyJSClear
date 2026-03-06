@@ -5,9 +5,9 @@ Also splits multi-declarator var statements: var a = 1, b = 2 → var a = 1; var
 Also normalizes loop/if bodies to block statements.
 """
 
-from .base import Transform
 from ..traverser import traverse
-from ..utils.ast_helpers import make_expression_statement, make_block_statement
+from ..utils.ast_helpers import make_block_statement, make_expression_statement
+from .base import Transform
 
 
 class SequenceSplitter(Transform):
@@ -20,9 +20,17 @@ class SequenceSplitter(Transform):
 
     def _normalize_bodies(self, ast):
         """Ensure if/while/for bodies are BlockStatements."""
+
         def enter(node, parent, key, index):
             ntype = node.get('type', '')
-            if ntype in ('IfStatement', 'WhileStatement', 'DoWhileStatement', 'ForStatement', 'ForInStatement', 'ForOfStatement'):
+            if ntype in (
+                'IfStatement',
+                'WhileStatement',
+                'DoWhileStatement',
+                'ForStatement',
+                'ForInStatement',
+                'ForOfStatement',
+            ):
                 body = node.get('body')
                 if body and body.get('type') != 'BlockStatement':
                     node['body'] = make_block_statement([body])
@@ -33,7 +41,11 @@ class SequenceSplitter(Transform):
                         node['consequent'] = make_block_statement([cons])
                         self.set_changed()
                     alt = node.get('alternate')
-                    if alt and alt.get('type') not in ('BlockStatement', 'IfStatement', None):
+                    if alt and alt.get('type') not in (
+                        'BlockStatement',
+                        'IfStatement',
+                        None,
+                    ):
                         node['alternate'] = make_block_statement([alt])
                         self.set_changed()
 
@@ -71,11 +83,15 @@ class SequenceSplitter(Transform):
                 return
             # Handle await wrapping
             target = node
-            if target.get('type') == 'AwaitExpression' and isinstance(target.get('argument'), dict):
+            if target.get('type') == 'AwaitExpression' and isinstance(
+                target.get('argument'), dict
+            ):
                 target = target['argument']
-            if (target.get('type') == 'CallExpression' and
-                    isinstance(target.get('callee'), dict) and
-                    target['callee'].get('type') == 'SequenceExpression'):
+            if (
+                target.get('type') == 'CallExpression'
+                and isinstance(target.get('callee'), dict)
+                and target['callee'].get('type') == 'SequenceExpression'
+            ):
                 exprs = target['callee'].get('expressions', [])
                 if len(exprs) > 1:
                     prefixes.extend(exprs[:-1])
@@ -112,19 +128,21 @@ class SequenceSplitter(Transform):
             if prefixes:
                 new_stmts = [make_expression_statement(e) for e in prefixes]
                 new_stmts.append(stmt)
-                stmts[i:i+1] = new_stmts
+                stmts[i : i + 1] = new_stmts
                 i += len(new_stmts)
                 self.set_changed()
                 continue
 
             # Split SequenceExpression in ExpressionStatement
-            if (stmt.get('type') == 'ExpressionStatement' and
-                    isinstance(stmt.get('expression'), dict) and
-                    stmt['expression'].get('type') == 'SequenceExpression'):
+            if (
+                stmt.get('type') == 'ExpressionStatement'
+                and isinstance(stmt.get('expression'), dict)
+                and stmt['expression'].get('type') == 'SequenceExpression'
+            ):
                 exprs = stmt['expression'].get('expressions', [])
                 if len(exprs) > 1:
                     new_stmts = [make_expression_statement(e) for e in exprs]
-                    stmts[i:i + 1] = new_stmts
+                    stmts[i : i + 1] = new_stmts
                     i += len(new_stmts)
                     self.set_changed()
                     continue
@@ -135,12 +153,15 @@ class SequenceSplitter(Transform):
                 decls = stmt.get('declarations', [])
                 if len(decls) > 1:
                     kind = stmt.get('kind', 'var')
-                    new_stmts = [{
-                        'type': 'VariableDeclaration',
-                        'kind': kind,
-                        'declarations': [d],
-                    } for d in decls]
-                    stmts[i:i + 1] = new_stmts
+                    new_stmts = [
+                        {
+                            'type': 'VariableDeclaration',
+                            'kind': kind,
+                            'declarations': [d],
+                        }
+                        for d in decls
+                    ]
+                    stmts[i : i + 1] = new_stmts
                     i += len(new_stmts)
                     self.set_changed()
                     continue
@@ -154,24 +175,30 @@ class SequenceSplitter(Transform):
                         if init.get('type') == 'SequenceExpression':
                             exprs = init.get('expressions', [])
                             if len(exprs) > 1:
-                                new_stmts = [make_expression_statement(e) for e in exprs[:-1]]
+                                new_stmts = [
+                                    make_expression_statement(e) for e in exprs[:-1]
+                                ]
                                 decls[0]['init'] = exprs[-1]
                                 new_stmts.append(stmt)
-                                stmts[i:i+1] = new_stmts
+                                stmts[i : i + 1] = new_stmts
                                 i += len(new_stmts)
                                 self.set_changed()
                                 continue
                         # AwaitExpression wrapping SequenceExpression:
                         # var x = await (0, expr()) → 0; var x = await expr();
-                        if (init.get('type') == 'AwaitExpression' and
-                                isinstance(init.get('argument'), dict) and
-                                init['argument'].get('type') == 'SequenceExpression'):
+                        if (
+                            init.get('type') == 'AwaitExpression'
+                            and isinstance(init.get('argument'), dict)
+                            and init['argument'].get('type') == 'SequenceExpression'
+                        ):
                             exprs = init['argument'].get('expressions', [])
                             if len(exprs) > 1:
-                                new_stmts = [make_expression_statement(e) for e in exprs[:-1]]
+                                new_stmts = [
+                                    make_expression_statement(e) for e in exprs[:-1]
+                                ]
                                 init['argument'] = exprs[-1]
                                 new_stmts.append(stmt)
-                                stmts[i:i+1] = new_stmts
+                                stmts[i : i + 1] = new_stmts
                                 i += len(new_stmts)
                                 self.set_changed()
                                 continue

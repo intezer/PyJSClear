@@ -1,25 +1,31 @@
 """String array detection, rotation, and decoding for obfuscator.io patterns."""
 
-import re
 import math
-from .base import Transform
-from ..traverser import traverse, simple_traverse
-from ..scope import build_scope_tree
+import re
+
 from ..generator import generate
+from ..scope import build_scope_tree
+from ..traverser import simple_traverse, traverse
 from ..utils.ast_helpers import (
-    is_literal, is_string_literal, is_numeric_literal, is_identifier, make_literal,
-    get_child_keys
+    get_child_keys,
+    is_identifier,
+    is_literal,
+    is_numeric_literal,
+    is_string_literal,
+    make_literal,
 )
 from ..utils.string_decoders import (
-    DecoderType, BasicStringDecoder, Base64StringDecoder, Rc4StringDecoder
+    Base64StringDecoder,
+    BasicStringDecoder,
+    DecoderType,
+    Rc4StringDecoder,
 )
+from .base import Transform
 
 _BASE_64_REGEX = re.compile(
     r"""['"]abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\+/=['"]\.indexOf"""
 )
-_RC4_REGEX = re.compile(
-    r"""[a-zA-Z$_]?[a-zA-Z0-9$_]+\s?\+=\s?String\.fromCharCode\("""
-)
+_RC4_REGEX = re.compile(r"""[a-zA-Z$_]?[a-zA-Z0-9$_]+\s?\+=\s?String\.fromCharCode\(""")
 
 
 def _eval_numeric(node):
@@ -48,11 +54,16 @@ def _eval_numeric(node):
         right = _eval_numeric(node.get('right'))
         if left is None or right is None:
             return None
-        if op == '+': return left + right
-        if op == '-': return left - right
-        if op == '*': return left * right
-        if op == '/': return left / right if right != 0 else None
-        if op == '%': return left % right if right != 0 else None
+        if op == '+':
+            return left + right
+        if op == '-':
+            return left - right
+        if op == '*':
+            return left * right
+        if op == '/':
+            return left / right if right != 0 else None
+        if op == '%':
+            return left % right if right != 0 else None
         return None
     return None
 
@@ -70,7 +81,10 @@ def _js_parse_int(s):
 
 class WrapperInfo:
     """Info about a wrapper function that calls the decoder."""
-    def __init__(self, name, param_index, wrapper_offset, func_node, key_param_index=None):
+
+    def __init__(
+        self, name, param_index, wrapper_offset, func_node, key_param_index=None
+    ):
         self.name = name
         self.param_index = param_index
         self.wrapper_offset = wrapper_offset
@@ -124,13 +138,16 @@ class StringRevealer(Transform):
         body = self.ast.get('body', [])
 
         # Step 1: Find string array function
-        array_func_name, string_array, array_func_idx = self._find_string_array_function(body)
+        array_func_name, string_array, array_func_idx = (
+            self._find_string_array_function(body)
+        )
         if array_func_name is None:
             return
 
         # Step 2: Find decoder function (calls the array function)
         decoder_name, decoder_offset, decoder_idx, decoder_type = (
-            self._find_decoder_function(body, array_func_name))
+            self._find_decoder_function(body, array_func_name)
+        )
         if decoder_name is None:
             return
 
@@ -147,8 +164,8 @@ class StringRevealer(Transform):
 
         # Step 5: Find and execute rotation
         rotation_idx = self._find_and_execute_rotation(
-            body, array_func_name, string_array, decoder, wrappers,
-            decoder_aliases)
+            body, array_func_name, string_array, decoder, wrappers, decoder_aliases
+        )
 
         # Update the AST array to reflect rotation so future passes
         # re-extract the correct (rotated) array.
@@ -159,8 +176,7 @@ class StringRevealer(Transform):
         all_replaced = self._replace_all_wrapper_calls(wrappers, decoder)
 
         # Step 7: Replace direct decoder calls (including aliases)
-        self._replace_direct_decoder_calls(decoder_name, decoder,
-                                           decoder_aliases)
+        self._replace_direct_decoder_calls(decoder_name, decoder, decoder_aliases)
 
         # Step 8: Remove decoder aliases (const x = decoderName)
         self._remove_decoder_aliases(decoder_name, decoder_aliases)
@@ -236,7 +252,9 @@ class StringRevealer(Transform):
 
             src = generate(stmt)
             if _BASE_64_REGEX.search(src):
-                dtype = DecoderType.RC4 if _RC4_REGEX.search(src) else DecoderType.BASE_64
+                dtype = (
+                    DecoderType.RC4 if _RC4_REGEX.search(src) else DecoderType.BASE_64
+                )
             else:
                 dtype = DecoderType.BASIC
 
@@ -247,13 +265,17 @@ class StringRevealer(Transform):
     def _function_calls(self, func_node, callee_name):
         """Check if a function body contains a call to callee_name."""
         found = [False]
+
         def visitor(node, parent):
             if found[0]:
                 return
-            if (node.get('type') == 'CallExpression' and
-                    is_identifier(node.get('callee')) and
-                    node['callee']['name'] == callee_name):
+            if (
+                node.get('type') == 'CallExpression'
+                and is_identifier(node.get('callee'))
+                and node['callee']['name'] == callee_name
+            ):
                 found[0] = True
+
         simple_traverse(func_node, visitor)
         return found[0]
 
@@ -274,7 +296,10 @@ class StringRevealer(Transform):
                 return
             if right.get('type') != 'BinaryExpression':
                 return
-            if not (is_identifier(right.get('left')) and right['left']['name'] == left['name']):
+            if not (
+                is_identifier(right.get('left'))
+                and right['left']['name'] == left['name']
+            ):
                 return
             op = right.get('operator')
             if op not in ('+', '-'):
@@ -309,10 +334,15 @@ class StringRevealer(Transform):
             elif node.get('type') == 'VariableDeclarator':
                 init = node.get('init')
                 name_node = node.get('id')
-                if (init and init.get('type') in ('FunctionExpression', 'ArrowFunctionExpression')
-                        and is_identifier(name_node)):
+                if (
+                    init
+                    and init.get('type')
+                    in ('FunctionExpression', 'ArrowFunctionExpression')
+                    and is_identifier(name_node)
+                ):
                     info = self._analyze_wrapper_expr(
-                        name_node['name'], init, decoder_name)
+                        name_node['name'], init, decoder_name
+                    )
                     if info:
                         wrappers[info.name] = info
 
@@ -357,7 +387,8 @@ class StringRevealer(Transform):
         param_names = [p['name'] for p in params if is_identifier(p)]
 
         param_index, wrapper_offset = self._extract_wrapper_offset(
-            call_args[0], param_names)
+            call_args[0], param_names
+        )
         if param_index is None:
             return None
 
@@ -367,8 +398,9 @@ class StringRevealer(Transform):
             if is_identifier(second) and second['name'] in param_names:
                 key_param_index = param_names.index(second['name'])
 
-        return WrapperInfo(func_name, param_index, wrapper_offset,
-                           func_node, key_param_index)
+        return WrapperInfo(
+            func_name, param_index, wrapper_offset, func_node, key_param_index
+        )
 
     def _extract_wrapper_offset(self, expr, param_names):
         """Extract (param_index, offset) from wrapper's first argument to decoder.
@@ -415,15 +447,20 @@ class StringRevealer(Transform):
                 d = decls[i]
                 name_node = d.get('id')
                 init = d.get('init')
-                if (is_identifier(name_node) and name_node['name'] in aliases and
-                        init and is_identifier(init) and
-                        init['name'] in removable_inits):
+                if (
+                    is_identifier(name_node)
+                    and name_node['name'] in aliases
+                    and init
+                    and is_identifier(init)
+                    and init['name'] in removable_inits
+                ):
                     decls.pop(i)
                     self.set_changed()
                 else:
                     i += 1
             if not decls:
                 from ..traverser import REMOVE
+
                 return REMOVE
 
         traverse(self.ast, {'enter': enter})
@@ -441,7 +478,7 @@ class StringRevealer(Transform):
             if node.get('type') == 'VariableDeclarator':
                 init = node.get('init')
                 name_node = node.get('id')
-                if (init and is_identifier(init) and is_identifier(name_node)):
+                if init and is_identifier(init) and is_identifier(name_node):
                     assignments[name_node['name']] = init['name']
 
         simple_traverse(self.ast, visitor)
@@ -463,8 +500,15 @@ class StringRevealer(Transform):
 
     # ---- Rotation ----
 
-    def _find_and_execute_rotation(self, body, array_func_name, string_array,
-                                   decoder, wrappers, decoder_aliases=None):
+    def _find_and_execute_rotation(
+        self,
+        body,
+        array_func_name,
+        string_array,
+        decoder,
+        wrappers,
+        decoder_aliases=None,
+    ):
         """Find rotation IIFE and execute it. Returns body index or None."""
         for i, stmt in enumerate(body):
             if stmt.get('type') != 'ExpressionStatement':
@@ -493,12 +537,15 @@ class StringRevealer(Transform):
             if rotation_expr is None:
                 continue
 
-            operation = self._parse_rotation_op(rotation_expr, wrappers,
-                                                decoder_aliases)
+            operation = self._parse_rotation_op(
+                rotation_expr, wrappers, decoder_aliases
+            )
             if operation is None:
                 continue
 
-            self._execute_rotation(string_array, operation, wrappers, decoder, stop_value)
+            self._execute_rotation(
+                string_array, operation, wrappers, decoder, stop_value
+            )
             return i
 
         return None
@@ -518,9 +565,11 @@ class StringRevealer(Transform):
             return None
 
         loop_body = loop.get('body', {})
-        stmts = (loop_body.get('body', [])
-                 if loop_body.get('type') == 'BlockStatement'
-                 else [loop_body])
+        stmts = (
+            loop_body.get('body', [])
+            if loop_body.get('type') == 'BlockStatement'
+            else [loop_body]
+        )
 
         for stmt in stmts:
             if stmt.get('type') == 'TryStatement':
@@ -548,26 +597,41 @@ class StringRevealer(Transform):
             return {'op': 'literal', 'value': expr['value']}
 
         if ntype == 'UnaryExpression' and expr.get('operator') == '-':
-            child = self._parse_rotation_op(expr.get('argument'), wrappers,
-                                            decoder_aliases)
+            child = self._parse_rotation_op(
+                expr.get('argument'), wrappers, decoder_aliases
+            )
             if child:
                 return {'op': 'negate', 'child': child}
             return None
 
-        if ntype == 'BinaryExpression' and expr.get('operator') in ('+', '-', '*', '/', '%'):
-            left = self._parse_rotation_op(expr.get('left'), wrappers,
-                                           decoder_aliases)
-            right = self._parse_rotation_op(expr.get('right'), wrappers,
-                                            decoder_aliases)
+        if ntype == 'BinaryExpression' and expr.get('operator') in (
+            '+',
+            '-',
+            '*',
+            '/',
+            '%',
+        ):
+            left = self._parse_rotation_op(expr.get('left'), wrappers, decoder_aliases)
+            right = self._parse_rotation_op(
+                expr.get('right'), wrappers, decoder_aliases
+            )
             if left and right:
-                return {'op': 'binary', 'operator': expr['operator'],
-                        'left': left, 'right': right}
+                return {
+                    'op': 'binary',
+                    'operator': expr['operator'],
+                    'left': left,
+                    'right': right,
+                }
             return None
 
         if ntype == 'CallExpression':
             callee = expr.get('callee')
             args = expr.get('arguments', [])
-            if is_identifier(callee) and callee['name'] == 'parseInt' and len(args) == 1:
+            if (
+                is_identifier(callee)
+                and callee['name'] == 'parseInt'
+                and len(args) == 1
+            ):
                 inner = args[0]
                 if inner.get('type') == 'CallExpression':
                     inner_callee = inner.get('callee')
@@ -586,13 +650,10 @@ class StringRevealer(Transform):
                             return None
                     # Wrapper function call
                     if cname in wrappers:
-                        return {'op': 'call',
-                                'wrapper_name': cname,
-                                'args': arg_values}
+                        return {'op': 'call', 'wrapper_name': cname, 'args': arg_values}
                     # Direct decoder or alias call
                     if cname in _aliases:
-                        return {'op': 'direct_decoder_call',
-                                'args': arg_values}
+                        return {'op': 'direct_decoder_call', 'args': arg_values}
             return None
 
         return None
@@ -611,11 +672,16 @@ class StringRevealer(Transform):
             left = self._apply_rotation_op(operation['left'], wrappers, decoder)
             right = self._apply_rotation_op(operation['right'], wrappers, decoder)
             o = operation['operator']
-            if o == '+': return left + right
-            if o == '-': return left - right
-            if o == '*': return left * right
-            if o == '/': return left / right if right != 0 else 0
-            if o == '%': return left % right if right != 0 else 0
+            if o == '+':
+                return left + right
+            if o == '-':
+                return left - right
+            if o == '*':
+                return left * right
+            if o == '/':
+                return left / right if right != 0 else 0
+            if o == '%':
+                return left % right if right != 0 else 0
 
         if op == 'call':
             wrapper = wrappers[operation['wrapper_name']]
@@ -705,7 +771,9 @@ class StringRevealer(Transform):
             effective_idx = int(idx_val) + wrapper.wrapper_offset
 
             key = None
-            if wrapper.key_param_index is not None and wrapper.key_param_index < len(call_args):
+            if wrapper.key_param_index is not None and wrapper.key_param_index < len(
+                call_args
+            ):
                 ka = call_args[wrapper.key_param_index]
                 if is_string_literal(ka):
                     key = ka['value']
@@ -715,9 +783,11 @@ class StringRevealer(Transform):
                         key = str(int(kv))
 
             try:
-                decoded = (decoder.get_string(int(effective_idx), key)
-                           if key is not None
-                           else decoder.get_string(int(effective_idx)))
+                decoded = (
+                    decoder.get_string(int(effective_idx), key)
+                    if key is not None
+                    else decoder.get_string(int(effective_idx))
+                )
                 if isinstance(decoded, str):
                     self.set_changed()
                     return make_literal(decoded)
@@ -728,8 +798,9 @@ class StringRevealer(Transform):
         traverse(self.ast, {'enter': enter})
         return all_replaced[0]
 
-    def _replace_direct_decoder_calls(self, decoder_name, decoder,
-                                      decoder_aliases=None):
+    def _replace_direct_decoder_calls(
+        self, decoder_name, decoder, decoder_aliases=None
+    ):
         """Replace direct calls to the decoder function (and its aliases) with literals."""
         names = {decoder_name}
         if decoder_aliases:
@@ -749,7 +820,11 @@ class StringRevealer(Transform):
             # Also handle string hex arguments like '0x0', '0xa' (JS coerces to number)
             if first_val is None and is_string_literal(args[0]):
                 try:
-                    first_val = int(args[0]['value'], 16) if args[0]['value'].startswith('0x') else int(args[0]['value'])
+                    first_val = (
+                        int(args[0]['value'], 16)
+                        if args[0]['value'].startswith('0x')
+                        else int(args[0]['value'])
+                    )
                 except (ValueError, TypeError):
                     pass
             if first_val is None:
@@ -760,9 +835,11 @@ class StringRevealer(Transform):
                 key = args[1]['value']
 
             try:
-                decoded = (decoder.get_string(int(first_val), key)
-                           if key is not None
-                           else decoder.get_string(int(first_val)))
+                decoded = (
+                    decoder.get_string(int(first_val), key)
+                    if key is not None
+                    else decoder.get_string(int(first_val))
+                )
                 if isinstance(decoded, str):
                     self.set_changed()
                     return make_literal(decoded)
@@ -770,19 +847,6 @@ class StringRevealer(Transform):
                 pass
 
         traverse(self.ast, {'enter': enter})
-
-    def _extract_call_arg_values(self, call_args):
-        """Extract numeric/string values from call arguments. Returns list or None."""
-        values = []
-        for a in call_args:
-            val = _eval_numeric(a)
-            if val is not None:
-                values.append(val)
-            elif is_string_literal(a):
-                values.append(a['value'])
-            else:
-                return None
-        return values
 
     def _update_ast_array(self, func_node, rotated_array):
         """Update the AST's array function to contain the rotated string array."""
@@ -843,7 +907,8 @@ class StringRevealer(Transform):
 
         # Step 4: Find decoder function (var _0x... = function(a,b) { a=a-OFFSET; ... _0xARR[a] ... })
         decoder_name, decoder_offset, decoder_idx = self._find_var_decoder(
-            body, array_name)
+            body, array_name
+        )
         if decoder_name is None:
             return
 
@@ -876,8 +941,11 @@ class StringRevealer(Transform):
             for d in stmt.get('declarations', []):
                 name_node = d.get('id')
                 init = d.get('init')
-                if not (is_identifier(name_node) and init and
-                        init.get('type') == 'ArrayExpression'):
+                if not (
+                    is_identifier(name_node)
+                    and init
+                    and init.get('type') == 'ArrayExpression'
+                ):
                     continue
                 elements = init.get('elements', [])
                 if len(elements) >= 3 and all(is_string_literal(e) for e in elements):
@@ -926,8 +994,11 @@ class StringRevealer(Transform):
             for d in stmt.get('declarations', []):
                 name_node = d.get('id')
                 init = d.get('init')
-                if not (is_identifier(name_node) and init and
-                        init.get('type') == 'FunctionExpression'):
+                if not (
+                    is_identifier(name_node)
+                    and init
+                    and init.get('type') == 'FunctionExpression'
+                ):
                     continue
 
                 # Check if function body references the array variable
@@ -961,8 +1032,12 @@ class StringRevealer(Transform):
 
             string_array = [e['value'] for e in elements]
             for ref_node, ref_parent, ref_key, ref_index in binding.references[:]:
-                if (ref_parent and ref_parent.get('type') == 'MemberExpression' and
-                        ref_key == 'object' and ref_parent.get('computed')):
+                if (
+                    ref_parent
+                    and ref_parent.get('type') == 'MemberExpression'
+                    and ref_key == 'object'
+                    and ref_parent.get('computed')
+                ):
                     prop = ref_parent.get('property')
                     if is_numeric_literal(prop):
                         idx = int(prop['value'])
@@ -978,8 +1053,12 @@ class StringRevealer(Transform):
         binding = scope.get_binding(name)
         if binding:
             for ref_node, ref_parent, ref_key, ref_index in binding.references[:]:
-                if (ref_parent and ref_parent.get('type') == 'MemberExpression' and
-                        ref_key == 'object' and ref_parent.get('computed')):
+                if (
+                    ref_parent
+                    and ref_parent.get('type') == 'MemberExpression'
+                    and ref_key == 'object'
+                    and ref_parent.get('computed')
+                ):
                     prop = ref_parent.get('property')
                     if is_numeric_literal(prop):
                         idx = int(prop['value'])
@@ -991,6 +1070,7 @@ class StringRevealer(Transform):
     def _replace_node_in_ast(self, target, replacement):
         """Replace a node in the AST with a replacement."""
         from ..traverser import find_parent
+
         result = find_parent(self.ast, target)
         if result:
             parent, key, index = result
@@ -1004,11 +1084,5 @@ class StringRevealer(Transform):
     # ================================================================
 
     def _process_static_arrays(self):
-        """Process simple static array unpacking (js-deob --su style)."""
-        def enter(node, parent, key, index):
-            if node.get('type') != 'MemberExpression':
-                return
-            if not node.get('computed'):
-                return
-            # Handled by _process_direct_arrays via scope analysis
-        traverse(self.ast, {'enter': enter})
+        """No-op: static array unpacking is handled by _process_direct_arrays."""
+        pass

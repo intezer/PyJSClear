@@ -1,7 +1,6 @@
 """AST helper utilities for ESTree nodes."""
 
 import copy
-import keyword
 import re
 
 
@@ -65,7 +64,11 @@ def make_literal(value, raw=None):
         elif isinstance(value, bool):
             raw = 'true' if value else 'false'
         elif isinstance(value, (int, float)):
-            if isinstance(value, float) and value == int(value) and not (value == 0 and str(value).startswith('-')):
+            if (
+                isinstance(value, float)
+                and value == int(value)
+                and not (value == 0 and str(value).startswith('-'))
+            ):
                 raw = str(int(value))
             else:
                 raw = str(value)
@@ -95,12 +98,10 @@ def make_var_declaration(name, init=None, kind='var'):
     """Create a VariableDeclaration with a single declarator."""
     return {
         'type': 'VariableDeclaration',
-        'declarations': [{
-            'type': 'VariableDeclarator',
-            'id': make_identifier(name),
-            'init': init
-        }],
-        'kind': kind
+        'declarations': [
+            {'type': 'VariableDeclarator', 'id': make_identifier(name), 'init': init}
+        ],
+        'kind': kind,
     }
 
 
@@ -170,12 +171,30 @@ _CHILD_KEYS = {
     'ThisExpression': (),
 }
 
-_SKIP_KEYS = frozenset((
-    'type', 'raw', 'value', 'name', 'operator', 'kind',
-    'computed', 'method', 'shorthand', 'prefix', 'async',
-    'generator', 'static', 'sourceType',
-    'start', 'end', 'loc', 'range', 'directive', 'regex',
-))
+_SKIP_KEYS = frozenset(
+    (
+        'type',
+        'raw',
+        'value',
+        'name',
+        'operator',
+        'kind',
+        'computed',
+        'method',
+        'shorthand',
+        'prefix',
+        'async',
+        'generator',
+        'static',
+        'sourceType',
+        'start',
+        'end',
+        'loc',
+        'range',
+        'directive',
+        'regex',
+    )
+)
 
 
 def get_child_keys(node):

@@ -1,23 +1,22 @@
 """Multi-pass deobfuscation orchestrator."""
 
-from .parser import parse
 from .generator import generate
-from .transforms.hex_escapes import decode_hex_escapes_source, HexEscapes
-from .transforms.unused_vars import UnusedVariableRemover
-from .transforms.constant_prop import ConstantProp
-from .transforms.reassignment import ReassignmentRemover
-from .transforms.dead_branch import DeadBranchRemover
-from .transforms.object_packer import ObjectPacker
-from .transforms.proxy_functions import ProxyFunctionInliner
-from .transforms.expression_simplifier import ExpressionSimplifier
-from .transforms.sequence_splitter import SequenceSplitter
-from .transforms.logical_to_if import LogicalToIf
-from .transforms.control_flow import ControlFlowRecoverer
-from .transforms.property_simplifier import PropertySimplifier
+from .parser import parse
 from .transforms.anti_tamper import AntiTamperRemover
+from .transforms.constant_prop import ConstantProp
+from .transforms.control_flow import ControlFlowRecoverer
+from .transforms.dead_branch import DeadBranchRemover
+from .transforms.expression_simplifier import ExpressionSimplifier
+from .transforms.hex_escapes import HexEscapes, decode_hex_escapes_source
+from .transforms.logical_to_if import LogicalToIf
+from .transforms.object_packer import ObjectPacker
 from .transforms.object_simplifier import ObjectSimplifier
+from .transforms.property_simplifier import PropertySimplifier
+from .transforms.proxy_functions import ProxyFunctionInliner
+from .transforms.reassignment import ReassignmentRemover
+from .transforms.sequence_splitter import SequenceSplitter
 from .transforms.string_revealer import StringRevealer
-
+from .transforms.unused_vars import UnusedVariableRemover
 
 # StringRevealer runs first to handle string arrays before other transforms
 # modify the wrapper function structure.

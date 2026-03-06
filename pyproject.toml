@@ -13,3 +13,9 @@ dependencies = ["esprima2>=5.0.1"]
 
 [project.scripts]
 pyjsclear = "pyjsclear.__main__:main"
+
+[tool.black]
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"

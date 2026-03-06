@@ -1,10 +1,11 @@
 """Constant propagation — replace references to constant variables with their literal values."""
 
 import copy
-from .base import Transform
-from ..traverser import traverse, SKIP
+
 from ..scope import build_scope_tree
-from ..utils.ast_helpers import is_literal, is_identifier, deep_copy
+from ..traverser import SKIP, traverse
+from ..utils.ast_helpers import deep_copy, is_identifier, is_literal
+from .base import Transform
 
 
 class ConstantProp(Transform):
@@ -44,11 +45,19 @@ class ConstantProp(Transform):
         bindings_replaced = set()
         for bind_id, (binding, literal) in replacements.items():
             for ref_node, ref_parent, ref_key, ref_index in binding.references:
-                if ref_parent and ref_parent.get('type') == 'AssignmentExpression' and ref_key == 'left':
+                if (
+                    ref_parent
+                    and ref_parent.get('type') == 'AssignmentExpression'
+                    and ref_key == 'left'
+                ):
                     continue  # Don't replace assignment targets
                 if ref_parent and ref_parent.get('type') == 'UpdateExpression':
                     continue
-                if ref_parent and ref_parent.get('type') == 'VariableDeclarator' and ref_key == 'id':
+                if (
+                    ref_parent
+                    and ref_parent.get('type') == 'VariableDeclarator'
+                    and ref_key == 'id'
+                ):
                     continue
                 # Replace
                 new_node = deep_copy(literal)
@@ -66,7 +75,10 @@ class ConstantProp(Transform):
                 continue  # has reassignments, don't remove
             # Remove the declaration
             decl_node = binding.node
-            if isinstance(decl_node, dict) and decl_node.get('type') == 'VariableDeclarator':
+            if (
+                isinstance(decl_node, dict)
+                and decl_node.get('type') == 'VariableDeclarator'
+            ):
                 # Find the VariableDeclaration parent and remove this declarator
                 self._remove_declarator(decl_node)
 
@@ -74,6 +86,7 @@ class ConstantProp(Transform):
 
     def _remove_declarator(self, declarator_node):
         """Remove a VariableDeclarator from its parent VariableDeclaration."""
+
         def enter(node, parent, key, index):
             if node.get('type') == 'VariableDeclaration':
                 decls = node.get('declarations', [])
@@ -84,6 +97,8 @@ class ConstantProp(Transform):
                         # If no more declarators, mark for removal
                         if not decls:
                             from ..traverser import REMOVE
+
                             return REMOVE
                         return SKIP
+
         traverse(self.ast, {'enter': enter})

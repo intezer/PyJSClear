@@ -4,10 +4,9 @@ Detects: const o = {x: 1, y: "hello"}; ... o.x ... o.y ...
 Replaces: ... 1 ... "hello" ...
 """
 
-import copy
-from .base import Transform
 from ..scope import build_scope_tree
-from ..utils.ast_helpers import is_literal, is_string_literal, is_identifier, deep_copy
+from ..utils.ast_helpers import deep_copy, is_identifier, is_literal, is_string_literal
+from .base import Transform
 
 
 class ObjectSimplifier(Transform):
@@ -44,7 +43,10 @@ class ObjectSimplifier(Transform):
                 val = p.get('value')
                 if is_literal(val):
                     prop_map[key] = val
-                elif val and val.get('type') in ('FunctionExpression', 'ArrowFunctionExpression'):
+                elif val and val.get('type') in (
+                    'FunctionExpression',
+                    'ArrowFunctionExpression',
+                ):
                     prop_map[key] = val
 
             if not prop_map:
@@ -53,15 +55,23 @@ class ObjectSimplifier(Transform):
             # Check no modifications to the object
             modified = False
             for ref_node, ref_parent, ref_key, ref_index in binding.references:
-                if (ref_parent and ref_parent.get('type') == 'MemberExpression' and
-                        ref_key == 'object'):
+                if (
+                    ref_parent
+                    and ref_parent.get('type') == 'MemberExpression'
+                    and ref_key == 'object'
+                ):
                     # Check if this member expression is an assignment target
                     from ..traverser import find_parent
+
                     me = ref_parent
                     me_parent_info = find_parent(self.ast, me)
                     if me_parent_info:
                         mp, mk, mi = me_parent_info
-                        if mp and mp.get('type') == 'AssignmentExpression' and mk == 'left':
+                        if (
+                            mp
+                            and mp.get('type') == 'AssignmentExpression'
+                            and mk == 'left'
+                        ):
                             modified = True
                             break
 
@@ -85,15 +95,20 @@ class ObjectSimplifier(Transform):
                     replacement = deep_copy(val)
                     self._replace_member_expr(me, replacement)
                     self.set_changed()
-                elif val.get('type') in ('FunctionExpression', 'ArrowFunctionExpression'):
+                elif val.get('type') in (
+                    'FunctionExpression',
+                    'ArrowFunctionExpression',
+                ):
                     # Check if the MemberExpression is called
                     from ..traverser import find_parent
+
                     me_parent_info = find_parent(self.ast, me)
                     if me_parent_info:
                         mp, mk, mi = me_parent_info
                         if mp and mp.get('type') == 'CallExpression' and mk == 'callee':
                             # Inline the function call
                             from .proxy_functions import ProxyFunctionInliner
+
                             func = val
                             args = mp.get('arguments', [])
                             replacement = self._inline_func(func, args)
@@ -150,6 +165,7 @@ class ObjectSimplifier(Transform):
     def _replace_node(self, target, replacement):
         """Replace target node in the AST."""
         from ..traverser import find_parent
+
         result = find_parent(self.ast, target)
         if result:
             parent, key, index = result
@@ -163,7 +179,10 @@ class ObjectSimplifier(Transform):
         body = func.get('body')
         if not body:
             return None
-        if func.get('type') == 'ArrowFunctionExpression' and body.get('type') != 'BlockStatement':
+        if (
+            func.get('type') == 'ArrowFunctionExpression'
+            and body.get('type') != 'BlockStatement'
+        ):
             expr = deep_copy(body)
         elif body.get('type') == 'BlockStatement':
             stmts = body.get('body', [])
@@ -180,7 +199,11 @@ class ObjectSimplifier(Transform):
         param_map = {}
         for i, p in enumerate(params):
             if p.get('type') == 'Identifier':
-                param_map[p['name']] = args[i] if i < len(args) else {'type': 'Identifier', 'name': 'undefined'}
+                param_map[p['name']] = (
+                    args[i]
+                    if i < len(args)
+                    else {'type': 'Identifier', 'name': 'undefined'}
+                )
 
         self._replace_params(expr, param_map)
         return expr
@@ -190,6 +213,7 @@ class ObjectSimplifier(Transform):
         if not isinstance(node, dict) or 'type' not in node:
             return
         from ..utils.ast_helpers import get_child_keys
+
         for key in get_child_keys(node):
             child = node.get(key)
             if child is None:
@@ -198,7 +222,11 @@ class ObjectSimplifier(Transform):
                 for i, item in enumerate(child):
                     if isinstance(item, dict) and item.get('type') == 'Identifier':
                         name = item.get('name', '')
-                        if key == 'property' and node.get('type') == 'MemberExpression' and not node.get('computed'):
+                        if (
+                            key == 'property'
+                            and node.get('type') == 'MemberExpression'
+                            and not node.get('computed')
+                        ):
                             continue
                         if name in param_map:
                             child[i] = deep_copy(param_map[name])
@@ -207,7 +235,11 @@ class ObjectSimplifier(Transform):
             elif isinstance(child, dict):
                 if child.get('type') == 'Identifier':
                     name = child.get('name', '')
-                    if key == 'property' and node.get('type') == 'MemberExpression' and not node.get('computed'):
+                    if (
+                        key == 'property'
+                        and node.get('type') == 'MemberExpression'
+                        and not node.get('computed')
+                    ):
                         continue
                     if name in param_map:
                         node[key] = deep_copy(param_map[name])

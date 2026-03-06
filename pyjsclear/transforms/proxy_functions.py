@@ -5,11 +5,10 @@ Detects patterns like:
   _proxy(x, y)  ->  x + y
 """
 
-import copy
-from .base import Transform
-from ..traverser import traverse, simple_traverse
 from ..scope import build_scope_tree
+from ..traverser import simple_traverse, traverse
 from ..utils.ast_helpers import deep_copy, is_identifier
+from .base import Transform
 
 
 class ProxyFunctionInliner(Transform):
@@ -41,15 +40,26 @@ class ProxyFunctionInliner(Transform):
             name = callee.get('name', '')
             if name not in proxy_fns:
                 return
-            call_sites.append((node, parent, key, index, proxy_fns[name], depth_counter[0]))
+            call_sites.append(
+                (node, parent, key, index, proxy_fns[name], depth_counter[0])
+            )
 
         traverse(self.ast, {'enter': enter})
 
         # Process innermost calls first
         call_sites.sort(key=lambda x: x[5], reverse=True)
 
-        for call_node, parent, key, index, (func_node, scope, binding), depth in call_sites:
-            replacement = self._get_replacement(func_node, call_node.get('arguments', []))
+        for (
+            call_node,
+            parent,
+            key,
+            index,
+            (func_node, scope, binding),
+            depth,
+        ) in call_sites:
+            replacement = self._get_replacement(
+                func_node, call_node.get('arguments', [])
+            )
             if replacement is None:
                 continue
             # Replace the call with the inlined expression
@@ -78,11 +88,18 @@ class ProxyFunctionInliner(Transform):
         node = binding.node
         if isinstance(node, dict):
             ntype = node.get('type', '')
-            if ntype in ('FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'):
+            if ntype in (
+                'FunctionDeclaration',
+                'FunctionExpression',
+                'ArrowFunctionExpression',
+            ):
                 return node
             if ntype == 'VariableDeclarator':
                 init = node.get('init')
-                if init and init.get('type') in ('FunctionExpression', 'ArrowFunctionExpression'):
+                if init and init.get('type') in (
+                    'FunctionExpression',
+                    'ArrowFunctionExpression',
+                ):
                     return init
         return None
 
@@ -97,7 +114,10 @@ class ProxyFunctionInliner(Transform):
             return False
 
         # Arrow function with expression body
-        if func_node.get('type') == 'ArrowFunctionExpression' and body.get('type') != 'BlockStatement':
+        if (
+            func_node.get('type') == 'ArrowFunctionExpression'
+            and body.get('type') != 'BlockStatement'
+        ):
             return self._is_proxy_value(body)
 
         # Block with single return
@@ -121,11 +141,18 @@ class ProxyFunctionInliner(Transform):
             return False
         ntype = node.get('type', '')
         # Disallow complex expressions
-        if ntype in ('FunctionExpression', 'FunctionDeclaration', 'ArrowFunctionExpression',
-                      'BlockStatement', 'SequenceExpression', 'AssignmentExpression'):
+        if ntype in (
+            'FunctionExpression',
+            'FunctionDeclaration',
+            'ArrowFunctionExpression',
+            'BlockStatement',
+            'SequenceExpression',
+            'AssignmentExpression',
+        ):
             return False
         # Recursively check children
         from ..utils.ast_helpers import get_child_keys
+
         for key in get_child_keys(node):
             child = node.get(key)
             if child is None:
@@ -133,14 +160,22 @@ class ProxyFunctionInliner(Transform):
             if isinstance(child, list):
                 for item in child:
                     if isinstance(item, dict) and 'type' in item:
-                        if item.get('type') in ('SequenceExpression', 'BlockStatement',
-                                                  'FunctionExpression', 'ArrowFunctionExpression',
-                                                  'AssignmentExpression'):
+                        if item.get('type') in (
+                            'SequenceExpression',
+                            'BlockStatement',
+                            'FunctionExpression',
+                            'ArrowFunctionExpression',
+                            'AssignmentExpression',
+                        ):
                             return False
             elif isinstance(child, dict) and 'type' in child:
-                if child.get('type') in ('SequenceExpression', 'BlockStatement',
-                                          'FunctionExpression', 'ArrowFunctionExpression',
-                                          'AssignmentExpression'):
+                if child.get('type') in (
+                    'SequenceExpression',
+                    'BlockStatement',
+                    'FunctionExpression',
+                    'ArrowFunctionExpression',
+                    'AssignmentExpression',
+                ):
                     return False
         return True
 
@@ -151,7 +186,10 @@ class ProxyFunctionInliner(Transform):
             return {'type': 'Identifier', 'name': 'undefined'}
 
         # Arrow with expression body
-        if func_node.get('type') == 'ArrowFunctionExpression' and body.get('type') != 'BlockStatement':
+        if (
+            func_node.get('type') == 'ArrowFunctionExpression'
+            and body.get('type') != 'BlockStatement'
+        ):
             expr = deep_copy(body)
         elif body.get('type') == 'BlockStatement':
             stmts = body.get('body', [])
@@ -183,6 +221,7 @@ class ProxyFunctionInliner(Transform):
         if not isinstance(node, dict) or 'type' not in node:
             return
         from ..utils.ast_helpers import get_child_keys
+
         for key in get_child_keys(node):
             child = node.get(key)
             if child is None:
@@ -192,7 +231,11 @@ class ProxyFunctionInliner(Transform):
                     if isinstance(item, dict) and item.get('type') == 'Identifier':
                         name = item.get('name', '')
                         # Don't replace property names in non-computed member expressions
-                        if key == 'property' and node.get('type') == 'MemberExpression' and not node.get('computed'):
+                        if (
+                            key == 'property'
+                            and node.get('type') == 'MemberExpression'
+                            and not node.get('computed')
+                        ):
                             continue
                         if name in param_map:
                             child[i] = deep_copy(param_map[name])
@@ -201,7 +244,11 @@ class ProxyFunctionInliner(Transform):
             elif isinstance(child, dict):
                 if child.get('type') == 'Identifier':
                     name = child.get('name', '')
-                    if key == 'property' and node.get('type') == 'MemberExpression' and not node.get('computed'):
+                    if (
+                        key == 'property'
+                        and node.get('type') == 'MemberExpression'
+                        and not node.get('computed')
+                    ):
                         continue
                     if name in param_map:
                         node[key] = deep_copy(param_map[name])

@@ -15,6 +15,9 @@ _BASE_64_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456
 
 def base64_transform(s):
     """Decode obfuscator.io's custom base64 encoding."""
+    # Decode 4 base64 chars into 3 bytes using 6-bit groups.
+    # d accumulates bits; every non-first char in a group yields a byte
+    # via right-shift with mask derived from position within the group.
     a = ''
     c = 0
     d = 0
@@ -35,6 +38,7 @@ def base64_transform(s):
 
 class StringDecoder:
     """Base string decoder."""
+
     def __init__(self, string_array, index_offset):
         self.string_array = string_array
         self.index_offset = index_offset
@@ -67,6 +71,7 @@ class BasicStringDecoder(StringDecoder):
 
 class Base64StringDecoder(StringDecoder):
     """Base64 string decoder."""
+
     def __init__(self, string_array, index_offset):
         super().__init__(string_array, index_offset)
         self._cache = {}
@@ -76,7 +81,9 @@ class Base64StringDecoder(StringDecoder):
         return DecoderType.BASE_64
 
     def get_string(self, index, *args):
-        cache_key = str(index) + self.string_array[0] if self.string_array else str(index)
+        cache_key = (
+            str(index) + self.string_array[0] if self.string_array else str(index)
+        )
         if cache_key in self._cache:
             return self._cache[cache_key]
         idx = index + self.index_offset
@@ -96,6 +103,7 @@ class Base64StringDecoder(StringDecoder):
 
 class Rc4StringDecoder(StringDecoder):
     """RC4 string decoder."""
+
     def __init__(self, string_array, index_offset):
         super().__init__(string_array, index_offset)
         self._cache = {}
@@ -107,7 +115,8 @@ class Rc4StringDecoder(StringDecoder):
     def get_string(self, index, key=None):
         if key is None:
             return None
-        cache_key = str(index) + self.string_array[0] if self.string_array else str(index)
+        # Include key in cache to avoid collisions with different RC4 keys
+        cache_key = (index, key)
         if cache_key in self._cache:
             return self._cache[cache_key]
         idx = index + self.index_offset

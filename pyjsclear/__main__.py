@@ -1,16 +1,21 @@
 """CLI entry point: python -m pyjsclear input.js [-o output.js]"""
+
 import argparse
 import sys
+
 from . import deobfuscate
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='Deobfuscate JavaScript files.')
+    parser = argparse.ArgumentParser(description='Deobfuscate JavaScript files.')
     parser.add_argument('input', help='Input JS file (use - for stdin)')
     parser.add_argument('-o', '--output', help='Output file (default: stdout)')
-    parser.add_argument('--max-iterations', type=int, default=50,
-                        help='Maximum transform passes (default: 50)')
+    parser.add_argument(
+        '--max-iterations',
+        type=int,
+        default=50,
+        help='Maximum transform passes (default: 50)',
+    )
     args = parser.parse_args()
 
     if args.input == '-':
