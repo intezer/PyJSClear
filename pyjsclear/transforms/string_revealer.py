@@ -20,8 +20,8 @@ from ..utils.string_decoders import Rc4StringDecoder
 from .base import Transform
 
 
-_BASE_64_REGEX = re.compile(r"""['"]abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\+/=['"]\.indexOf""")
-_RC4_REGEX = re.compile(r"""[a-zA-Z$_]?[a-zA-Z0-9$_]+\s?\+=\s?String\.fromCharCode\(""")
+_BASE_64_REGEX = re.compile(r"""['"]abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\+/=['"]""")
+_RC4_REGEX = re.compile(r"""fromCharCode.{0,30}\^""")
 
 
 def _eval_numeric(node):
@@ -141,7 +141,29 @@ def _resolve_arg_value(arg, object_literals):
             looked_up = object_literals.get((object_node['name'], property_node['name']))
             if isinstance(looked_up, (int, float)):
                 return looked_up
+            if isinstance(looked_up, str):
+                try:
+                    return int(looked_up, 16) if looked_up.startswith('0x') else int(looked_up)
+                except (ValueError, TypeError):
+                    pass
 
+    return None
+
+
+def _resolve_string_arg(arg, object_literals):
+    """Try to resolve a call argument to a string value.
+
+    Handles string literals and member expressions referencing known object properties.
+    """
+    if is_string_literal(arg):
+        return arg['value']
+    if arg.get('type') == 'MemberExpression' and not arg.get('computed'):
+        object_node = arg.get('object')
+        property_node = arg.get('property')
+        if is_identifier(object_node) and is_identifier(property_node):
+            looked_up = object_literals.get((object_node['name'], property_node['name']))
+            if isinstance(looked_up, str):
+                return looked_up
     return None
 
 
@@ -175,6 +197,7 @@ class StringRevealer(Transform):
     """Decode obfuscated string arrays and replace wrapper calls with literals."""
 
     rebuild_scope = True
+    _rotation_locals = {}
 
     def execute(self):
         scope_tree, node_scope = build_scope_tree(self.ast)
@@ -198,7 +221,7 @@ class StringRevealer(Transform):
     # ================================================================
 
     def _process_obfuscatorio_pattern(self):
-        """Handle obfuscator.io: array func -> decoder func -> wrapper funcs -> rotation."""
+        """Handle obfuscator.io: array func -> decoder func(s) -> wrapper funcs -> rotation."""
         body = self.ast.get('body', [])
 
         # Step 1: Find string array function
@@ -206,25 +229,40 @@ class StringRevealer(Transform):
         if array_func_name is None:
             return
 
-        # Step 2: Find decoder function (calls the array function)
-        decoder_name, decoder_offset, decoder_idx, decoder_type = self._find_decoder_function(body, array_func_name)
-        if decoder_name is None:
+        # Step 2: Find ALL decoder functions that call the array function
+        decoder_infos = self._find_all_decoder_functions(body, array_func_name)
+        if not decoder_infos:
             return
 
-        # Step 3: Create base decoder
-        decoder = self._create_base_decoder(string_array, decoder_offset, decoder_type)
+        # Step 3: Create decoders, wrappers, and aliases for each decoder function
+        decoders = {}  # decoder_name -> decoder instance
+        decoder_wrappers = {}  # decoder_name -> {wrapper_name: WrapperInfo}
+        all_wrappers = {}  # all wrappers combined
+        all_decoder_aliases = set()
+        decoder_indices = set()
+        for d_name, d_offset, d_idx, d_type in decoder_infos:
+            decoder = self._create_base_decoder(string_array, d_offset, d_type)
+            decoders[d_name] = decoder
+            decoder_indices.add(d_idx)
+            wrappers = self._find_all_wrappers(d_name)
+            decoder_wrappers[d_name] = wrappers
+            all_wrappers.update(wrappers)
+            all_decoder_aliases.update(self._find_decoder_aliases(d_name))
 
-        # Step 4: Find ALL wrapper functions that call the decoder
-        wrappers = self._find_all_wrappers(decoder_name)
+        # Use the first decoder as the primary (for rotation — all share the same array)
+        primary_decoder = decoders[decoder_infos[0][0]]
 
-        # Step 4b: Find all decoder aliases (const x = decoderName) throughout the AST.
-        # These are simple variable assignments to the decoder function, not wrapper
-        # functions. They appear as direct decoder calls in rotation IIFEs and code.
-        decoder_aliases = self._find_decoder_aliases(decoder_name)
+        # Build a combined alias-to-decoder map for rotation evaluation
+        alias_decoder_map = {}
+        for d_name, decoder in decoders.items():
+            alias_decoder_map[d_name] = decoder
+            for alias in self._find_decoder_aliases(d_name):
+                alias_decoder_map[alias] = decoder
 
         # Step 5: Find and execute rotation
         rotation_result = self._find_and_execute_rotation(
-            body, array_func_name, string_array, decoder, wrappers, decoder_aliases
+            body, array_func_name, string_array, primary_decoder, all_wrappers,
+            all_decoder_aliases, alias_decoder_map=alias_decoder_map, all_decoders=decoders,
         )
 
         # Update the AST array to reflect rotation so future passes
@@ -235,18 +273,15 @@ class StringRevealer(Transform):
         # Collect object literals for member expression resolution
         obj_literals = _collect_object_literals(self.ast)
 
-        # Step 6: Replace all wrapper calls with decoded strings
-        all_replaced = self._replace_all_wrapper_calls(wrappers, decoder, obj_literals)
+        # Step 6-8: Replace calls and remove aliases for each decoder
+        for d_name, decoder in decoders.items():
+            aliases_for_decoder = self._find_decoder_aliases(d_name)
 
-        # Step 7: Replace direct decoder calls (including aliases)
-        self._replace_direct_decoder_calls(decoder_name, decoder, decoder_aliases, obj_literals)
+            self._replace_all_wrapper_calls(decoder_wrappers[d_name], decoder, obj_literals)
+            self._replace_direct_decoder_calls(d_name, decoder, aliases_for_decoder, obj_literals)
+            self._remove_decoder_aliases(d_name, aliases_for_decoder)
 
-        # Step 8: Remove decoder aliases (const x = decoderName)
-        self._remove_decoder_aliases(decoder_name, decoder_aliases)
-
-        # Step 9: Remove rotation IIFE. Also remove the decoder and array
-        # functions — they are no longer needed since all calls have been
-        # replaced with string literals.
+        # Step 9: Remove rotation IIFE, decoder and array functions
         indices_to_remove = set()
         if rotation_result is not None:
             rotation_idx, rotation_call_expr = rotation_result
@@ -265,9 +300,10 @@ class StringRevealer(Transform):
                 indices_to_remove.add(rotation_idx)
         # Only remove decoder/array funcs if we actually decoded strings
         if self.has_changed():
-            indices_to_remove.add(decoder_idx)
+            indices_to_remove.update(decoder_indices)
             indices_to_remove.add(array_func_idx)
         self._remove_body_indices(body, *indices_to_remove)
+
 
     def _find_string_array_function(self, body):
         """Find the string array function declaration.
@@ -313,11 +349,12 @@ class StringRevealer(Transform):
                 return self._string_array_from_expression(expr.get('right'))
         return None
 
-    def _find_decoder_function(self, body, array_func_name):
-        """Find the decoder function that calls the array function.
+    def _find_all_decoder_functions(self, body, array_func_name):
+        """Find all decoder functions that call the array function.
 
-        Pattern: function D(a,b) { var arr = ARRAY_FUNC(); D = function(i,k){i=i-OFFSET; return arr[i];}; return D(a,b); }
+        Returns list of (func_name, offset, body_index, decoder_type) tuples.
         """
+        results = []
         for i, stmt in enumerate(body):
             if stmt.get('type') != 'FunctionDeclaration':
                 continue
@@ -336,9 +373,9 @@ class StringRevealer(Transform):
             else:
                 dtype = DecoderType.BASIC
 
-            return func_name, offset, i, dtype
+            results.append((func_name, offset, i, dtype))
 
-        return None, None, None, None
+        return results
 
     def _function_calls(self, func_node, callee_name):
         """Check if a function body contains a call to callee_name."""
@@ -576,6 +613,8 @@ class StringRevealer(Transform):
         decoder,
         wrappers,
         decoder_aliases=None,
+        alias_decoder_map=None,
+        all_decoders=None,
     ):
         """Find rotation IIFE and execute it.
 
@@ -592,7 +631,8 @@ class StringRevealer(Transform):
 
             if expr.get('type') == 'CallExpression':
                 if self._try_execute_rotation_call(
-                    expr, array_func_name, string_array, decoder, wrappers, decoder_aliases
+                    expr, array_func_name, string_array, decoder, wrappers, decoder_aliases,
+                    alias_decoder_map=alias_decoder_map, all_decoders=all_decoders,
                 ):
                     return (i, None)
 
@@ -601,14 +641,16 @@ class StringRevealer(Transform):
                     if sub.get('type') != 'CallExpression':
                         continue
                     if self._try_execute_rotation_call(
-                        sub, array_func_name, string_array, decoder, wrappers, decoder_aliases
+                        sub, array_func_name, string_array, decoder, wrappers, decoder_aliases,
+                        alias_decoder_map=alias_decoder_map, all_decoders=all_decoders,
                     ):
                         return (i, sub)
 
         return None
 
     def _try_execute_rotation_call(
-        self, call_expr, array_func_name, string_array, decoder, wrappers, decoder_aliases
+        self, call_expr, array_func_name, string_array, decoder, wrappers, decoder_aliases,
+        alias_decoder_map=None, all_decoders=None,
     ):
         """Try to parse and execute a single rotation call expression. Returns True on success."""
         callee = call_expr.get('callee')
@@ -630,12 +672,56 @@ class StringRevealer(Transform):
         if rotation_expr is None:
             return False
 
+        # Collect local object literals from the rotation IIFE for argument resolution
+        self._rotation_locals = self._collect_rotation_locals(callee)
+
         operation = self._parse_rotation_op(rotation_expr, wrappers, decoder_aliases)
         if operation is None:
             return False
 
-        self._execute_rotation(string_array, operation, wrappers, decoder, stop_value)
+        self._execute_rotation(
+            string_array, operation, wrappers, decoder, stop_value,
+            alias_decoder_map=alias_decoder_map,
+        )
         return True
+
+    @staticmethod
+    def _collect_rotation_locals(iife_func):
+        """Collect local object literal assignments from the rotation IIFE.
+
+        Returns dict: var_name -> {prop_name: value}.
+        Handles: var J = {A: 0xb9, S: 0xa7, D: 'M8Y&'};
+        """
+        result = {}
+        func_body = iife_func.get('body', {}).get('body', [])
+        for stmt in func_body:
+            if stmt.get('type') != 'VariableDeclaration':
+                continue
+            for decl in stmt.get('declarations', []):
+                name_node = decl.get('id')
+                init = decl.get('init')
+                if not is_identifier(name_node) or not init or init.get('type') != 'ObjectExpression':
+                    continue
+                obj = {}
+                for prop in init.get('properties', []):
+                    key = prop.get('key')
+                    value = prop.get('value')
+                    if not key or not value:
+                        continue
+                    if is_identifier(key):
+                        k = key['name']
+                    elif is_string_literal(key):
+                        k = key['value']
+                    else:
+                        continue
+                    num = _eval_numeric(value)
+                    if num is not None:
+                        obj[k] = int(num)
+                    elif is_string_literal(value):
+                        obj[k] = value['value']
+                if obj:
+                    result[name_node['name']] = obj
+        return result
 
     def _extract_rotation_expression(self, iife_func):
         """Extract the arithmetic expression from the try block in the rotation loop."""
@@ -729,17 +815,41 @@ class StringRevealer(Transform):
         cname = inner_callee['name']
         arg_values = []
         for a in inner.get('arguments', []):
-            val = _eval_numeric(a)
-            if val is not None:
-                arg_values.append(int(val))
-            elif is_string_literal(a):
-                arg_values.append(a['value'])
+            resolved = self._resolve_rotation_arg(a)
+            if resolved is not None:
+                arg_values.append(resolved)
             else:
                 return None
         if cname in wrappers:
             return {'op': 'call', 'wrapper_name': cname, 'args': arg_values}
         if cname in aliases:
-            return {'op': 'direct_decoder_call', 'args': arg_values}
+            return {'op': 'direct_decoder_call', 'alias_name': cname, 'args': arg_values}
+        return None
+
+    def _resolve_rotation_arg(self, arg):
+        """Resolve a rotation call argument to a numeric or string value.
+
+        Handles literals, string hex, and MemberExpression referencing local objects.
+        """
+        val = _eval_numeric(arg)
+        if val is not None:
+            return int(val)
+        if is_string_literal(arg):
+            s = arg['value']
+            try:
+                return int(s, 16) if s.startswith('0x') else int(s)
+            except (ValueError, TypeError):
+                return s
+        # MemberExpression: J.A or J['A']
+        if arg.get('type') == 'MemberExpression':
+            obj = arg.get('object')
+            prop = arg.get('property')
+            if is_identifier(obj) and obj['name'] in self._rotation_locals:
+                local_obj = self._rotation_locals[obj['name']]
+                if not arg.get('computed') and is_identifier(prop):
+                    return local_obj.get(prop['name'])
+                elif is_string_literal(prop):
+                    return local_obj.get(prop['value'])
         return None
 
     def _decode_and_parse_int(self, decoder, idx, key=None):
@@ -752,16 +862,16 @@ class StringRevealer(Transform):
             raise ValueError('NaN from parseInt')
         return result
 
-    def _apply_rotation_op(self, operation, wrappers, decoder):
+    def _apply_rotation_op(self, operation, wrappers, decoder, alias_decoder_map=None):
         """Evaluate a parsed rotation operation tree."""
         match operation['op']:
             case 'literal':
                 return operation['value']
             case 'negate':
-                return -self._apply_rotation_op(operation['child'], wrappers, decoder)
+                return -self._apply_rotation_op(operation['child'], wrappers, decoder, alias_decoder_map)
             case 'binary':
-                left = self._apply_rotation_op(operation['left'], wrappers, decoder)
-                right = self._apply_rotation_op(operation['right'], wrappers, decoder)
+                left = self._apply_rotation_op(operation['left'], wrappers, decoder, alias_decoder_map)
+                right = self._apply_rotation_op(operation['right'], wrappers, decoder, alias_decoder_map)
                 return _apply_arith(operation['operator'], left, right)
             case 'call':
                 wrapper = wrappers[operation['wrapper_name']]
@@ -775,20 +885,35 @@ class StringRevealer(Transform):
                 if not call_args:
                     raise ValueError('No args for direct decoder call')
                 key = call_args[1] if len(call_args) > 1 else None
-                return self._decode_and_parse_int(decoder, int(call_args[0]), key)
+                # Use alias-specific decoder if available
+                alias_name = operation.get('alias_name')
+                target_decoder = decoder
+                if alias_name and alias_decoder_map and alias_name in alias_decoder_map:
+                    target_decoder = alias_decoder_map[alias_name]
+                return self._decode_and_parse_int(target_decoder, int(call_args[0]), key)
             case _:
                 raise ValueError(f'Unknown op: {operation["op"]}')
 
-    def _execute_rotation(self, string_array, operation, wrappers, decoder, stop_value):
+    def _execute_rotation(self, string_array, operation, wrappers, decoder, stop_value, alias_decoder_map=None):
         """Rotate array until the expression evaluates to stop_value."""
+        # Collect all decoders that need cache clearing on each rotation
+        all_decoders = set()
+        all_decoders.add(decoder)
+        if alias_decoder_map:
+            all_decoders.update(alias_decoder_map.values())
+
         for _ in range(100001):
             try:
-                value = self._apply_rotation_op(operation, wrappers, decoder)
+                value = self._apply_rotation_op(operation, wrappers, decoder, alias_decoder_map)
                 if int(value) == stop_value:
                     return True
                 string_array.append(string_array.pop(0))
             except Exception:
                 string_array.append(string_array.pop(0))
+            # Clear decoder caches after rotation since array contents shifted
+            for d in all_decoders:
+                if hasattr(d, '_cache'):
+                    d._cache.clear()
         return False
 
     # ---- Replacement ----
@@ -826,13 +951,7 @@ class StringRevealer(Transform):
 
             key = None
             if wrapper.key_param_index is not None and wrapper.key_param_index < len(call_args):
-                key_argument = call_args[wrapper.key_param_index]
-                if is_string_literal(key_argument):
-                    key = key_argument['value']
-                else:
-                    key_value = _eval_numeric(key_argument)
-                    if key_value is not None:
-                        key = str(int(key_value))
+                key = _resolve_string_arg(call_args[wrapper.key_param_index], _obj_literals)
 
             try:
                 decoded = (
@@ -872,8 +991,8 @@ class StringRevealer(Transform):
                 return
 
             key = None
-            if len(args) > 1 and is_string_literal(args[1]):
-                key = args[1]['value']
+            if len(args) > 1:
+                key = _resolve_string_arg(args[1], _obj_literals)
 
             try:
                 decoded = (

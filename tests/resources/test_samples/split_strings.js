@@ -1,1 +1,0 @@
-(function(){function _0x5a7487(_0x5c32bb){return'Hello,\x20'+_0x5c32bb+'!';}console['log'](_0x5a7487('World'));}());

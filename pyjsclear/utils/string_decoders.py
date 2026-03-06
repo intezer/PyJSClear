@@ -26,13 +26,13 @@ def base64_transform(encoded_string):
         if char_index != -1:
             bit_buffer = bit_buffer * 64 + char_index if (bit_count % 4) else char_index
             if bit_count % 4:
-                decoded_chars += chr(255 & (bit_buffer >> ((-2 * bit_count) & 6)))
+                decoded_chars += chr(255 & (bit_buffer >> ((-2 * (bit_count + 1)) & 6)))
             bit_count += 1
-    # Percent-encode each byte then URI-decode for UTF-8 support
-    percent_encoded = ''.join(f'%{ord(ch):02x}' for ch in decoded_chars)
+    # Convert to raw bytes then decode as UTF-8 (matching JS decodeURIComponent)
     try:
-        return unquote(percent_encoded)
-    except Exception:
+        raw_bytes = bytes(ord(ch) for ch in decoded_chars)
+        return raw_bytes.decode('utf-8')
+    except (UnicodeDecodeError, ValueError):
         return decoded_chars
 
 
