@@ -13,13 +13,13 @@ def _should_skip_reference(ref_parent, ref_key):
     """Return True if this reference should not be replaced with its literal value."""
     if not ref_parent:
         return True
-    parent_type = ref_parent.get('type')
-    if parent_type == 'AssignmentExpression' and ref_key == 'left':
-        return True
-    if parent_type == 'UpdateExpression':
-        return True
-    if parent_type == 'VariableDeclarator' and ref_key == 'id':
-        return True
+    match ref_parent.get('type'):
+        case 'AssignmentExpression' if ref_key == 'left':
+            return True
+        case 'UpdateExpression':
+            return True
+        case 'VariableDeclarator' if ref_key == 'id':
+            return True
     return False
 
 

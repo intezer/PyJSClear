@@ -56,22 +56,23 @@ def make_literal(value, raw=None):
     if raw is not None:
         return {'type': 'Literal', 'value': value, 'raw': raw}
 
-    if isinstance(value, str):
-        raw = repr(value).replace("'", '"')
-        # Ensure double-quote wrapping
-        if not raw.startswith('"'):
-            raw = '"' + raw[1:-1].replace('"', '\\"') + '"'
-    elif isinstance(value, bool):
-        raw = 'true' if value else 'false'
-    elif isinstance(value, (int, float)):
-        if isinstance(value, float) and value == int(value) and not (value == 0 and str(value).startswith('-')):
-            raw = str(int(value))
-        else:
+    match value:
+        case str():
+            raw = repr(value).replace("'", '"')
+            # Ensure double-quote wrapping
+            if not raw.startswith('"'):
+                raw = '"' + raw[1:-1].replace('"', '\\"') + '"'
+        case bool():
+            raw = 'true' if value else 'false'
+        case int() | float():
+            if isinstance(value, float) and value == int(value) and not (value == 0 and str(value).startswith('-')):
+                raw = str(int(value))
+            else:
+                raw = str(value)
+        case None:
+            raw = 'null'
+        case _:
             raw = str(value)
-    elif value is None:
-        raw = 'null'
-    else:
-        raw = str(value)
     return {'type': 'Literal', 'value': value, 'raw': raw}
 
 
@@ -241,12 +242,13 @@ def nodes_equal(a, b):
     """Check if two AST nodes are structurally equal (ignoring position info)."""
     if type(a) != type(b):
         return False
-    if isinstance(a, dict):
-        keys_a = {k for k in a if k not in ('start', 'end', 'loc', 'range')}
-        keys_b = {k for k in b if k not in ('start', 'end', 'loc', 'range')}
-        if keys_a != keys_b:
-            return False
-        return all(nodes_equal(a[k], b[k]) for k in keys_a)
-    if isinstance(a, list):
-        return len(a) == len(b) and all(nodes_equal(x, y) for x, y in zip(a, b))
+    match a:
+        case dict():
+            keys_a = {k for k in a if k not in ('start', 'end', 'loc', 'range')}
+            keys_b = {k for k in b if k not in ('start', 'end', 'loc', 'range')}
+            if keys_a != keys_b:
+                return False
+            return all(nodes_equal(a[k], b[k]) for k in keys_a)
+        case list():
+            return len(a) == len(b) and all(nodes_equal(x, y) for x, y in zip(a, b))
     return a == b

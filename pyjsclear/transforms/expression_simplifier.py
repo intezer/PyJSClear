@@ -347,9 +347,7 @@ class ExpressionSimplifier(Transform):
             case bool():
                 return 'true' if value else 'false'
             case int() | float():
-                if isinstance(value, float) and value == int(value):
-                    return str(int(value))
-                return str(value)
+                return str(int(value)) if isinstance(value, float) and value == int(value) else str(value)
             case str():
                 return value
             case list():
@@ -386,19 +384,20 @@ class ExpressionSimplifier(Transform):
             return make_literal(None)  # null literal
         if value is None:
             return {'type': 'Identifier', 'name': 'undefined'}
-        if isinstance(value, bool):
-            return make_literal(value)
-        if isinstance(value, (int, float)):
-            if isinstance(value, float) and (value != value or math.isinf(value)):
-                return None
-            if value < 0:
-                return {
-                    'type': 'UnaryExpression',
-                    'operator': '-',
-                    'prefix': True,
-                    'argument': make_literal(abs(value)),
-                }
-            return make_literal(value)
-        if isinstance(value, str):
-            return make_literal(value)
+        match value:
+            case bool():
+                return make_literal(value)
+            case int() | float():
+                if isinstance(value, float) and (value != value or math.isinf(value)):
+                    return None
+                if value < 0:
+                    return {
+                        'type': 'UnaryExpression',
+                        'operator': '-',
+                        'prefix': True,
+                        'argument': make_literal(abs(value)),
+                    }
+                return make_literal(value)
+            case str():
+                return make_literal(value)
         return None

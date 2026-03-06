@@ -170,26 +170,27 @@ class ControlFlowRecoverer(Transform):
         """Find counter variable initialization."""
         if not isinstance(statement, dict):
             return None
-        if statement.get('type') == 'VariableDeclaration':
-            for declaration in statement.get('declarations', []):
-                if declaration.get('id', {}).get('type') == 'Identifier':
-                    initializer = declaration.get('init')
-                    if (
-                        initializer
-                        and initializer.get('type') == 'Literal'
-                        and isinstance(initializer.get('value'), (int, float))
-                    ):
-                        return declaration['id']['name']
-        if statement.get('type') == 'ExpressionStatement':
-            expr = statement.get('expression')
-            if (
-                expr
-                and expr.get('type') == 'AssignmentExpression'
-                and is_identifier(expr.get('left'))
-                and is_literal(expr.get('right'))
-                and isinstance(expr['right'].get('value'), (int, float))
-            ):
-                return expr['left']['name']
+        match statement.get('type'):
+            case 'VariableDeclaration':
+                for declaration in statement.get('declarations', []):
+                    if declaration.get('id', {}).get('type') == 'Identifier':
+                        initializer = declaration.get('init')
+                        if (
+                            initializer
+                            and initializer.get('type') == 'Literal'
+                            and isinstance(initializer.get('value'), (int, float))
+                        ):
+                            return declaration['id']['name']
+            case 'ExpressionStatement':
+                expr = statement.get('expression')
+                if (
+                    expr
+                    and expr.get('type') == 'AssignmentExpression'
+                    and is_identifier(expr.get('left'))
+                    and is_literal(expr.get('right'))
+                    and isinstance(expr['right'].get('value'), (int, float))
+                ):
+                    return expr['left']['name']
         return None
 
     def _is_split_call(self, node):

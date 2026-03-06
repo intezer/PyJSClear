@@ -483,15 +483,17 @@ def _gen_literal(node, indent):
         return _escape_string(value, raw)
     if raw is not None:
         return str(raw)
-    if value is None:
-        return 'null'
-    if isinstance(value, bool):
-        return 'true' if value else 'false'
-    if isinstance(value, (int, float)):
-        if isinstance(value, float) and value == int(value) and value >= 0:
-            return str(int(value))
-        return str(value)
-    return str(value)
+    match value:
+        case None:
+            return 'null'
+        case bool():
+            return 'true' if value else 'false'
+        case int() | float():
+            if isinstance(value, float) and value == int(value) and value >= 0:
+                return str(int(value))
+            return str(value)
+        case _:
+            return str(value)
 
 
 def _gen_identifier(node, indent):

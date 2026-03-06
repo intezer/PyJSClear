@@ -134,10 +134,11 @@ class ObjectSimplifier(Transform):
         key = prop.get('key')
         if not key:
             return None
-        if key.get('type') == 'Identifier':
-            return key['name']
-        if is_string_literal(key):
-            return key['value']
+        match key.get('type'):
+            case 'Identifier':
+                return key['name']
+            case 'Literal' if is_string_literal(key):
+                return key['value']
         return None
 
     def _get_member_prop_name(self, member_expr):
