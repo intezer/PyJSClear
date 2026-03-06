@@ -12,53 +12,50 @@ class UnusedVariableRemover(Transform):
 
     def execute(self):
         scope_tree, _ = build_scope_tree(self.ast)
-        self._remove_unused(scope_tree)
+        declarators_to_remove = set()
+        functions_to_remove = set()
+        self._collect_unused(scope_tree, declarators_to_remove, functions_to_remove)
+        if not declarators_to_remove and not functions_to_remove:
+            return False
+        self._batch_remove(declarators_to_remove, functions_to_remove)
         return self.has_changed()
 
-    def _remove_unused(self, scope):
-        # For global scope, only remove known-internal names (decoder artifacts)
-        # that are clearly not exports (e.g. _0x prefixed obfuscator names).
+    def _collect_unused(self, scope, declarators, functions):
         skip_global = scope.parent is None
 
-        for name, binding in list(scope.bindings.items()):
+        for name, binding in scope.bindings.items():
             if not binding.references and binding.kind != 'param':
-                # In global scope, only remove obfuscator-internal names (_0x...)
                 if skip_global and not name.startswith('_0x'):
                     continue
-                # No references - remove the declaration
                 node = binding.node
-                if isinstance(node, dict) and node.get('type') == 'VariableDeclarator':
-                    self._remove_declarator(node)
-                elif isinstance(node, dict) and node.get('type') == 'FunctionDeclaration':
-                    self._remove_function_decl(node)
+                if isinstance(node, dict):
+                    ntype = node.get('type')
+                    if ntype == 'VariableDeclarator':
+                        init = node.get('init')
+                        if not init or not self._has_side_effects(init):
+                            declarators.add(id(node))
+                    elif ntype == 'FunctionDeclaration':
+                        functions.add(id(node))
 
         for child in scope.children:
-            self._remove_unused(child)
+            self._collect_unused(child, declarators, functions)
 
-    def _remove_declarator(self, declarator):
-        """Remove a VariableDeclarator from its parent."""
+    def _batch_remove(self, declarators_to_remove, functions_to_remove):
+        """Remove all collected unused declarations in a single traversal."""
         def enter(node, parent, key, index):
-            if node.get('type') == 'VariableDeclaration':
-                decls = node.get('declarations', [])
-                for i, d in enumerate(decls):
-                    if d is declarator:
-                        # Check if init has side effects
-                        init = d.get('init')
-                        if init and self._has_side_effects(init):
-                            return  # Keep it
-                        decls.pop(i)
-                        self.set_changed()
-                        if not decls:
-                            return REMOVE
-                        return
-        traverse(self.ast, {'enter': enter})
-
-    def _remove_function_decl(self, func_node):
-        """Remove a FunctionDeclaration."""
-        def enter(node, parent, key, index):
-            if node is func_node:
+            ntype = node.get('type')
+            if ntype == 'FunctionDeclaration' and id(node) in functions_to_remove:
                 self.set_changed()
                 return REMOVE
+            if ntype == 'VariableDeclaration':
+                decls = node.get('declarations')
+                if decls:
+                    new_decls = [d for d in decls if id(d) not in declarators_to_remove]
+                    if len(new_decls) < len(decls):
+                        self.set_changed()
+                        if not new_decls:
+                            return REMOVE
+                        node['declarations'] = new_decls
         traverse(self.ast, {'enter': enter})
 
     def _has_side_effects(self, node):

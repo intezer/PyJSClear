@@ -113,84 +113,90 @@ def is_valid_identifier(name):
     return bool(re.match(r'^[a-zA-Z_$][a-zA-Z0-9_$]*$', name))
 
 
+_CHILD_KEYS = {
+    'Program': ('body',),
+    'ExpressionStatement': ('expression',),
+    'BlockStatement': ('body',),
+    'VariableDeclaration': ('declarations',),
+    'VariableDeclarator': ('id', 'init'),
+    'FunctionDeclaration': ('id', 'params', 'body'),
+    'FunctionExpression': ('id', 'params', 'body'),
+    'ArrowFunctionExpression': ('params', 'body'),
+    'ReturnStatement': ('argument',),
+    'IfStatement': ('test', 'consequent', 'alternate'),
+    'WhileStatement': ('test', 'body'),
+    'DoWhileStatement': ('test', 'body'),
+    'ForStatement': ('init', 'test', 'update', 'body'),
+    'ForInStatement': ('left', 'right', 'body'),
+    'ForOfStatement': ('left', 'right', 'body'),
+    'SwitchStatement': ('discriminant', 'cases'),
+    'SwitchCase': ('test', 'consequent'),
+    'BreakStatement': ('label',),
+    'ContinueStatement': ('label',),
+    'LabeledStatement': ('label', 'body'),
+    'ThrowStatement': ('argument',),
+    'TryStatement': ('block', 'handler', 'finalizer'),
+    'CatchClause': ('param', 'body'),
+    'BinaryExpression': ('left', 'right'),
+    'LogicalExpression': ('left', 'right'),
+    'UnaryExpression': ('argument',),
+    'UpdateExpression': ('argument',),
+    'AssignmentExpression': ('left', 'right'),
+    'MemberExpression': ('object', 'property'),
+    'CallExpression': ('callee', 'arguments'),
+    'NewExpression': ('callee', 'arguments'),
+    'ConditionalExpression': ('test', 'consequent', 'alternate'),
+    'SequenceExpression': ('expressions',),
+    'ArrayExpression': ('elements',),
+    'ObjectExpression': ('properties',),
+    'Property': ('key', 'value'),
+    'SpreadElement': ('argument',),
+    'TemplateLiteral': ('quasis', 'expressions'),
+    'TaggedTemplateExpression': ('tag', 'quasi'),
+    'TemplateElement': (),
+    'AssignmentPattern': ('left', 'right'),
+    'ArrayPattern': ('elements',),
+    'ObjectPattern': ('properties',),
+    'RestElement': ('argument',),
+    'ClassDeclaration': ('id', 'superClass', 'body'),
+    'ClassExpression': ('id', 'superClass', 'body'),
+    'ClassBody': ('body',),
+    'MethodDefinition': ('key', 'value'),
+    'YieldExpression': ('argument',),
+    'AwaitExpression': ('argument',),
+    'EmptyStatement': (),
+    'Literal': (),
+    'Identifier': (),
+    'ThisExpression': (),
+}
+
+_SKIP_KEYS = frozenset((
+    'type', 'raw', 'value', 'name', 'operator', 'kind',
+    'computed', 'method', 'shorthand', 'prefix', 'async',
+    'generator', 'static', 'sourceType',
+    'start', 'end', 'loc', 'range', 'directive', 'regex',
+))
+
+
 def get_child_keys(node):
     """Get keys of a node that may contain child nodes/arrays."""
     if not isinstance(node, dict) or 'type' not in node:
-        return []
-    # ESTree child node fields by type
-    _CHILD_KEYS = {
-        'Program': ['body'],
-        'ExpressionStatement': ['expression'],
-        'BlockStatement': ['body'],
-        'VariableDeclaration': ['declarations'],
-        'VariableDeclarator': ['id', 'init'],
-        'FunctionDeclaration': ['id', 'params', 'body'],
-        'FunctionExpression': ['id', 'params', 'body'],
-        'ArrowFunctionExpression': ['params', 'body'],
-        'ReturnStatement': ['argument'],
-        'IfStatement': ['test', 'consequent', 'alternate'],
-        'WhileStatement': ['test', 'body'],
-        'DoWhileStatement': ['test', 'body'],
-        'ForStatement': ['init', 'test', 'update', 'body'],
-        'ForInStatement': ['left', 'right', 'body'],
-        'ForOfStatement': ['left', 'right', 'body'],
-        'SwitchStatement': ['discriminant', 'cases'],
-        'SwitchCase': ['test', 'consequent'],
-        'BreakStatement': ['label'],
-        'ContinueStatement': ['label'],
-        'LabeledStatement': ['label', 'body'],
-        'ThrowStatement': ['argument'],
-        'TryStatement': ['block', 'handler', 'finalizer'],
-        'CatchClause': ['param', 'body'],
-        'BinaryExpression': ['left', 'right'],
-        'LogicalExpression': ['left', 'right'],
-        'UnaryExpression': ['argument'],
-        'UpdateExpression': ['argument'],
-        'AssignmentExpression': ['left', 'right'],
-        'MemberExpression': ['object', 'property'],
-        'CallExpression': ['callee', 'arguments'],
-        'NewExpression': ['callee', 'arguments'],
-        'ConditionalExpression': ['test', 'consequent', 'alternate'],
-        'SequenceExpression': ['expressions'],
-        'ArrayExpression': ['elements'],
-        'ObjectExpression': ['properties'],
-        'Property': ['key', 'value'],
-        'SpreadElement': ['argument'],
-        'TemplateLiteral': ['quasis', 'expressions'],
-        'TaggedTemplateExpression': ['tag', 'quasi'],
-        'TemplateElement': [],
-        'AssignmentPattern': ['left', 'right'],
-        'ArrayPattern': ['elements'],
-        'ObjectPattern': ['properties'],
-        'RestElement': ['argument'],
-        'ClassDeclaration': ['id', 'superClass', 'body'],
-        'ClassExpression': ['id', 'superClass', 'body'],
-        'ClassBody': ['body'],
-        'MethodDefinition': ['key', 'value'],
-        'YieldExpression': ['argument'],
-        'AwaitExpression': ['argument'],
-        'EmptyStatement': [],
-        'Literal': [],
-        'Identifier': [],
-        'ThisExpression': [],
-    }
-    ntype = node.get('type', '')
-    if ntype in _CHILD_KEYS:
-        return _CHILD_KEYS[ntype]
+        return ()
+    ntype = node['type']
+    keys = _CHILD_KEYS.get(ntype)
+    if keys is not None:
+        return keys
     # Fallback: return all keys that look like they might contain nodes
-    keys = []
+    result = []
     for k, v in node.items():
-        if k in ('type', 'raw', 'value', 'name', 'operator', 'kind',
-                  'computed', 'method', 'shorthand', 'prefix', 'async',
-                  'generator', 'expression', 'static', 'sourceType',
-                  'start', 'end', 'loc', 'range', 'directive', 'regex'):
-            # 'expression' is a bool on ArrowFunctionExpression but a node on ExpressionStatement
-            if k == 'expression' and ntype != 'ExpressionStatement':
-                continue
+        if k in _SKIP_KEYS:
+            continue
+        # 'expression' is a bool on ArrowFunctionExpression but a node on ExpressionStatement
+        if k == 'expression' and ntype != 'ExpressionStatement':
             continue
         if isinstance(v, (dict, list)):
-            keys.append(k)
-    return keys
+            result.append(k)
+    return result
 
 
 def nodes_equal(a, b):

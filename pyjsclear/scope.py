@@ -1,6 +1,6 @@
 """Variable scope and binding analysis for ESTree ASTs."""
 
-from .utils.ast_helpers import get_child_keys
+from .utils.ast_helpers import _CHILD_KEYS, get_child_keys
 
 
 class Binding:
@@ -74,12 +74,15 @@ def build_scope_tree(ast):
             return node_scope[nid]
         return current_scope
 
+    _child_keys_map = _CHILD_KEYS
+
     def _collect_declarations(node, scope):
         """Walk the AST collecting variable declarations into scopes."""
-        if not isinstance(node, dict) or 'type' not in node:
+        if not isinstance(node, dict):
             return
-
-        ntype = node.get('type', '')
+        ntype = node.get('type')
+        if ntype is None:
+            return
 
         # Create new scope for functions
         if ntype in ('FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'):
@@ -150,7 +153,10 @@ def build_scope_tree(ast):
             return
 
         # Recurse into children
-        for key in get_child_keys(node):
+        ckeys = _child_keys_map.get(ntype)
+        if ckeys is None:
+            ckeys = get_child_keys(node)
+        for key in ckeys:
             child = node.get(key)
             if child is None:
                 continue
@@ -192,10 +198,11 @@ def build_scope_tree(ast):
 
     # Second pass: collect references and assignments
     def _collect_references(node, scope, parent=None, parent_key=None, parent_index=None):
-        if not isinstance(node, dict) or 'type' not in node:
+        if not isinstance(node, dict):
             return
-
-        ntype = node.get('type', '')
+        ntype = node.get('type')
+        if ntype is None:
+            return
 
         # Look up scope for this node
         scope = _get_scope_for(node, scope)
@@ -226,7 +233,10 @@ def build_scope_tree(ast):
             return
 
         # Recurse
-        for key in get_child_keys(node):
+        ckeys = _child_keys_map.get(ntype)
+        if ckeys is None:
+            ckeys = get_child_keys(node)
+        for key in ckeys:
             child = node.get(key)
             if child is None:
                 continue

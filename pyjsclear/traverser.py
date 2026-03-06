@@ -1,11 +1,15 @@
 """ESTree AST traversal with visitor pattern."""
 
-from .utils.ast_helpers import get_child_keys
+from .utils.ast_helpers import _CHILD_KEYS
 
 # Sentinel to signal node removal
 REMOVE = object()
 # Sentinel to skip traversing children
 SKIP = object()
+
+_dict = dict
+_list = list
+_isinstance = isinstance
 
 
 def traverse(node, visitor):
@@ -18,34 +22,37 @@ def traverse(node, visitor):
       - SKIP: (enter only) skip traversing children
       - a dict (node): replace this node with the returned node
     """
-    if isinstance(visitor, dict):
+    if _isinstance(visitor, _dict):
         enter_fn = visitor.get('enter')
         exit_fn = visitor.get('exit')
     else:
         enter_fn = getattr(visitor, 'enter', None)
         exit_fn = getattr(visitor, 'exit', None)
 
+    child_keys_map = _CHILD_KEYS
+    _REMOVE = REMOVE
+    _SKIP = SKIP
+
     def _visit(node, parent, key, index):
-        if not isinstance(node, dict) or 'type' not in node:
+        ntype = node.get('type')
+        if ntype is None:
             return node
 
         # Enter
         if enter_fn:
             result = enter_fn(node, parent, key, index)
-            if result is REMOVE:
-                return REMOVE
-            if result is SKIP:
-                # Skip children but still call exit
+            if result is _REMOVE:
+                return _REMOVE
+            if result is _SKIP:
                 if exit_fn:
                     exit_result = exit_fn(node, parent, key, index)
-                    if exit_result is REMOVE:
-                        return REMOVE
-                    if isinstance(exit_result, dict) and 'type' in exit_result:
+                    if exit_result is _REMOVE:
+                        return _REMOVE
+                    if _isinstance(exit_result, _dict) and 'type' in exit_result:
                         return exit_result
                 return node
-            if isinstance(result, dict) and 'type' in result:
+            if _isinstance(result, _dict) and 'type' in result:
                 node = result
-                # Update in parent
                 if parent is not None:
                     if index is not None:
                         parent[key][index] = node
@@ -53,36 +60,39 @@ def traverse(node, visitor):
                         parent[key] = node
 
         # Visit children
-        child_keys = get_child_keys(node)
-        for ckey in child_keys:
+        ckeys = child_keys_map.get(node.get('type'))
+        if ckeys is None:
+            from .utils.ast_helpers import get_child_keys
+            ckeys = get_child_keys(node)
+        for ckey in ckeys:
             child = node.get(ckey)
             if child is None:
                 continue
-            if isinstance(child, list):
+            if _isinstance(child, _list):
                 i = 0
                 while i < len(child):
                     item = child[i]
-                    if isinstance(item, dict) and 'type' in item:
+                    if _isinstance(item, _dict) and 'type' in item:
                         result = _visit(item, node, ckey, i)
-                        if result is REMOVE:
+                        if result is _REMOVE:
                             child.pop(i)
                             continue
-                        elif isinstance(result, dict) and result is not item:
+                        elif result is not item:
                             child[i] = result
                     i += 1
-            elif isinstance(child, dict) and 'type' in child:
+            elif _isinstance(child, _dict) and 'type' in child:
                 result = _visit(child, node, ckey, None)
-                if result is REMOVE:
+                if result is _REMOVE:
                     node[ckey] = None
-                elif isinstance(result, dict) and result is not child:
+                elif result is not child:
                     node[ckey] = result
 
         # Exit
         if exit_fn:
             result = exit_fn(node, parent, key, index)
-            if result is REMOVE:
-                return REMOVE
-            if isinstance(result, dict) and 'type' in result:
+            if result is _REMOVE:
+                return _REMOVE
+            if _isinstance(result, _dict) and 'type' in result:
                 return result
 
         return node
@@ -94,19 +104,26 @@ def simple_traverse(node, callback):
     """Simple traversal that calls callback(node, parent) for every node.
     No replacement support - just visiting.
     """
+    child_keys_map = _CHILD_KEYS
+
     def _visit(n, parent):
-        if not isinstance(n, dict) or 'type' not in n:
+        ntype = n.get('type')
+        if ntype is None:
             return
         callback(n, parent)
-        for key in get_child_keys(n):
+        ckeys = child_keys_map.get(ntype)
+        if ckeys is None:
+            from .utils.ast_helpers import get_child_keys
+            ckeys = get_child_keys(n)
+        for key in ckeys:
             child = n.get(key)
             if child is None:
                 continue
-            if isinstance(child, list):
+            if _isinstance(child, _list):
                 for item in child:
-                    if isinstance(item, dict) and 'type' in item:
+                    if _isinstance(item, _dict) and 'type' in item:
                         _visit(item, n)
-            elif isinstance(child, dict) and 'type' in child:
+            elif _isinstance(child, _dict) and 'type' in child:
                 _visit(child, n)
 
     _visit(node, None)
