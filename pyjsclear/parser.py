@@ -1,6 +1,6 @@
-"""JavaScript parser wrapper around pyjsparser."""
+"""JavaScript parser wrapper around esprima2."""
 
-import pyjsparser
+import esprima
 
 
 def parse(code):
@@ -10,6 +10,6 @@ def parse(code):
     Raises SyntaxError on parse failure.
     """
     try:
-        return pyjsparser.parse(code)
+        return esprima.parseScript(code).toDict()
     except Exception as e:
         raise SyntaxError(f"Failed to parse JavaScript: {e}") from e

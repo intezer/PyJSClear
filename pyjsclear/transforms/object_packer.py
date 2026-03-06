@@ -17,18 +17,14 @@ class ObjectPacker(Transform):
 
     def _process_bodies(self, node):
         """Recursively find body arrays and try packing."""
-        if not isinstance(node, dict) or 'type' not in node:
+        if not isinstance(node, dict):
             return
-
-        from ..utils.ast_helpers import get_child_keys
-        for key in get_child_keys(node):
-            child = node.get(key)
-            if child is None:
-                continue
-            if isinstance(child, list) and key in ('body', 'consequent'):
-                self._try_pack_body(child)
-                for item in child:
-                    self._process_bodies(item)
+        for key, child in node.items():
+            if isinstance(child, list):
+                if child and isinstance(child[0], dict) and 'type' in child[0]:
+                    self._try_pack_body(child)
+                    for item in child:
+                        self._process_bodies(item)
             elif isinstance(child, dict) and 'type' in child:
                 self._process_bodies(child)
 
@@ -80,27 +76,22 @@ class ObjectPacker(Transform):
                 prop = left.get('property')
                 right = expr.get('right')
                 # Get property key
-                prop_key = None
-                if left.get('computed'):
-                    if prop and prop.get('type') == 'Literal' and isinstance(prop.get('value'), str):
-                        prop_key = prop
-                else:
-                    if prop and prop.get('type') == 'Identifier':
-                        prop_key = prop
-
-                if prop_key is None:
+                if prop is None:
                     break
+                # Support both computed and non-computed property keys
+                prop_key = prop
 
                 # Don't pack self-referential assignments (o.x = o.y)
                 if self._references_name(right, obj_name):
                     break
 
-                assignments.append((prop_key, right))
+                computed = left.get('computed', False)
+                assignments.append((prop_key, right, computed))
                 j += 1
 
             if assignments:
                 # Pack into the object literal
-                for prop_key, value in assignments:
+                for prop_key, value, computed in assignments:
                     prop = {
                         'type': 'Property',
                         'key': prop_key,
@@ -108,7 +99,7 @@ class ObjectPacker(Transform):
                         'kind': 'init',
                         'method': False,
                         'shorthand': False,
-                        'computed': False
+                        'computed': computed,
                     }
                     obj_expr['properties'].append(prop)
                 # Remove the assignment statements

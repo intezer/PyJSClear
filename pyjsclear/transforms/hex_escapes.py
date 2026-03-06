@@ -47,10 +47,12 @@ def decode_hex_escapes_source(code):
     def replace_in_string(m):
         quote = m.group(1)
         content = m.group(2)
-        # Decode hex escapes, but skip the quote character for this string
+        # Decode hex escapes, but skip backslash, both quote chars,
+        # and control chars. Quote chars are left for AST-level handling
+        # which normalizes to double quotes like Babel.
         def replace_hex_in_context(hm):
             val = int(hm.group(1), 16)
-            if 0x20 <= val <= 0x7e and val != 0x5c and chr(val) != quote:
+            if 0x20 <= val <= 0x7e and val not in (0x22, 0x27, 0x5c):
                 return chr(val)
             return hm.group(0)
         decoded = re.sub(r'\\x([0-9a-fA-F]{2})', replace_hex_in_context, content)

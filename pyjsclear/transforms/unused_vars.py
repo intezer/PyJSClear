@@ -16,14 +16,15 @@ class UnusedVariableRemover(Transform):
         return self.has_changed()
 
     def _remove_unused(self, scope):
-        # Don't remove from global scope (could be exports)
-        if scope.parent is None:
-            for child in scope.children:
-                self._remove_unused(child)
-            return
+        # For global scope, only remove known-internal names (decoder artifacts)
+        # that are clearly not exports (e.g. _0x prefixed obfuscator names).
+        skip_global = scope.parent is None
 
         for name, binding in list(scope.bindings.items()):
             if not binding.references and binding.kind != 'param':
+                # In global scope, only remove obfuscator-internal names (_0x...)
+                if skip_global and not name.startswith('_0x'):
+                    continue
                 # No references - remove the declaration
                 node = binding.node
                 if isinstance(node, dict) and node.get('type') == 'VariableDeclarator':

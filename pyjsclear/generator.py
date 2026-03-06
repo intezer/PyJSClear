@@ -43,7 +43,8 @@ def _indent_str(level):
 
 def _gen_program(node, indent):
     parts = []
-    for stmt in node.get('body', []):
+    body = node.get('body', [])
+    for i, stmt in enumerate(body):
         if stmt is None:
             continue
         if stmt.get('type') == 'EmptyStatement':
@@ -51,6 +52,13 @@ def _gen_program(node, indent):
         s = _gen_stmt(stmt, indent)
         if s.strip():  # Skip empty lines from removed nodes
             parts.append(s)
+            # Add blank line after directive strings (like 'use strict') — Babel style
+            if (stmt.get('type') == 'ExpressionStatement' and
+                    isinstance(stmt.get('expression'), dict) and
+                    stmt['expression'].get('type') == 'Literal' and
+                    isinstance(stmt['expression'].get('value'), str) and
+                    i + 1 < len(body)):
+                parts.append('')
     return '\n'.join(parts)
 
 
@@ -78,8 +86,16 @@ def _gen_block(node, indent):
     if not node.get('body'):
         return '{}'
     lines = ['{']
-    for stmt in node.get('body', []):
+    body = node.get('body', [])
+    for i, stmt in enumerate(body):
         lines.append(_gen_stmt(stmt, indent + 1))
+        # Add blank line after directive strings (like 'use strict') — Babel style
+        if (stmt.get('type') == 'ExpressionStatement' and
+                isinstance(stmt.get('expression'), dict) and
+                stmt['expression'].get('type') == 'Literal' and
+                isinstance(stmt['expression'].get('value'), str) and
+                i + 1 < len(body)):
+            lines.append('')
     lines.append(_indent_str(indent) + '}')
     return '\n'.join(lines)
 
@@ -111,18 +127,18 @@ def _gen_function_expr(node, indent):
     params = ', '.join(generate(p, indent) for p in node.get('params', []))
     async_prefix = 'async ' if node.get('async') else ''
     gen_prefix = '*' if node.get('generator') else ''
-    space = ' ' if name else ''
     body = generate(node['body'], indent)
-    return f'{async_prefix}function{gen_prefix}{space}{name}({params}) {body}'
+    # Always put space before parens (Babel style)
+    if name:
+        return f'{async_prefix}function{gen_prefix} {name}({params}) {body}'
+    return f'{async_prefix}function{gen_prefix} ({params}) {body}'
 
 
 def _gen_arrow(node, indent):
     params = node.get('params', [])
     async_prefix = 'async ' if node.get('async') else ''
-    if len(params) == 1 and params[0].get('type') == 'Identifier':
-        param_str = generate(params[0], indent)
-    else:
-        param_str = '(' + ', '.join(generate(p, indent) for p in params) + ')'
+    # Always wrap params in parens (Babel style)
+    param_str = '(' + ', '.join(generate(p, indent) for p in params) + ')'
     body = node.get('body', {})
     if body.get('type') == 'BlockStatement':
         body_str = generate(body, indent)
@@ -302,16 +318,19 @@ def _gen_member(node, indent):
     obj = generate(node['object'], indent)
     # Parenthesize numeric literals and some expressions
     obj_type = node['object'].get('type', '')
+    computed = node.get('computed')
     if obj_type in ('Literal', 'BinaryExpression', 'UnaryExpression',
                      'ConditionalExpression', 'AssignmentExpression',
                      'SequenceExpression', 'ArrowFunctionExpression'):
         if obj_type == 'Literal' and isinstance(node['object'].get('value'), (int, float)):
-            obj = f'({obj})'
+            # Only need parens for dot access (42.foo is ambiguous), not bracket (42[foo] is fine)
+            if not computed:
+                obj = f'({obj})'
         elif obj_type not in ('Literal',):
             if _expr_precedence(node['object']) < 19:
                 obj = f'({obj})'
     prop = generate(node['property'], indent)
-    if node.get('computed'):
+    if computed:
         return f'{obj}[{prop}]'
     return f'{obj}.{prop}'
 
@@ -320,7 +339,7 @@ def _gen_call(node, indent):
     callee = generate(node['callee'], indent)
     # Parenthesize non-simple callees
     ctype = node['callee'].get('type', '')
-    if ctype in ('FunctionExpression', 'ArrowFunctionExpression'):
+    if ctype in ('FunctionExpression', 'ArrowFunctionExpression', 'SequenceExpression'):
         callee = f'({callee})'
     args = ', '.join(generate(a, indent) for a in node.get('arguments', []))
     return f'{callee}({args})'
@@ -339,6 +358,11 @@ def _gen_conditional(node, indent):
     test = generate(node['test'], indent)
     cons = generate(node['consequent'], indent)
     alt = generate(node['alternate'], indent)
+    # Wrap SequenceExpression in parens to avoid comma ambiguity
+    if isinstance(node.get('consequent'), dict) and node['consequent'].get('type') == 'SequenceExpression':
+        cons = f'({cons})'
+    if isinstance(node.get('alternate'), dict) and node['alternate'].get('type') == 'SequenceExpression':
+        alt = f'({alt})'
     return f'{test} ? {cons} : {alt}'
 
 
@@ -364,29 +388,36 @@ def _gen_object(node, indent):
     parts = []
     for p in props:
         if p.get('type') == 'SpreadElement':
-            parts.append('...' + generate(p['argument'], indent))
+            parts.append('...' + generate(p['argument'], indent + 1))
             continue
-        key = generate(p['key'], indent)
+        key = generate(p['key'], indent + 1)
         if p.get('computed'):
             key = f'[{key}]'
-        val = generate(p['value'], indent)
+        val = generate(p['value'], indent + 1)
         if p.get('kind') == 'get':
-            params = ', '.join(generate(pp, indent) for pp in p['value'].get('params', []))
-            body = generate(p['value'].get('body'), indent)
+            params = ', '.join(generate(pp, indent + 1) for pp in p['value'].get('params', []))
+            body = generate(p['value'].get('body'), indent + 1)
             parts.append(f'get {key}({params}) {body}')
         elif p.get('kind') == 'set':
-            params = ', '.join(generate(pp, indent) for pp in p['value'].get('params', []))
-            body = generate(p['value'].get('body'), indent)
+            params = ', '.join(generate(pp, indent + 1) for pp in p['value'].get('params', []))
+            body = generate(p['value'].get('body'), indent + 1)
             parts.append(f'set {key}({params}) {body}')
         elif p.get('method'):
-            params = ', '.join(generate(pp, indent) for pp in p['value'].get('params', []))
-            body = generate(p['value'].get('body'), indent)
+            params = ', '.join(generate(pp, indent + 1) for pp in p['value'].get('params', []))
+            body = generate(p['value'].get('body'), indent + 1)
             parts.append(f'{key}({params}) {body}')
         elif p.get('shorthand'):
             parts.append(key)
         else:
+            # Quote non-computed identifier keys (Babel quotes them)
+            if p['key'].get('type') == 'Identifier' and not p.get('computed'):
+                key = f"'{p['key']['name']}'"
             parts.append(f'{key}: {val}')
-    return '{' + ', '.join(parts) + '}'
+    # Multi-line format for objects (Babel style)
+    inner = _indent_str(indent + 1)
+    outer = _indent_str(indent)
+    lines = ',\n'.join(inner + p for p in parts)
+    return '{\n' + lines + '\n' + outer + '}'
 
 
 def _gen_property(node, indent):
@@ -403,16 +434,28 @@ def _gen_spread(node, indent):
 def _gen_literal(node, indent):
     raw = node.get('raw')
     val = node.get('value')
+    # For strings, re-generate from value to normalize escape sequences,
+    # but preserve the original quote character from raw.
+    if isinstance(val, str):
+        # Preserve original quote style from raw when available
+        if raw and len(raw) >= 2 and raw[0] in ('"', "'"):
+            quote = raw[0]
+        else:
+            # No raw: string was created by transforms — use double quotes like Babel
+            quote = '"'
+        # Escape the string content
+        escaped = val.replace('\\', '\\\\')
+        escaped = escaped.replace('\n', '\\n')
+        escaped = escaped.replace('\r', '\\r')
+        escaped = escaped.replace('\t', '\\t')
+        escaped = escaped.replace(quote, '\\' + quote)
+        return f'{quote}{escaped}{quote}'
     if raw is not None:
         return str(raw)
     if val is None:
         return 'null'
     if isinstance(val, bool):
         return 'true' if val else 'false'
-    if isinstance(val, str):
-        # Escape and quote
-        escaped = val.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
-        return f'"{escaped}"'
     if isinstance(val, (int, float)):
         if isinstance(val, float) and val == int(val) and val >= 0:
             return str(int(val))
@@ -456,10 +499,14 @@ def _gen_class_decl(node, indent):
     if node.get('superClass'):
         sup = f' extends {generate(node["superClass"], indent)}'
     body = generate(node['body'], indent)
-    return f'class {name}{sup} {body}'
+    if name:
+        return f'class {name}{sup} {body}'
+    return f'class{sup} {body}'
 
 
 def _gen_class_body(node, indent):
+    if not node.get('body'):
+        return '{}'
     lines = ['{']
     for method in node.get('body', []):
         lines.append(_indent_str(indent + 1) + generate(method, indent + 1))
@@ -469,7 +516,7 @@ def _gen_class_body(node, indent):
 
 def _gen_method_def(node, indent):
     key = generate(node['key'], indent)
-    if node.get('computed'):
+    if node.get('computed') or node['key'].get('type') == 'Literal':
         key = f'[{key}]'
     static = 'static ' if node.get('static') else ''
     kind = node.get('kind', 'method')
@@ -519,15 +566,21 @@ def _gen_object_pattern(node, indent):
     props = []
     for p in node.get('properties', []):
         if p.get('type') == 'RestElement':
-            props.append('...' + generate(p['argument'], indent))
+            props.append('...' + generate(p['argument'], indent + 1))
         else:
-            key = generate(p['key'], indent)
-            val = generate(p['value'], indent)
+            key = generate(p['key'], indent + 1)
+            val = generate(p['value'], indent + 1)
             if p.get('shorthand'):
                 props.append(key)
             else:
                 props.append(f'{key}: {val}')
-    return '{' + ', '.join(props) + '}'
+    if not props:
+        return '{}'
+    # Multi-line format (Babel style)
+    inner = _indent_str(indent + 1)
+    outer = _indent_str(indent)
+    lines = ',\n'.join(inner + p for p in props)
+    return '{\n' + lines + '\n' + outer + '}'
 
 
 def _gen_rest_element(node, indent):

@@ -32,6 +32,38 @@ class ExpressionSimplifier(Transform):
                     return result
 
         traverse(self.ast, {'enter': enter})
+
+        # Simplify ConditionalExpression patterns:
+        # test ? false : true → !test
+        # test ? true : false → !!test (or just test if already boolean)
+        def simplify_conditional(node, parent, key, index):
+            if node.get('type') != 'ConditionalExpression':
+                return
+            cons = node.get('consequent')
+            alt = node.get('alternate')
+            if (is_literal(cons) and cons.get('value') is False and
+                    is_literal(alt) and alt.get('value') is True):
+                self.set_changed()
+                return {
+                    'type': 'UnaryExpression',
+                    'operator': '!',
+                    'prefix': True,
+                    'argument': node['test']
+                }
+        traverse(self.ast, {'enter': simplify_conditional})
+
+        # Simplify AwaitExpression with SequenceExpression argument:
+        # await (0x0, expr) → await expr
+        def simplify_await(node, parent, key, index):
+            if (node.get('type') == 'AwaitExpression' and
+                    isinstance(node.get('argument'), dict) and
+                    node['argument'].get('type') == 'SequenceExpression'):
+                exprs = node['argument'].get('expressions', [])
+                if len(exprs) > 1:
+                    node['argument'] = exprs[-1]
+                    self.set_changed()
+        traverse(self.ast, {'enter': simplify_await})
+
         return self.has_changed()
 
     def _simplify_unary(self, node):
