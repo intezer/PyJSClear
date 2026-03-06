@@ -16,6 +16,7 @@ from pyjsclear.utils.string_decoders import (
 # DecoderType enum
 # ---------------------------------------------------------------------------
 
+
 class TestDecoderType:
     def test_basic_value(self):
         assert DecoderType.BASIC.value == 'basic'
@@ -38,6 +39,7 @@ class TestDecoderType:
 # ---------------------------------------------------------------------------
 # base64_transform  (custom alphabet: lowercase first, then uppercase)
 # ---------------------------------------------------------------------------
+
 
 class TestBase64Transform:
     def test_empty_string(self):
@@ -88,6 +90,7 @@ class TestBase64Transform:
 # StringDecoder base class
 # ---------------------------------------------------------------------------
 
+
 class TestStringDecoder:
     def test_get_string_raises_not_implemented(self):
         decoder = StringDecoder(['a', 'b'], 0)
@@ -129,6 +132,7 @@ class TestStringDecoder:
 # ---------------------------------------------------------------------------
 # BasicStringDecoder
 # ---------------------------------------------------------------------------
+
 
 class TestBasicStringDecoder:
     def test_type_property(self):
@@ -190,6 +194,7 @@ class TestBasicStringDecoder:
 # ---------------------------------------------------------------------------
 # Base64StringDecoder
 # ---------------------------------------------------------------------------
+
 
 class TestBase64StringDecoder:
     def test_type_property(self):
@@ -254,6 +259,7 @@ class TestBase64StringDecoder:
 # ---------------------------------------------------------------------------
 # Rc4StringDecoder
 # ---------------------------------------------------------------------------
+
 
 class TestRc4StringDecoder:
     def test_type_property(self):
@@ -338,6 +344,7 @@ class TestRc4StringDecoder:
 # ---------------------------------------------------------------------------
 # Cross-decoder consistency
 # ---------------------------------------------------------------------------
+
 
 class TestCrossDecoder:
     def test_basic_does_not_decode(self):

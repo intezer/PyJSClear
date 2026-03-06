@@ -10,7 +10,7 @@ class TestBracketToDot:
     def test_simple_bracket_to_dot(self):
         code, changed = roundtrip('obj["foo"];', PropertySimplifier)
         assert changed is True
-        assert code == "obj.foo;"
+        assert code == 'obj.foo;'
 
     def test_invalid_identifier_unchanged(self):
         code, changed = roundtrip('obj["0abc"];', PropertySimplifier)
@@ -20,17 +20,17 @@ class TestBracketToDot:
     def test_reserved_word_is_valid_identifier(self):
         code, changed = roundtrip('obj["class"];', PropertySimplifier)
         assert changed is True
-        assert code == "obj.class;"
+        assert code == 'obj.class;'
 
     def test_non_string_computed_unchanged(self):
-        code, changed = roundtrip("obj[x];", PropertySimplifier)
+        code, changed = roundtrip('obj[x];', PropertySimplifier)
         assert changed is False
-        assert "obj[x]" in code
+        assert 'obj[x]' in code
 
     def test_already_dot_notation_unchanged(self):
-        code, changed = roundtrip("obj.foo;", PropertySimplifier)
+        code, changed = roundtrip('obj.foo;', PropertySimplifier)
         assert changed is False
-        assert "obj.foo" in code
+        assert 'obj.foo' in code
 
 
 class TestObjectLiteralKeys:
@@ -40,17 +40,17 @@ class TestObjectLiteralKeys:
         """String key becomes Identifier."""
         code, changed = roundtrip('var x = {"foo": 1};', PropertySimplifier)
         assert changed is True
-        assert "foo: 1" in code or "foo:" in code
+        assert 'foo: 1' in code or 'foo:' in code
 
     def test_invalid_identifier_key_unchanged(self):
         code, changed = roundtrip('var x = {"0abc": 1};', PropertySimplifier)
         assert changed is False
-        assert "0abc" in code
+        assert '0abc' in code
 
     def test_already_identifier_key_no_change(self):
-        code, changed = roundtrip("var x = {foo: 1};", PropertySimplifier)
+        code, changed = roundtrip('var x = {foo: 1};', PropertySimplifier)
         assert changed is False
-        assert "foo" in code
+        assert 'foo' in code
 
 
 class TestMultipleProperties:
@@ -59,16 +59,16 @@ class TestMultipleProperties:
     def test_mixed_bracket_and_dot(self):
         code, changed = roundtrip('obj["foo"]; obj.bar; obj["0bad"];', PropertySimplifier)
         assert changed is True
-        assert "obj.foo" in code
-        assert "obj.bar" in code
-        assert "0bad" in code
+        assert 'obj.foo' in code
+        assert 'obj.bar' in code
+        assert '0bad' in code
 
     def test_multiple_object_literal_keys(self):
         code, changed = roundtrip('var x = {"good": 1, "0bad": 2, ok: 3};', PropertySimplifier)
         assert changed is True
         # "good" converted to identifier key
-        assert "good: 1" in code or "good:" in code
+        assert 'good: 1' in code or 'good:' in code
         # "0bad" stays as string literal
-        assert "0bad" in code
+        assert '0bad' in code
         # ok was already an identifier
-        assert "ok" in code
+        assert 'ok' in code
