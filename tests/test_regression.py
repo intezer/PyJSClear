@@ -2,9 +2,13 @@
 
 Tests cover:
 - Var-based string array pattern (Strategy 2b)
+- Obfuscator.io function-declaration pattern (Strategy 2)
 - Source-level hex escape decoding for unparseable files
+- Dead code removal after string decode
+- Residual _0x parameter names (not decoder calls)
+- 2-element array negative test (below threshold)
 - No-obfuscation passthrough
-- Overall _0x identifier reduction
+- Cross-cutting quality invariants
 """
 
 import os
@@ -165,6 +169,101 @@ class TestOtherTransforms:
         assert _count_0x(result) == _count_0x(code), (
             f"_0x count should be unchanged: {_count_0x(code)} -> {_count_0x(result)}"
         )
+
+    def test_animatedimage_2element_array_no_decode(self):
+        """AnimatedImage: 2-element array — below Strategy 2b threshold.
+
+        Must NOT trigger string array decoding. Only PropertySimplifier
+        should fire (bracket -> dot). This is a negative test.
+        """
+        code, result = _deobfuscate("AnimatedImage-obfuscated.js")
+        assert result != code, "PropertySimplifier should still fire"
+        assert _count_0x(result) == _count_0x(code), (
+            f"_0x count should be unchanged (array too small for decode): "
+            f"{_count_0x(code)} -> {_count_0x(result)}"
+        )
+
+
+# ================================================================
+# Dead code removal after string decode
+# ================================================================
+
+class TestDeadCodeRemoval:
+    """Files where string decode enables massive dead code elimination."""
+
+    def test_hello_world_full_recovery(self):
+        """hello_world: 1.5KB obfuscated -> 64b clean 'console.log("hello world")'.
+
+        Tests end-to-end: string decode -> dead branch removal ->
+        unused variable removal -> clean readable output.
+        """
+        code, result = _deobfuscate("hello_world-obfuscated.js")
+        assert result != code
+        assert _count_0x(result) == 0
+        assert len(result) < 100, f"Expected tiny output, got {len(result)}b"
+        assert 'console.log("hello world")' in result
+
+    def test_ngcontroller_infrastructure_stripped(self):
+        """ngController: 9KB -> ~162b, entire obfuscation infrastructure removed.
+
+        After string array decode, the rotation IIFE, decoder function,
+        and array declaration are removed, leaving only the small directive.
+        """
+        code, result = _deobfuscate("ngController-obfuscated.js")
+        assert result != code
+        assert _count_0x(result) == 0
+        assert len(result) < len(code) * 0.05, (
+            f"Expected >95% size reduction, got {len(code)}b -> {len(result)}b "
+            f"({100*len(result)/len(code):.0f}%)"
+        )
+        assert "ngControllerDirective" in result
+        assert "restrict" in result
+
+
+# ================================================================
+# Residual _0x names (renamed variables, NOT decoder calls)
+# ================================================================
+
+class TestResidualIdentifiers:
+    """Files where strings are fully decoded but _0x variable names remain."""
+
+    def test_stream_passthrough_residual_params(self):
+        """_stream_passthrough: all strings decoded, _0x params remain.
+
+        Remaining _0x identifiers are function parameters and local
+        variables, NOT unreplaced decoder calls. This tests that we
+        decode what we should and leave what we can't rename.
+        """
+        code, result = _deobfuscate("_stream_passthrough-obfuscated.js")
+        assert result != code
+        in_0x = _count_0x(code)
+        out_0x = _count_0x(result)
+        assert out_0x < in_0x, f"Should reduce _0x: {in_0x} -> {out_0x}"
+        # Verify decoded strings appear
+        assert "module.exports" in result
+        assert "PassThrough" in result
+        assert "_stream_transform" in result
+        # Verify NO remaining decoder calls (string hex args)
+        assert not re.search(r"_0x[0-9a-fA-F]+\s*\(\s*'0x", result), (
+            "Should have no unreplaced decoder calls"
+        )
+
+    def test_dns_partial_decode_with_structure(self):
+        """dns: 465 _0x -> ~323, has switch/case and real code structure.
+
+        Medium-complexity file with control flow. Tests that string
+        decode works alongside non-trivial code patterns.
+        """
+        code, result = _deobfuscate("dns-obfuscated.js")
+        assert result != code
+        in_0x = _count_0x(code)
+        out_0x = _count_0x(result)
+        assert out_0x < in_0x * 0.75, (
+            f"Expected >= 25% _0x reduction, got {in_0x} -> {out_0x}"
+        )
+        # Should have real code structures preserved
+        assert "switch" in result
+        assert "assert" in result
 
 
 # ================================================================
