@@ -51,26 +51,20 @@ class Deobfuscator:
 
     def execute(self):
         """Run all transforms and return cleaned source."""
-        # Skip source-level hex decoding — AST-level HexEscapes handles it
-        # with proper double-quote normalization like Babel.
         code = self.original_code
         hex_changed = False
 
-        # Parse (fall back to original source if hex decoding broke parsing)
+        # Try to parse; if it fails, apply source-level hex decoding as fallback
         try:
             ast = parse(code)
         except SyntaxError:
-            try:
-                ast = parse(self.original_code)
-                # Original parses but decoded doesn't — discard hex decode
-                code = self.original_code
-                hex_changed = False
-            except SyntaxError:
-                # Neither parses. Return hex-decoded version if it changed
-                # (still a useful deobfuscation even without AST transforms).
-                if hex_changed:
-                    return code
-                return self.original_code
+            # Source-level hex decode for unparseable files (e.g. ES modules)
+            decoded = decode_hex_escapes_source(code)
+            hex_changed = decoded != code
+            if hex_changed:
+                code = decoded
+            # Can't do AST transforms without parsing
+            return code if hex_changed else self.original_code
 
         # Multi-pass transform loop
         any_transform_changed = False

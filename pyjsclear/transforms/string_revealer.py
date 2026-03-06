@@ -107,6 +107,9 @@ class StringRevealer(Transform):
         # Strategy 2: Obfuscator.io function-wrapped string arrays
         self._process_obfuscatorio_pattern()
 
+        # Strategy 2b: Var-based string array with rotation + decoder
+        self._process_var_array_pattern()
+
         # Strategy 3: Simple static array unpacking (js-deob --su)
         self._process_static_arrays()
 
@@ -689,6 +692,12 @@ class StringRevealer(Transform):
                 return
 
             idx_val = _eval_numeric(call_args[wrapper.param_index])
+            if idx_val is None and is_string_literal(call_args[wrapper.param_index]):
+                try:
+                    s = call_args[wrapper.param_index]['value']
+                    idx_val = int(s, 16) if s.startswith('0x') else int(s)
+                except (ValueError, TypeError):
+                    pass
             if idx_val is None:
                 all_replaced[0] = False
                 return
@@ -737,6 +746,12 @@ class StringRevealer(Transform):
                 return
 
             first_val = _eval_numeric(args[0])
+            # Also handle string hex arguments like '0x0', '0xa' (JS coerces to number)
+            if first_val is None and is_string_literal(args[0]):
+                try:
+                    first_val = int(args[0]['value'], 16) if args[0]['value'].startswith('0x') else int(args[0]['value'])
+                except (ValueError, TypeError):
+                    pass
             if first_val is None:
                 return
 
@@ -798,6 +813,134 @@ class StringRevealer(Transform):
             if 0 <= idx < len(body):
                 body.pop(idx)
                 self.set_changed()
+
+    # ================================================================
+    # Strategy 2b: Var-based string array + rotation IIFE + decoder
+    # Pattern:
+    #   var _0xARR = ['s1', 's2', ...];
+    #   (function(arr, count) { var f = function(n) { while(--n) arr.push(arr.shift()); }; f(++count); })(_0xARR, 0xNN);
+    #   var _0xDEC = function(a, b) { a = a - OFFSET; var x = _0xARR[a]; return x; };
+    # ================================================================
+
+    def _process_var_array_pattern(self):
+        """Handle var-based string array with simple rotation and decoder."""
+        body = self.ast.get('body', [])
+        if len(body) < 3:
+            return
+
+        # Step 1: Find var _0x... = [string array] at top level
+        array_name, string_array, array_idx = self._find_var_string_array(body)
+        if array_name is None:
+            return
+
+        # Step 2: Find rotation IIFE that references the array var
+        rotation_idx, rotation_count = self._find_simple_rotation(body, array_name)
+
+        # Step 3: Execute rotation if found
+        if rotation_idx is not None and rotation_count is not None:
+            for _ in range(rotation_count):
+                string_array.append(string_array.pop(0))
+
+        # Step 4: Find decoder function (var _0x... = function(a,b) { a=a-OFFSET; ... _0xARR[a] ... })
+        decoder_name, decoder_offset, decoder_idx = self._find_var_decoder(
+            body, array_name)
+        if decoder_name is None:
+            return
+
+        # Step 5: Create decoder and find wrappers
+        decoder = BasicStringDecoder(string_array, decoder_offset)
+        wrappers = self._find_all_wrappers(decoder_name)
+        decoder_aliases = self._find_decoder_aliases(decoder_name)
+
+        # Step 6: Replace wrapper calls
+        self._replace_all_wrapper_calls(wrappers, decoder)
+
+        # Step 7: Replace direct decoder calls (including aliases)
+        self._replace_direct_decoder_calls(decoder_name, decoder, decoder_aliases)
+
+        # Step 8: Remove aliases
+        self._remove_decoder_aliases(decoder_name, decoder_aliases)
+
+        # Step 9: Remove infrastructure (array, rotation, decoder)
+        if self.has_changed():
+            indices_to_remove = {array_idx, decoder_idx}
+            if rotation_idx is not None:
+                indices_to_remove.add(rotation_idx)
+            self._remove_body_indices(body, *indices_to_remove)
+
+    def _find_var_string_array(self, body):
+        """Find var _0x... = ['s1', 's2', ...] at top of body."""
+        for i, stmt in enumerate(body[:3]):
+            if stmt.get('type') != 'VariableDeclaration':
+                continue
+            for d in stmt.get('declarations', []):
+                name_node = d.get('id')
+                init = d.get('init')
+                if not (is_identifier(name_node) and init and
+                        init.get('type') == 'ArrayExpression'):
+                    continue
+                elements = init.get('elements', [])
+                if len(elements) >= 3 and all(is_string_literal(e) for e in elements):
+                    return name_node['name'], [e['value'] for e in elements], i
+        return None, None, None
+
+    def _find_simple_rotation(self, body, array_name):
+        """Find (function(arr, count) { ...push/shift... })(array, N) rotation IIFE."""
+        for i, stmt in enumerate(body):
+            if stmt.get('type') != 'ExpressionStatement':
+                continue
+            expr = stmt.get('expression')
+            if not expr or expr.get('type') != 'CallExpression':
+                continue
+            callee = expr.get('callee')
+            args = expr.get('arguments', [])
+            if not callee or callee.get('type') != 'FunctionExpression':
+                continue
+            if len(args) != 2:
+                continue
+            if not (is_identifier(args[0]) and args[0]['name'] == array_name):
+                continue
+
+            # Evaluate the count argument
+            count_val = _eval_numeric(args[1])
+            if count_val is None:
+                continue
+
+            # Verify the IIFE body has push/shift pattern
+            src = generate(callee)
+            if 'push' in src and 'shift' in src:
+                # The rotation does `while(--n) { arr.push(arr.shift()); }`
+                # called with `++count`, so effective rotations = count + 1
+                # But the pattern is: f(++count) inside the IIFE, where f
+                # does while(--n). So n starts at count+1, decrements to 1.
+                # That's count rotations.
+                return i, int(count_val)
+
+        return None, None
+
+    def _find_var_decoder(self, body, array_name):
+        """Find var _0xDEC = function(a) { a = a - OFFSET; var x = ARR[a]; return x; }."""
+        for i, stmt in enumerate(body):
+            if stmt.get('type') != 'VariableDeclaration':
+                continue
+            for d in stmt.get('declarations', []):
+                name_node = d.get('id')
+                init = d.get('init')
+                if not (is_identifier(name_node) and init and
+                        init.get('type') == 'FunctionExpression'):
+                    continue
+
+                # Check if function body references the array variable
+                src = generate(init)
+                if array_name not in src:
+                    continue
+
+                # Extract offset from a = a - OFFSET pattern
+                offset = self._extract_decoder_offset(init)
+
+                return name_node['name'], offset, i
+
+        return None, None, None
 
     # ================================================================
     # Strategy 1: Direct string array declarations
