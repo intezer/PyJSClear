@@ -44,16 +44,21 @@ class ControlFlowRecoverer(Transform):
                 self._try_recover_body(node, 'body', node.get('body', []))
 
             # Queue children for processing
-            for key in get_child_keys(node):
-                child = node.get(key)
-                if child is None:
-                    continue
-                if isinstance(child, list):
-                    for item in child:
-                        if isinstance(item, dict) and 'type' in item:
-                            stack.append(item)
-                elif isinstance(child, dict) and 'type' in child:
-                    stack.append(child)
+            self._queue_children(node, stack)
+
+    @staticmethod
+    def _queue_children(node, stack):
+        """Add all child nodes to the traversal stack."""
+        for key in get_child_keys(node):
+            child = node.get(key)
+            if child is None:
+                continue
+            if isinstance(child, list):
+                for item in child:
+                    if isinstance(item, dict) and 'type' in item:
+                        stack.append(item)
+            elif isinstance(child, dict) and 'type' in child:
+                stack.append(child)
 
     def _try_recover_body(self, parent_node, body_key, body):
         """Try to find and recover CFF patterns in a body array."""
@@ -227,14 +232,7 @@ class ControlFlowRecoverer(Transform):
 
         if loop_type == 'ForStatement':
             # for(var _i = 0; ...) { switch(_array[_i++]) { ... } break; }
-            initializer = loop.get('init')
-            if initializer:
-                if initializer.get('type') == 'VariableDeclaration':
-                    for declaration in initializer.get('declarations', []):
-                        if declaration.get('init') and declaration['init'].get('type') == 'Literal':
-                            initial_value = int(declaration['init'].get('value', 0))
-                elif initializer.get('type') == 'AssignmentExpression' and is_literal(initializer.get('right')):
-                    initial_value = int(initializer['right'].get('value', 0))
+            initial_value = self._extract_for_init_value(loop.get('init'))
             switch_body = self._extract_switch_from_loop_body(loop.get('body'))
 
         elif loop_type == 'WhileStatement':
@@ -245,27 +243,46 @@ class ControlFlowRecoverer(Transform):
         if switch_body is None:
             return None
 
-        cases = switch_body.get('cases', [])
-        # Build map from case test value to consequent statements
+        cases_map = self._build_case_map(switch_body.get('cases', []))
+        return self._reconstruct_statements(cases_map, states, initial_value)
+
+    @staticmethod
+    def _extract_for_init_value(initializer):
+        """Extract the initial counter value from a for-loop init clause."""
+        if not initializer:
+            return 0
+        if initializer.get('type') == 'VariableDeclaration':
+            for declaration in initializer.get('declarations', []):
+                if declaration.get('init') and declaration['init'].get('type') == 'Literal':
+                    return int(declaration['init'].get('value', 0))
+        elif initializer.get('type') == 'AssignmentExpression' and is_literal(initializer.get('right')):
+            return int(initializer['right'].get('value', 0))
+        return 0
+
+    @staticmethod
+    def _build_case_map(cases):
+        """Build map from case test value to (filtered statements, original statements)."""
         cases_map = {}
         for case in cases:
             test = case.get('test')
-            if test and test.get('type') == 'Literal':
-                test_value = test['value']
-                # Normalize key: float 1.0 -> '1', string '1' -> '1'
-                if isinstance(test_value, float) and test_value == int(test_value):
-                    key = str(int(test_value))
-                else:
-                    key = str(test_value)
-                # Filter out continue and break statements
-                statements = [
-                    statement
-                    for statement in case.get('consequent', [])
-                    if statement.get('type') not in ('ContinueStatement', 'BreakStatement')
-                ]
-                cases_map[key] = (statements, case.get('consequent', []))
+            if not (test and test.get('type') == 'Literal'):
+                continue
+            test_value = test['value']
+            if isinstance(test_value, float) and test_value == int(test_value):
+                key = str(int(test_value))
+            else:
+                key = str(test_value)
+            statements = [
+                statement
+                for statement in case.get('consequent', [])
+                if statement.get('type') not in ('ContinueStatement', 'BreakStatement')
+            ]
+            cases_map[key] = (statements, case.get('consequent', []))
+        return cases_map
 
-        # Reconstruct statement sequence
+    @staticmethod
+    def _reconstruct_statements(cases_map, states, initial_value):
+        """Reconstruct linear statement sequence from case map and state order."""
         recovered = []
         for idx in range(initial_value, len(states)):
             state = states[idx]
@@ -273,14 +290,10 @@ class ControlFlowRecoverer(Transform):
                 break
             statements, original = cases_map[state]
             recovered.extend(statements)
-            # Stop if there's a return statement
             if original and original[-1].get('type') == 'ReturnStatement':
                 recovered.append(original[-1])
                 break
-
-        if not recovered:
-            return None
-        return recovered
+        return recovered or None
 
     def _extract_switch_from_loop_body(self, body):
         """Extract SwitchStatement from loop body."""

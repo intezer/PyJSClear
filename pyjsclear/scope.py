@@ -157,13 +157,14 @@ def build_scope_tree(ast):
 
             # Body - use the new scope
             body = node.get('body')
-            if body:
-                if isinstance(body, dict) and body.get('type') == 'BlockStatement':
-                    node_scope[id(body)] = new_scope
-                    for statement in body.get('body', []):
-                        _collect_declarations(statement, new_scope)
-                else:
-                    _collect_declarations(body, new_scope)
+            if not body:
+                return
+            if isinstance(body, dict) and body.get('type') == 'BlockStatement':
+                node_scope[id(body)] = new_scope
+                for statement in body.get('body', []):
+                    _collect_declarations(statement, new_scope)
+            else:
+                _collect_declarations(body, new_scope)
             return
 
         # Variable declarations
@@ -261,7 +262,8 @@ def build_scope_tree(ast):
                 binding.assignments.append(parent)
             return
 
-        # Recurse
+        # Recurse — can't use _recurse_into_children here because we need
+        # per-child (key, index) args for reference tracking
         child_keys = _child_keys_map.get(node_type)
         if child_keys is None:
             child_keys = get_child_keys(node)

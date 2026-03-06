@@ -14,23 +14,25 @@ class HexEscapes(Transform):
         # But since we operate on AST, we decode hex in string literal raw values
 
         def enter(node, parent, key, index):
-            if node.get('type') == 'Literal' and isinstance(node.get('value'), str):
-                raw_string = node.get('raw', '')
-                if '\\x' in raw_string or '\\u' in raw_string:
-                    # The value is already decoded by parser, just fix raw
-                    value = node['value']
-                    new_raw = (
-                        '"'
-                        + value.replace('\\', '\\\\')
-                        .replace('"', '\\"')
-                        .replace('\n', '\\n')
-                        .replace('\r', '\\r')
-                        .replace('\t', '\\t')
-                        + '"'
-                    )
-                    if new_raw != raw_string:
-                        node['raw'] = new_raw
-                        self.set_changed()
+            if node.get('type') != 'Literal' or not isinstance(node.get('value'), str):
+                return
+            raw_string = node.get('raw', '')
+            if '\\x' not in raw_string and '\\u' not in raw_string:
+                return
+            # The value is already decoded by parser, just fix raw
+            value = node['value']
+            new_raw = (
+                '"'
+                + value.replace('\\', '\\\\')
+                .replace('"', '\\"')
+                .replace('\n', '\\n')
+                .replace('\r', '\\r')
+                .replace('\t', '\\t')
+                + '"'
+            )
+            if new_raw != raw_string:
+                node['raw'] = new_raw
+                self.set_changed()
 
         traverse(self.ast, {'enter': enter})
         return self.has_changed()

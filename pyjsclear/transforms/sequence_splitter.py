@@ -24,7 +24,7 @@ class SequenceSplitter(Transform):
 
         def enter(node, parent, key, index):
             node_type = node.get('type', '')
-            if node_type in (
+            if node_type not in (
                 'IfStatement',
                 'WhileStatement',
                 'DoWhileStatement',
@@ -32,25 +32,26 @@ class SequenceSplitter(Transform):
                 'ForInStatement',
                 'ForOfStatement',
             ):
-                body = node.get('body')
-                if body and body.get('type') != 'BlockStatement':
-                    node['body'] = make_block_statement([body])
-                    self.set_changed()
-                if node_type == 'IfStatement':
-                    consequent = node.get('consequent')
-                    if consequent and consequent.get('type') != 'BlockStatement':
-                        node['consequent'] = make_block_statement([consequent])
-                        self.set_changed()
-                    alternate = node.get('alternate')
-                    if alternate and alternate.get('type') not in (
-                        'BlockStatement',
-                        'IfStatement',
-                        None,
-                    ):
-                        node['alternate'] = make_block_statement([alternate])
-                        self.set_changed()
+                return
+            body = node.get('body')
+            if body and body.get('type') != 'BlockStatement':
+                node['body'] = make_block_statement([body])
+                self.set_changed()
+            if node_type == 'IfStatement':
+                self._normalize_if_branches(node)
 
         traverse(ast, {'enter': enter})
+
+    def _normalize_if_branches(self, node):
+        """Wrap non-block consequent/alternate of IfStatement in BlockStatements."""
+        consequent = node.get('consequent')
+        if consequent and consequent.get('type') != 'BlockStatement':
+            node['consequent'] = make_block_statement([consequent])
+            self.set_changed()
+        alternate = node.get('alternate')
+        if alternate and alternate.get('type') not in ('BlockStatement', 'IfStatement', None):
+            node['alternate'] = make_block_statement([alternate])
+            self.set_changed()
 
     def _split_in_body_arrays(self, node):
         """Find all arrays that contain statements and split sequences + var decls in them."""

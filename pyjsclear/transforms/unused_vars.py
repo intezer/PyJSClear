@@ -74,15 +74,18 @@ class UnusedVariableRemover(Transform):
             if node_type == 'FunctionDeclaration' and id(node) in functions_to_remove:
                 self.set_changed()
                 return REMOVE
-            if node_type == 'VariableDeclaration':
-                decls = node.get('declarations')
-                if decls:
-                    new_decls = [d for d in decls if id(d) not in declarators_to_remove]
-                    if len(new_decls) < len(decls):
-                        self.set_changed()
-                        if not new_decls:
-                            return REMOVE
-                        node['declarations'] = new_decls
+            if node_type != 'VariableDeclaration':
+                return
+            decls = node.get('declarations')
+            if not decls:
+                return
+            new_decls = [d for d in decls if id(d) not in declarators_to_remove]
+            if len(new_decls) == len(decls):
+                return
+            self.set_changed()
+            if not new_decls:
+                return REMOVE
+            node['declarations'] = new_decls
 
         traverse(self.ast, {'enter': enter})
 
