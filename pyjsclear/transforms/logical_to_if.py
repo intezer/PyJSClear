@@ -8,7 +8,8 @@ Converts:
   return await x(), y  →  await x(); return y;
 """
 
-from ..utils.ast_helpers import make_block_statement, make_expression_statement
+from ..utils.ast_helpers import make_block_statement
+from ..utils.ast_helpers import make_expression_statement
 from .base import Transform
 
 
@@ -160,12 +161,8 @@ class LogicalToIf(Transform):
         if_stmt = {
             'type': 'IfStatement',
             'test': expr.get('test'),
-            'consequent': make_block_statement(
-                self._expr_to_stmts(expr.get('consequent'))
-            ),
-            'alternate': make_block_statement(
-                self._expr_to_stmts(expr.get('alternate'))
-            ),
+            'consequent': make_block_statement(self._expr_to_stmts(expr.get('consequent'))),
+            'alternate': make_block_statement(self._expr_to_stmts(expr.get('alternate'))),
         }
         return [if_stmt]
 

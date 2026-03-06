@@ -1,6 +1,7 @@
 """Variable scope and binding analysis for ESTree ASTs."""
 
-from .utils.ast_helpers import _CHILD_KEYS, get_child_keys
+from .utils.ast_helpers import _CHILD_KEYS
+from .utils.ast_helpers import get_child_keys
 
 
 class Binding:
@@ -13,9 +14,7 @@ class Binding:
         self.node = node  # The declaration node
         self.kind = kind  # 'var', 'let', 'const', 'function', 'param'
         self.scope = scope
-        self.references = (
-            []
-        )  # List of (node, parent, key, index) where name is referenced
+        self.references = []  # List of (node, parent, key, index) where name is referenced
         self.assignments = []  # List of assignment nodes
 
     @property
@@ -73,20 +72,13 @@ def _is_non_reference_identifier(parent, parent_key):
         return False
     ptype = parent.get('type')
     # Property names in member expressions (non-computed)
-    if (
-        ptype == 'MemberExpression'
-        and parent_key == 'property'
-        and not parent.get('computed')
-    ):
+    if ptype == 'MemberExpression' and parent_key == 'property' and not parent.get('computed'):
         return True
     # Property keys in object literals (non-computed)
     if ptype == 'Property' and parent_key == 'key' and not parent.get('computed'):
         return True
     # Function/class names at declaration site
-    if (
-        ptype in ('FunctionDeclaration', 'FunctionExpression', 'ClassDeclaration')
-        and parent_key == 'id'
-    ):
+    if ptype in ('FunctionDeclaration', 'FunctionExpression', 'ClassDeclaration') and parent_key == 'id':
         return True
     # VariableDeclarator id
     if ptype == 'VariableDeclarator' and parent_key == 'id':
@@ -142,10 +134,7 @@ def build_scope_tree(ast):
             for param in node.get('params', []):
                 if param.get('type') == 'Identifier':
                     new_scope.add_binding(param['name'], param, 'param')
-                elif (
-                    param.get('type') == 'AssignmentPattern'
-                    and param.get('left', {}).get('type') == 'Identifier'
-                ):
+                elif param.get('type') == 'AssignmentPattern' and param.get('left', {}).get('type') == 'Identifier':
                     new_scope.add_binding(param['left']['name'], param, 'param')
 
             # Body - use the new scope
@@ -163,9 +152,7 @@ def build_scope_tree(ast):
         if ntype == 'VariableDeclaration':
             kind = node.get('kind', 'var')
             # var is function-scoped, let/const are block-scoped
-            target_scope = (
-                _nearest_function_scope(scope) or scope if kind == 'var' else scope
-            )
+            target_scope = _nearest_function_scope(scope) or scope if kind == 'var' else scope
             for decl in node.get('declarations', []):
                 decl_id = decl.get('id')
                 if decl_id and decl_id.get('type') == 'Identifier':
@@ -243,9 +230,7 @@ def build_scope_tree(ast):
     _collect_declarations(ast, root_scope)
 
     # Second pass: collect references and assignments
-    def _collect_references(
-        node, scope, parent=None, parent_key=None, parent_index=None
-    ):
+    def _collect_references(node, scope, parent=None, parent_key=None, parent_index=None):
         if not isinstance(node, dict):
             return
         ntype = node.get('type')
@@ -264,11 +249,7 @@ def build_scope_tree(ast):
             if not binding:
                 return
             binding.references.append((node, parent, parent_key, parent_index))
-            if (
-                parent
-                and parent.get('type') == 'AssignmentExpression'
-                and parent_key == 'left'
-            ):
+            if parent and parent.get('type') == 'AssignmentExpression' and parent_key == 'left':
                 binding.assignments.append(parent)
             elif parent and parent.get('type') == 'UpdateExpression':
                 binding.assignments.append(parent)

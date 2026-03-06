@@ -7,7 +7,9 @@ Detects patterns like:
 
 from ..scope import build_scope_tree
 from ..traverser import traverse
-from ..utils.ast_helpers import deep_copy, is_identifier, replace_identifiers
+from ..utils.ast_helpers import deep_copy
+from ..utils.ast_helpers import is_identifier
+from ..utils.ast_helpers import replace_identifiers
 from .base import Transform
 
 
@@ -40,9 +42,7 @@ class ProxyFunctionInliner(Transform):
             name = callee.get('name', '')
             if name not in proxy_fns:
                 return
-            call_sites.append(
-                (node, parent, key, index, proxy_fns[name], depth_counter[0])
-            )
+            call_sites.append((node, parent, key, index, proxy_fns[name], depth_counter[0]))
 
         traverse(self.ast, {'enter': enter})
 
@@ -57,9 +57,7 @@ class ProxyFunctionInliner(Transform):
             (func_node, scope, binding),
             depth,
         ) in call_sites:
-            replacement = self._get_replacement(
-                func_node, call_node.get('arguments', [])
-            )
+            replacement = self._get_replacement(func_node, call_node.get('arguments', []))
             if replacement is None:
                 continue
             # Replace the call with the inlined expression
@@ -114,10 +112,7 @@ class ProxyFunctionInliner(Transform):
             return False
 
         # Arrow function with expression body
-        if (
-            func_node.get('type') == 'ArrowFunctionExpression'
-            and body.get('type') != 'BlockStatement'
-        ):
+        if func_node.get('type') == 'ArrowFunctionExpression' and body.get('type') != 'BlockStatement':
             return self._is_proxy_value(body)
 
         # Block with single return
@@ -159,16 +154,9 @@ class ProxyFunctionInliner(Transform):
             if child is None:
                 continue
             if isinstance(child, list):
-                if any(
-                    isinstance(item, dict)
-                    and item.get('type') in self._DISALLOWED_PROXY_TYPES
-                    for item in child
-                ):
+                if any(isinstance(item, dict) and item.get('type') in self._DISALLOWED_PROXY_TYPES for item in child):
                     return False
-            elif (
-                isinstance(child, dict)
-                and child.get('type') in self._DISALLOWED_PROXY_TYPES
-            ):
+            elif isinstance(child, dict) and child.get('type') in self._DISALLOWED_PROXY_TYPES:
                 return False
         return True
 
@@ -179,10 +167,7 @@ class ProxyFunctionInliner(Transform):
             return {'type': 'Identifier', 'name': 'undefined'}
 
         # Arrow with expression body
-        if (
-            func_node.get('type') == 'ArrowFunctionExpression'
-            and body.get('type') != 'BlockStatement'
-        ):
+        if func_node.get('type') == 'ArrowFunctionExpression' and body.get('type') != 'BlockStatement':
             expr = deep_copy(body)
         elif body.get('type') == 'BlockStatement':
             stmts = body.get('body', [])

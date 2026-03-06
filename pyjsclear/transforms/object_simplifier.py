@@ -5,12 +5,10 @@ Replaces: ... 1 ... "hello" ...
 """
 
 from ..scope import build_scope_tree
-from ..utils.ast_helpers import (
-    deep_copy,
-    is_literal,
-    is_string_literal,
-    replace_identifiers,
-)
+from ..utils.ast_helpers import deep_copy
+from ..utils.ast_helpers import is_literal
+from ..utils.ast_helpers import is_string_literal
+from ..utils.ast_helpers import replace_identifiers
 from .base import Transform
 
 
@@ -93,21 +91,13 @@ class ObjectSimplifier(Transform):
         from ..traverser import find_parent
 
         for ref_node, ref_parent, ref_key, ref_index in binding.references:
-            if not (
-                ref_parent
-                and ref_parent.get('type') == 'MemberExpression'
-                and ref_key == 'object'
-            ):
+            if not (ref_parent and ref_parent.get('type') == 'MemberExpression' and ref_key == 'object'):
                 continue
             me_parent_info = find_parent(self.ast, ref_parent)
             if not me_parent_info:
                 continue
             parent, key, _ = me_parent_info
-            if (
-                parent
-                and parent.get('type') == 'AssignmentExpression'
-                and key == 'left'
-            ):
+            if parent and parent.get('type') == 'AssignmentExpression' and key == 'left':
                 return True
         return False
 
@@ -183,10 +173,7 @@ class ObjectSimplifier(Transform):
         body = func.get('body')
         if not body:
             return None
-        if (
-            func.get('type') == 'ArrowFunctionExpression'
-            and body.get('type') != 'BlockStatement'
-        ):
+        if func.get('type') == 'ArrowFunctionExpression' and body.get('type') != 'BlockStatement':
             expr = deep_copy(body)
         elif body.get('type') == 'BlockStatement':
             stmts = body.get('body', [])
@@ -203,11 +190,7 @@ class ObjectSimplifier(Transform):
         param_map = {}
         for i, p in enumerate(params):
             if p.get('type') == 'Identifier':
-                param_map[p['name']] = (
-                    args[i]
-                    if i < len(args)
-                    else {'type': 'Identifier', 'name': 'undefined'}
-                )
+                param_map[p['name']] = args[i] if i < len(args) else {'type': 'Identifier', 'name': 'undefined'}
 
         replace_identifiers(expr, param_map)
         return expr

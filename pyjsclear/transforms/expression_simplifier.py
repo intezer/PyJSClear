@@ -3,8 +3,10 @@
 import math
 
 from ..traverser import traverse
-from ..utils.ast_helpers import is_literal, make_literal
+from ..utils.ast_helpers import is_literal
+from ..utils.ast_helpers import make_literal
 from .base import Transform
+
 
 # Sentinel to distinguish JS null (Literal value=None) from JS undefined
 # (Identifier name='undefined'). Python None represents undefined.
@@ -69,12 +71,7 @@ class ExpressionSimplifier(Transform):
                 return
             cons = node.get('consequent')
             alt = node.get('alternate')
-            if (
-                is_literal(cons)
-                and cons.get('value') is False
-                and is_literal(alt)
-                and alt.get('value') is True
-            ):
+            if is_literal(cons) and cons.get('value') is False and is_literal(alt) and alt.get('value') is True:
                 self.set_changed()
                 return {
                     'type': 'UnaryExpression',
@@ -107,11 +104,7 @@ class ExpressionSimplifier(Transform):
         if op not in _RESOLVABLE_UNARY:
             return None
         # Skip negative numeric literals (already in normal form)
-        if (
-            op == '-'
-            and is_literal(node.get('argument'))
-            and isinstance(node['argument'].get('value'), (int, float))
-        ):
+        if op == '-' and is_literal(node.get('argument')) and isinstance(node['argument'].get('value'), (int, float)):
             return None
 
         arg = node.get('argument')
@@ -329,11 +322,7 @@ class ExpressionSimplifier(Transform):
                 return val
             case str():
                 try:
-                    return (
-                        int(val)
-                        if val.isdigit() or (val.startswith('-') and val[1:].isdigit())
-                        else float(val)
-                    )
+                    return int(val) if val.isdigit() or (val.startswith('-') and val[1:].isdigit()) else float(val)
                 except (ValueError, IndexError):
                     return 0
             case list():

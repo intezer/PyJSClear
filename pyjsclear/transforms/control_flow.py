@@ -7,7 +7,9 @@ Detects patterns like:
 And reconstructs the linear statement sequence.
 """
 
-from ..utils.ast_helpers import is_identifier, is_literal, is_string_literal
+from ..utils.ast_helpers import is_identifier
+from ..utils.ast_helpers import is_literal
+from ..utils.ast_helpers import is_string_literal
 from .base import Transform
 
 
@@ -81,9 +83,7 @@ class ControlFlowRecoverer(Transform):
         next_idx = i + 1
         if next_idx >= len(body):
             return False
-        recovered = self._try_recover_from_loop(
-            body[next_idx], states, state_var, counter_var
-        )
+        recovered = self._try_recover_from_loop(body[next_idx], states, state_var, counter_var)
         if recovered is None:
             return False
         body[i : next_idx + 1] = recovered
@@ -110,9 +110,7 @@ class ControlFlowRecoverer(Transform):
                 next_idx += 1
         if next_idx >= len(body):
             return False
-        recovered = self._try_recover_from_loop(
-            body[next_idx], states, state_var, counter_var or '_index'
-        )
+        recovered = self._try_recover_from_loop(body[next_idx], states, state_var, counter_var or '_index')
         if recovered is None:
             return False
         body[i : next_idx + 1] = recovered
@@ -143,11 +141,7 @@ class ControlFlowRecoverer(Transform):
             if d.get('id', {}).get('type') != 'Identifier':
                 continue
             init = d.get('init')
-            if (
-                init
-                and init.get('type') == 'Literal'
-                and isinstance(init.get('value'), (int, float))
-            ):
+            if init and init.get('type') == 'Literal' and isinstance(init.get('value'), (int, float)):
                 return d['id']['name']
         return None
 
@@ -172,11 +166,7 @@ class ControlFlowRecoverer(Transform):
             for d in stmt.get('declarations', []):
                 if d.get('id', {}).get('type') == 'Identifier':
                     init = d.get('init')
-                    if (
-                        init
-                        and init.get('type') == 'Literal'
-                        and isinstance(init.get('value'), (int, float))
-                    ):
+                    if init and init.get('type') == 'Literal' and isinstance(init.get('value'), (int, float)):
                         return d['id']['name']
         if stmt.get('type') == 'ExpressionStatement':
             expr = stmt.get('expression')
@@ -236,9 +226,7 @@ class ControlFlowRecoverer(Transform):
                     for d in init.get('declarations', []):
                         if d.get('init') and d['init'].get('type') == 'Literal':
                             initial_value = int(d['init'].get('value', 0))
-                elif init.get('type') == 'AssignmentExpression' and is_literal(
-                    init.get('right')
-                ):
+                elif init.get('type') == 'AssignmentExpression' and is_literal(init.get('right')):
                     initial_value = int(init['right'].get('value', 0))
             switch_body = self._extract_switch_from_loop_body(loop.get('body'))
 
@@ -313,11 +301,7 @@ class ControlFlowRecoverer(Transform):
                 return True
             if arg and arg.get('type') == 'ArrayExpression':
                 return False  # ![] = false, but !![] = true
-            if (
-                arg
-                and arg.get('type') == 'UnaryExpression'
-                and arg.get('operator') == '!'
-            ):
+            if arg and arg.get('type') == 'UnaryExpression' and arg.get('operator') == '!':
                 # !!something
                 inner = arg.get('argument')
                 if inner and inner.get('type') == 'ArrayExpression':

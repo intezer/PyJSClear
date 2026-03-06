@@ -7,6 +7,7 @@ Python package with no Node.js dependency.
 
 from .deobfuscator import Deobfuscator
 
+
 __version__ = '0.1.0'
 
 

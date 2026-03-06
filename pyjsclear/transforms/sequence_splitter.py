@@ -6,7 +6,8 @@ Also normalizes loop/if bodies to block statements.
 """
 
 from ..traverser import traverse
-from ..utils.ast_helpers import make_block_statement, make_expression_statement
+from ..utils.ast_helpers import make_block_statement
+from ..utils.ast_helpers import make_expression_statement
 from .base import Transform
 
 
@@ -82,17 +83,12 @@ class SequenceSplitter(Transform):
             if not isinstance(node, dict):
                 return
             target = node
-            if target.get('type') == 'AwaitExpression' and isinstance(
-                target.get('argument'), dict
-            ):
+            if target.get('type') == 'AwaitExpression' and isinstance(target.get('argument'), dict):
                 target = target['argument']
             if target.get('type') != 'CallExpression':
                 return
             callee = target.get('callee')
-            if (
-                not isinstance(callee, dict)
-                or callee.get('type') != 'SequenceExpression'
-            ):
+            if not isinstance(callee, dict) or callee.get('type') != 'SequenceExpression':
                 return
             exprs = callee.get('expressions', [])
             if len(exprs) <= 1:
@@ -171,9 +167,7 @@ class SequenceSplitter(Transform):
 
                 # Split SequenceExpression in single declarator init
                 if len(decls) == 1:
-                    split_result = self._try_split_single_declarator_init(
-                        stmt, decls[0]
-                    )
+                    split_result = self._try_split_single_declarator_init(stmt, decls[0])
                     if split_result:
                         stmts[i : i + 1] = split_result
                         i += len(split_result)

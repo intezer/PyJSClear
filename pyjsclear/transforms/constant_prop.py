@@ -1,8 +1,10 @@
 """Constant propagation — replace references to constant variables with their literal values."""
 
 from ..scope import build_scope_tree
-from ..traverser import SKIP, traverse
-from ..utils.ast_helpers import deep_copy, is_literal
+from ..traverser import SKIP
+from ..traverser import traverse
+from ..utils.ast_helpers import deep_copy
+from ..utils.ast_helpers import is_literal
 from .base import Transform
 
 
@@ -85,17 +87,18 @@ class ConstantProp(Transform):
         """Remove a VariableDeclarator from its parent VariableDeclaration."""
 
         def enter(node, parent, key, index):
-            if node.get('type') == 'VariableDeclaration':
-                decls = node.get('declarations', [])
-                for i, d in enumerate(decls):
-                    if d is declarator_node:
-                        decls.pop(i)
-                        self.set_changed()
-                        # If no more declarators, mark for removal
-                        if not decls:
-                            from ..traverser import REMOVE
+            if node.get('type') != 'VariableDeclaration':
+                return
+            decls = node.get('declarations', [])
+            for i, d in enumerate(decls):
+                if d is not declarator_node:
+                    continue
+                decls.pop(i)
+                self.set_changed()
+                if not decls:
+                    from ..traverser import REMOVE
 
-                            return REMOVE
-                        return SKIP
+                    return REMOVE
+                return SKIP
 
         traverse(self.ast, {'enter': enter})

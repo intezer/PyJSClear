@@ -49,18 +49,14 @@ class TestVarArrayPattern:
         """AnimatedWeb: small file, 5-element array, should fully decode all _0x."""
         code, result = _deobfuscate('AnimatedWeb-obfuscated.js')
         assert result != code, 'Output should differ from input'
-        assert (
-            _count_0x(result) == 0
-        ), f'All _0x should be removed, got {_count_0x(result)}'
+        assert _count_0x(result) == 0, f'All _0x should be removed, got {_count_0x(result)}'
         assert 'createAnimatedComponent' in result
 
     def test_alias_decode(self):
         """alias: 31 _0x identifiers, should decode most strings."""
         code, result = _deobfuscate('alias-obfuscated.js')
         assert result != code
-        assert (
-            _count_0x(result) <= 5
-        ), f'Expected <= 5 _0x remaining, got {_count_0x(result)}'
+        assert _count_0x(result) <= 5, f'Expected <= 5 _0x remaining, got {_count_0x(result)}'
         assert 'require' in result
         assert 'path' in result
 
@@ -68,12 +64,8 @@ class TestVarArrayPattern:
         """2100bytes: array with hex escapes, tests both array decode and hex removal."""
         code, result = _deobfuscate('2100bytes-obfuscated.js')
         assert result != code
-        assert (
-            _count_0x(result) == 0
-        ), f'All _0x should be removed, got {_count_0x(result)}'
-        assert (
-            _count_hex(result) == 0
-        ), f'All hex escapes should be removed, got {_count_hex(result)}'
+        assert _count_0x(result) == 0, f'All _0x should be removed, got {_count_0x(result)}'
+        assert _count_hex(result) == 0, f'All hex escapes should be removed, got {_count_hex(result)}'
 
     def test_ngeventdirs_improvement(self):
         """ngEventDirs: was a Node.js win, should now show improvement."""
@@ -101,8 +93,7 @@ class TestObfuscatorIoFunctionPattern:
         out_0x = _count_0x(result)
         # Should reduce _0x by at least 30%
         assert out_0x < in_0x * 0.7, (
-            f'Expected >= 30% _0x reduction, got {in_0x} -> {out_0x} '
-            f'({100*(in_0x-out_0x)/in_0x:.0f}%)'
+            f'Expected >= 30% _0x reduction, got {in_0x} -> {out_0x} ' f'({100*(in_0x-out_0x)/in_0x:.0f}%)'
         )
 
     def test_large_obfuscatorio_hex_removed(self):
@@ -129,18 +120,14 @@ class TestHexEscapeFallback:
         """App.test: ES module with import, 2 hex escapes should be decoded."""
         code, result = _deobfuscate('App-obfuscated.test.js')
         assert result != code, 'Output should differ (hex decoded)'
-        assert (
-            _count_hex(result) == 0
-        ), f'All hex escapes should be removed, got {_count_hex(result)}'
+        assert _count_hex(result) == 0, f'All hex escapes should be removed, got {_count_hex(result)}'
         assert 'creates instance without' in result
 
     def test_authentication_hex_removal(self):
         """authentication: ES module, 12 hex escapes should be decoded."""
         code, result = _deobfuscate('authentication-obfuscated.js')
         assert result != code
-        assert (
-            _count_hex(result) == 0
-        ), f'All hex escapes should be removed, got {_count_hex(result)}'
+        assert _count_hex(result) == 0, f'All hex escapes should be removed, got {_count_hex(result)}'
 
     def test_chrome_partial_hex_decode(self):
         r"""chrome: parse-fail with \x0a (newline) that must stay escaped.
@@ -193,8 +180,7 @@ class TestOtherTransforms:
         code, result = _deobfuscate('AnimatedImage-obfuscated.js')
         assert result != code, 'PropertySimplifier should still fire'
         assert _count_0x(result) == _count_0x(code), (
-            f'_0x count should be unchanged (array too small for decode): '
-            f'{_count_0x(code)} -> {_count_0x(result)}'
+            f'_0x count should be unchanged (array too small for decode): ' f'{_count_0x(code)} -> {_count_0x(result)}'
         )
 
 
@@ -228,8 +214,7 @@ class TestDeadCodeRemoval:
         assert result != code
         assert _count_0x(result) == 0
         assert len(result) < len(code) * 0.05, (
-            f'Expected >95% size reduction, got {len(code)}b -> {len(result)}b '
-            f'({100*len(result)/len(code):.0f}%)'
+            f'Expected >95% size reduction, got {len(code)}b -> {len(result)}b ' f'({100*len(result)/len(code):.0f}%)'
         )
         assert 'ngControllerDirective' in result
         assert 'restrict' in result
@@ -260,9 +245,7 @@ class TestResidualIdentifiers:
         assert 'PassThrough' in result
         assert '_stream_transform' in result
         # Verify NO remaining decoder calls (string hex args)
-        assert not re.search(
-            r"_0x[0-9a-fA-F]+\s*\(\s*'0x", result
-        ), 'Should have no unreplaced decoder calls'
+        assert not re.search(r"_0x[0-9a-fA-F]+\s*\(\s*'0x", result), 'Should have no unreplaced decoder calls'
 
     def test_dns_partial_decode_with_structure(self):
         """dns: 465 _0x -> ~323, has switch/case and real code structure.
@@ -274,9 +257,7 @@ class TestResidualIdentifiers:
         assert result != code
         in_0x = _count_0x(code)
         out_0x = _count_0x(result)
-        assert (
-            out_0x < in_0x * 0.75
-        ), f'Expected >= 25% _0x reduction, got {in_0x} -> {out_0x}'
+        assert out_0x < in_0x * 0.75, f'Expected >= 25% _0x reduction, got {in_0x} -> {out_0x}'
         # Should have real code structures preserved
         assert 'switch' in result
         assert 'assert' in result
@@ -327,6 +308,4 @@ class TestQualityInvariants:
         for f in SAMPLES_DIR.glob('*.js'):
             code = f.read_text()
             result = pyjsclear.deobfuscate(code)
-            assert (
-                len(result) <= len(code) * 3
-            ), f'{f.name}: output {len(result)} > 3x input {len(code)}'
+            assert len(result) <= len(code) * 3, f'{f.name}: output {len(result)} > 3x input {len(code)}'

@@ -71,11 +71,7 @@ class ObjectPacker(Transform):
                 if not isinstance(s, dict) or s.get('type') != 'ExpressionStatement':
                     break
                 expr = s.get('expression')
-                if (
-                    not expr
-                    or expr.get('type') != 'AssignmentExpression'
-                    or expr.get('operator') != '='
-                ):
+                if not expr or expr.get('type') != 'AssignmentExpression' or expr.get('operator') != '=':
                     break
                 left = expr.get('left')
                 if not left or left.get('type') != 'MemberExpression':

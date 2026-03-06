@@ -83,17 +83,9 @@ class ReassignmentRemover(Transform):
 
             # Replace all references to `name` with `target_name`
             for ref_node, ref_parent, ref_key, ref_index in binding.references:
-                if (
-                    ref_parent
-                    and ref_parent.get('type') == 'AssignmentExpression'
-                    and ref_key == 'left'
-                ):
+                if ref_parent and ref_parent.get('type') == 'AssignmentExpression' and ref_key == 'left':
                     continue
-                if (
-                    ref_parent
-                    and ref_parent.get('type') == 'VariableDeclarator'
-                    and ref_key == 'id'
-                ):
+                if ref_parent and ref_parent.get('type') == 'VariableDeclarator' and ref_key == 'id':
                     continue
                 new_id = {'type': 'Identifier', 'name': target_name}
                 if ref_index is not None:
@@ -115,13 +107,11 @@ class ReassignmentRemover(Transform):
 
     def _remove_assignment_statement(self, assignment_node):
         """Remove the ExpressionStatement containing the given assignment expression."""
-        from ..traverser import REMOVE, traverse
+        from ..traverser import REMOVE
+        from ..traverser import traverse
 
         def enter(node, parent, key, index):
-            if (
-                node.get('type') == 'ExpressionStatement'
-                and node.get('expression') is assignment_node
-            ):
+            if node.get('type') == 'ExpressionStatement' and node.get('expression') is assignment_node:
                 self.set_changed()
                 return REMOVE
 
@@ -144,11 +134,7 @@ class ReassignmentRemover(Transform):
             writes = []
             reads = []
             for ref_node, ref_parent, ref_key, ref_index in binding.references:
-                if (
-                    ref_parent
-                    and ref_parent.get('type') == 'AssignmentExpression'
-                    and ref_key == 'left'
-                ):
+                if ref_parent and ref_parent.get('type') == 'AssignmentExpression' and ref_key == 'left':
                     writes.append((ref_node, ref_parent, ref_key, ref_index))
                 else:
                     reads.append((ref_node, ref_parent, ref_key, ref_index))

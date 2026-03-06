@@ -1,6 +1,7 @@
 """Remove unreachable if/ternary branches based on literal tests."""
 
-from ..traverser import REMOVE, traverse
+from ..traverser import REMOVE
+from ..traverser import traverse
 from .base import Transform
 
 

@@ -4,6 +4,7 @@ import re
 
 import esprima
 
+
 _ASYNC_MAP = {'isAsync': 'async', 'allowAwait': 'await'}
 
 

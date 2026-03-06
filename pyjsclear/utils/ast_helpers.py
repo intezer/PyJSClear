@@ -64,11 +64,7 @@ def make_literal(value, raw=None):
     elif isinstance(value, bool):
         raw = 'true' if value else 'false'
     elif isinstance(value, (int, float)):
-        if (
-            isinstance(value, float)
-            and value == int(value)
-            and not (value == 0 and str(value).startswith('-'))
-        ):
+        if isinstance(value, float) and value == int(value) and not (value == 0 and str(value).startswith('-')):
             raw = str(int(value))
         else:
             raw = str(value)
@@ -98,9 +94,7 @@ def make_var_declaration(name, init=None, kind='var'):
     """Create a VariableDeclaration with a single declarator."""
     return {
         'type': 'VariableDeclaration',
-        'declarations': [
-            {'type': 'VariableDeclarator', 'id': make_identifier(name), 'init': init}
-        ],
+        'declarations': [{'type': 'VariableDeclarator', 'id': make_identifier(name), 'init': init}],
         'kind': kind,
     }
 
@@ -227,11 +221,7 @@ def replace_identifiers(node, param_map):
         child = node.get(key)
         if child is None:
             continue
-        is_noncomputed_prop = (
-            key == 'property'
-            and node.get('type') == 'MemberExpression'
-            and not node.get('computed')
-        )
+        is_noncomputed_prop = key == 'property' and node.get('type') == 'MemberExpression' and not node.get('computed')
         if isinstance(child, list):
             for i, item in enumerate(child):
                 if isinstance(item, dict) and item.get('type') == 'Identifier':

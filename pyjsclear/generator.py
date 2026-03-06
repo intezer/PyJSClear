@@ -243,9 +243,7 @@ def _gen_switch(node, indent):
     lines = [f'switch ({disc}) {{']
     for case in node.get('cases', []):
         if case.get('test'):
-            lines.append(
-                _indent_str(indent + 1) + f'case {generate(case["test"], indent + 1)}:'
-            )
+            lines.append(_indent_str(indent + 1) + f'case {generate(case["test"], indent + 1)}:')
         else:
             lines.append(_indent_str(indent + 1) + 'default:')
         for stmt in case.get('consequent', []):
@@ -306,9 +304,7 @@ def _gen_binary(node, indent):
     right_prec = _expr_precedence(node['right'])
     if left_prec < my_prec:
         left = f'({left})'
-    if right_prec < my_prec or (
-        right_prec == my_prec and op not in ('+', '*', '|', '&', '^')
-    ):
+    if right_prec < my_prec or (right_prec == my_prec and op not in ('+', '*', '|', '&', '^')):
         right = f'({right})'
     return f'{left} {op} {right}'
 
@@ -399,9 +395,7 @@ def _wrap_if_sequence(node, code):
 
 def _gen_conditional(node, indent):
     test = generate(node['test'], indent)
-    cons = _wrap_if_sequence(
-        node.get('consequent'), generate(node['consequent'], indent)
-    )
+    cons = _wrap_if_sequence(node.get('consequent'), generate(node['consequent'], indent))
     alt = _wrap_if_sequence(node.get('alternate'), generate(node['alternate'], indent))
     return f'{test} ? {cons} : {alt}'
 
@@ -607,9 +601,7 @@ def _generate_object_pattern_part(p, indent):
 
 
 def _gen_object_pattern(node, indent):
-    props = [
-        _generate_object_pattern_part(p, indent + 1) for p in node.get('properties', [])
-    ]
+    props = [_generate_object_pattern_part(p, indent + 1) for p in node.get('properties', [])]
     if not props:
         return '{}'
     inner = _indent_str(indent + 1)
@@ -638,12 +630,7 @@ def _expr_precedence(node):
             | 'TemplateLiteral'
         ):
             return 20
-        case (
-            'MemberExpression'
-            | 'CallExpression'
-            | 'NewExpression'
-            | 'TaggedTemplateExpression'
-        ):
+        case 'MemberExpression' | 'CallExpression' | 'NewExpression' | 'TaggedTemplateExpression':
             return 19
         case 'UpdateExpression':
             return 17 if node.get('prefix') else 18

@@ -14,9 +14,9 @@
 
 | Approach | Time | Output Size |
 |---|---|---|
-| PyJSClear | 10.5s | 204 KB |
-| obfuscator-io-deobfuscator | 2.2s | 200 KB |
-| + javascript-deobfuscator | +0.5s (2.7s total) | 201 KB |
+| PyJSClear | 1.3s | 204 KB |
+| obfuscator-io-deobfuscator | 2.1s | 200 KB |
+| + javascript-deobfuscator | +0.5s (2.6s total) | 201 KB |
 
 ## Commands
 
@@ -31,7 +31,7 @@ npx javascript-deobfuscator --he --su --tp -i step1.js -o step2.js
 
 ## Notes
 
-- PyJSClear is ~4-5x slower than the Node.js pipeline (expected: Python vs Node.js with native Babel parsing)
+- PyJSClear is ~2x faster than the Node.js pipeline
 - Output sizes are comparable; PyJSClear produces slightly more output due to minor formatting differences
 - PyJSClear replaces two separate Node.js tools with a single Python command
-- Test performed on 2026-03-06, macOS (darwin), Python 3.9
+- Test performed on 2026-03-06, Linux (aarch64), Python 3.12

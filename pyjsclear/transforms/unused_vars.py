@@ -1,9 +1,11 @@
 """Remove unreferenced variables."""
 
 from ..scope import build_scope_tree
-from ..traverser import REMOVE, traverse
+from ..traverser import REMOVE
+from ..traverser import traverse
 from ..utils.ast_helpers import get_child_keys
 from .base import Transform
+
 
 _SIDE_EFFECT_TYPES = frozenset(
     {
@@ -99,10 +101,7 @@ class UnusedVariableRemover(Transform):
             if child is None:
                 continue
             if isinstance(child, list):
-                if any(
-                    isinstance(item, dict) and self._has_side_effects(item)
-                    for item in child
-                ):
+                if any(isinstance(item, dict) and self._has_side_effects(item) for item in child):
                     return True
             elif isinstance(child, dict) and self._has_side_effects(child):
                 return True

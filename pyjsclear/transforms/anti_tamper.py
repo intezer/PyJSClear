@@ -9,7 +9,8 @@ Detects common obfuscator.io patterns:
 import re
 
 from ..generator import generate
-from ..traverser import REMOVE, traverse
+from ..traverser import REMOVE
+from ..traverser import traverse
 from .base import Transform
 
 
@@ -32,12 +33,8 @@ class AntiTamperRemover(Transform):
     ]
 
     _CONSOLE_PATTERNS = [
-        re.compile(
-            r'console\s*\[\s*[\'"](?:log|warn|error|info|debug|trace|exception|table)'
-        ),
-        re.compile(
-            r'console\s*\.\s*(?:log|warn|error|info|debug|trace|exception|table)\s*='
-        ),
+        re.compile(r'console\s*\[\s*[\'"](?:log|warn|error|info|debug|trace|exception|table)'),
+        re.compile(r'console\s*\.\s*(?:log|warn|error|info|debug|trace|exception|table)\s*='),
     ]
 
     @staticmethod
@@ -45,10 +42,7 @@ class AntiTamperRemover(Transform):
         """Extract a CallExpression from an IIFE pattern."""
         if expr.get('type') == 'CallExpression':
             return expr
-        if (
-            expr.get('type') == 'UnaryExpression'
-            and expr.get('argument', {}).get('type') == 'CallExpression'
-        ):
+        if expr.get('type') == 'UnaryExpression' and expr.get('argument', {}).get('type') == 'CallExpression':
             return expr.get('argument')
         return None
 
@@ -58,9 +52,7 @@ class AntiTamperRemover(Transform):
             if pattern.search(src):
                 return True
         if any(p.search(src) for p in self._DEBUG_PATTERNS):
-            if re.search(r'\bdebugger\b', src) and (
-                re.search(r'\bwhile\b|\bfor\b|\bsetInterval\b', src)
-            ):
+            if re.search(r'\bdebugger\b', src) and (re.search(r'\bwhile\b|\bfor\b|\bsetInterval\b', src)):
                 return True
         for pattern in self._CONSOLE_PATTERNS:
             if pattern.search(src):
