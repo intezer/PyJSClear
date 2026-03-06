@@ -223,13 +223,13 @@ class StringRevealer(Transform):
         decoder_aliases = self._find_decoder_aliases(decoder_name)
 
         # Step 5: Find and execute rotation
-        rotation_idx = self._find_and_execute_rotation(
+        rotation_result = self._find_and_execute_rotation(
             body, array_func_name, string_array, decoder, wrappers, decoder_aliases
         )
 
         # Update the AST array to reflect rotation so future passes
         # re-extract the correct (rotated) array.
-        if rotation_idx is not None:
+        if rotation_result is not None:
             self._update_ast_array(body[array_func_idx], string_array)
 
         # Collect object literals for member expression resolution
@@ -248,8 +248,21 @@ class StringRevealer(Transform):
         # functions — they are no longer needed since all calls have been
         # replaced with string literals.
         indices_to_remove = set()
-        if rotation_idx is not None:
-            indices_to_remove.add(rotation_idx)
+        if rotation_result is not None:
+            rotation_idx, rotation_call_expr = rotation_result
+            if rotation_call_expr is not None:
+                # Rotation was inside a SequenceExpression — remove only that sub-expression
+                seq_expr = body[rotation_idx]['expression']
+                expressions = seq_expr.get('expressions', [])
+                try:
+                    expressions.remove(rotation_call_expr)
+                except ValueError:
+                    pass
+                # If only one expression remains, unwrap the SequenceExpression
+                if len(expressions) == 1:
+                    body[rotation_idx]['expression'] = expressions[0]
+            else:
+                indices_to_remove.add(rotation_idx)
         # Only remove decoder/array funcs if we actually decoded strings
         if self.has_changed():
             indices_to_remove.add(decoder_idx)
@@ -564,42 +577,65 @@ class StringRevealer(Transform):
         wrappers,
         decoder_aliases=None,
     ):
-        """Find rotation IIFE and execute it. Returns body index or None."""
+        """Find rotation IIFE and execute it.
+
+        Returns (body_index, rotation_call_expr_or_none) on success, or None.
+        When the rotation is inside a SequenceExpression, rotation_call_expr is
+        the specific sub-expression to remove (not the whole statement).
+        """
         for i, stmt in enumerate(body):
             if stmt.get('type') != 'ExpressionStatement':
                 continue
             expr = stmt.get('expression')
-            if not expr or expr.get('type') != 'CallExpression':
+            if not expr:
                 continue
 
-            callee = expr.get('callee')
-            args = expr.get('arguments', [])
+            if expr.get('type') == 'CallExpression':
+                if self._try_execute_rotation_call(
+                    expr, array_func_name, string_array, decoder, wrappers, decoder_aliases
+                ):
+                    return (i, None)
 
-            if not callee or callee.get('type') != 'FunctionExpression':
-                continue
-            if len(args) != 2:
-                continue
-
-            if not (is_identifier(args[0]) and args[0]['name'] == array_func_name):
-                continue
-
-            stop_value = _eval_numeric(args[1])
-            if stop_value is None:
-                continue
-            stop_value = int(stop_value)
-
-            rotation_expr = self._extract_rotation_expression(callee)
-            if rotation_expr is None:
-                continue
-
-            operation = self._parse_rotation_op(rotation_expr, wrappers, decoder_aliases)
-            if operation is None:
-                continue
-
-            self._execute_rotation(string_array, operation, wrappers, decoder, stop_value)
-            return i
+            elif expr.get('type') == 'SequenceExpression':
+                for sub in expr.get('expressions', []):
+                    if sub.get('type') != 'CallExpression':
+                        continue
+                    if self._try_execute_rotation_call(
+                        sub, array_func_name, string_array, decoder, wrappers, decoder_aliases
+                    ):
+                        return (i, sub)
 
         return None
+
+    def _try_execute_rotation_call(
+        self, call_expr, array_func_name, string_array, decoder, wrappers, decoder_aliases
+    ):
+        """Try to parse and execute a single rotation call expression. Returns True on success."""
+        callee = call_expr.get('callee')
+        args = call_expr.get('arguments', [])
+
+        if not callee or callee.get('type') != 'FunctionExpression':
+            return False
+        if len(args) != 2:
+            return False
+        if not (is_identifier(args[0]) and args[0]['name'] == array_func_name):
+            return False
+
+        stop_value = _eval_numeric(args[1])
+        if stop_value is None:
+            return False
+        stop_value = int(stop_value)
+
+        rotation_expr = self._extract_rotation_expression(callee)
+        if rotation_expr is None:
+            return False
+
+        operation = self._parse_rotation_op(rotation_expr, wrappers, decoder_aliases)
+        if operation is None:
+            return False
+
+        self._execute_rotation(string_array, operation, wrappers, decoder, stop_value)
+        return True
 
     def _extract_rotation_expression(self, iife_func):
         """Extract the arithmetic expression from the try block in the rotation loop."""
@@ -963,31 +999,35 @@ class StringRevealer(Transform):
             if stmt.get('type') != 'ExpressionStatement':
                 continue
             expr = stmt.get('expression')
-            if not expr or expr.get('type') != 'CallExpression':
-                continue
-            callee = expr.get('callee')
-            args = expr.get('arguments', [])
-            if not callee or callee.get('type') != 'FunctionExpression':
-                continue
-            if len(args) != 2:
-                continue
-            if not (is_identifier(args[0]) and args[0]['name'] == array_name):
+            if not expr:
                 continue
 
-            # Evaluate the count argument
-            count_val = _eval_numeric(args[1])
-            if count_val is None:
-                continue
+            candidates = []
+            if expr.get('type') == 'CallExpression':
+                candidates.append(expr)
+            elif expr.get('type') == 'SequenceExpression':
+                candidates.extend(
+                    sub for sub in expr.get('expressions', [])
+                    if sub.get('type') == 'CallExpression'
+                )
 
-            # Verify the IIFE body has push/shift pattern
-            src = generate(callee)
-            if 'push' in src and 'shift' in src:
-                # The rotation does `while(--n) { arr.push(arr.shift()); }`
-                # called with `++count`, so effective rotations = count + 1
-                # But the pattern is: f(++count) inside the IIFE, where f
-                # does while(--n). So n starts at count+1, decrements to 1.
-                # That's count rotations.
-                return i, int(count_val)
+            for call_expr in candidates:
+                callee = call_expr.get('callee')
+                args = call_expr.get('arguments', [])
+                if not callee or callee.get('type') != 'FunctionExpression':
+                    continue
+                if len(args) != 2:
+                    continue
+                if not (is_identifier(args[0]) and args[0]['name'] == array_name):
+                    continue
+
+                count_val = _eval_numeric(args[1])
+                if count_val is None:
+                    continue
+
+                src = generate(callee)
+                if 'push' in src and 'shift' in src:
+                    return i, int(count_val)
 
         return None, None
 
