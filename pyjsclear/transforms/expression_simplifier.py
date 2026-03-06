@@ -100,46 +100,50 @@ class ExpressionSimplifier(Transform):
         traverse(self.ast, {'enter': enter})
 
     def _simplify_unary(self, node):
-        op = node.get('operator', '')
-        if op not in _RESOLVABLE_UNARY:
+        operator = node.get('operator', '')
+        if operator not in _RESOLVABLE_UNARY:
             return None
         # Skip negative numeric literals (already in normal form)
-        if op == '-' and is_literal(node.get('argument')) and isinstance(node['argument'].get('value'), (int, float)):
+        if (
+            operator == '-'
+            and is_literal(node.get('argument'))
+            and isinstance(node['argument'].get('value'), (int, float))
+        ):
             return None
 
-        arg = node.get('argument')
-        arg = self._simplify_expr(arg)
-        val, ok = self._get_resolvable_value(arg)
+        argument = node.get('argument')
+        argument = self._simplify_expr(argument)
+        value, ok = self._get_resolvable_value(argument)
         if not ok:
             return None
 
         try:
-            result = self._apply_unary(op, val)
+            result = self._apply_unary(operator, value)
         except Exception:
             return None
         return self._value_to_node(result)
 
     def _simplify_binary(self, node):
-        op = node.get('operator', '')
-        if op not in _RESOLVABLE_BINARY:
+        operator = node.get('operator', '')
+        if operator not in _RESOLVABLE_BINARY:
             return None
 
         left = self._simplify_expr(node.get('left'))
         right = self._simplify_expr(node.get('right'))
 
-        lval, lok = self._get_resolvable_value(left)
-        rval, rok = self._get_resolvable_value(right)
+        left_value, left_resolved = self._get_resolvable_value(left)
+        right_value, right_resolved = self._get_resolvable_value(right)
 
-        if not (lok and rok):
+        if not (left_resolved and right_resolved):
             # Convert x - (-y) to x + y
-            if op == '-' and self._is_negative_numeric(right):
+            if operator == '-' and self._is_negative_numeric(right):
                 node['right'] = right['argument']
                 node['operator'] = '+'
                 return node
             return None
 
         try:
-            result = self._apply_binary(op, lval, rval)
+            result = self._apply_binary(operator, left_value, right_value)
         except Exception:
             return None
         return self._value_to_node(result)
@@ -149,11 +153,11 @@ class ExpressionSimplifier(Transform):
             return node
         match node.get('type', ''):
             case 'UnaryExpression':
-                r = self._simplify_unary(node)
-                return r if r is not None else node
+                result = self._simplify_unary(node)
+                return result if result is not None else node
             case 'BinaryExpression':
-                r = self._simplify_binary(node)
-                return r if r is not None else node
+                result = self._simplify_binary(node)
+                return result if result is not None else node
         return node
 
     def _is_negative_numeric(self, node):
@@ -172,9 +176,9 @@ class ExpressionSimplifier(Transform):
             case 'Literal':
                 if node.get('regex'):
                     return None, False
-                val = node.get('value')
+                value = node.get('value')
                 # Literal with value None is JS null, not undefined
-                return (_JS_NULL if val is None else val), True
+                return (_JS_NULL if value is None else value), True
             case 'UnaryExpression' if node.get('operator') == '-':
                 arg = node.get('argument')
                 if is_literal(arg) and isinstance(arg.get('value'), (int, float)):
@@ -187,26 +191,26 @@ class ExpressionSimplifier(Transform):
                 return {}, True
         return None, False
 
-    def _apply_unary(self, op, val):
-        match op:
+    def _apply_unary(self, operator, value):
+        match operator:
             case '-':
-                return -self._js_to_number(val)
+                return -self._js_to_number(value)
             case '+':
-                return self._js_to_number(val)
+                return self._js_to_number(value)
             case '!':
-                return not self._js_truthy(val)
+                return not self._js_truthy(value)
             case '~':
-                n = self._js_to_number(val)
+                n = self._js_to_number(value)
                 if isinstance(n, float) and math.isnan(n):
                     return -1  # ~NaN → -1
                 return ~int(n)
             case 'typeof':
-                return self._js_typeof(val)
+                return self._js_typeof(value)
             case 'void':
                 return None  # JS undefined
 
-    def _apply_binary(self, op, left, right):
-        match op:
+    def _apply_binary(self, operator, left, right):
+        match operator:
             case '+':
                 if isinstance(left, str) or isinstance(right, str):
                     return self._js_to_string(left) + self._js_to_string(right)
@@ -216,15 +220,15 @@ class ExpressionSimplifier(Transform):
             case '*':
                 return self._js_to_number(left) * self._js_to_number(right)
             case '/':
-                r = self._js_to_number(right)
-                if r == 0:
+                result = self._js_to_number(right)
+                if result == 0:
                     raise ValueError('division by zero')
-                return self._js_to_number(left) / r
+                return self._js_to_number(left) / result
             case '%':
-                r = self._js_to_number(right)
-                if r == 0:
+                result = self._js_to_number(right)
+                if result == 0:
                     raise ValueError('mod by zero')
-                return self._js_to_number(left) % r
+                return self._js_to_number(left) % result
             case '**':
                 return self._js_to_number(left) ** self._js_to_number(right)
             case '|':
@@ -238,15 +242,15 @@ class ExpressionSimplifier(Transform):
             case '>>':
                 return self._js_to_int32(left) >> (self._js_to_int32(right) & 31)
             case '>>>':
-                l = self._js_to_int32(left) & 0xFFFFFFFF
-                r = self._js_to_int32(right) & 31
-                return l >> r
+                left_operand = self._js_to_int32(left) & 0xFFFFFFFF
+                result = self._js_to_int32(right) & 31
+                return left_operand >> result
             case '==' | '!=':
                 eq = self._js_abstract_eq(left, right)
-                return eq if op == '==' else not eq
+                return eq if operator == '==' else not eq
             case '===' | '!==':
                 eq = self._js_strict_eq(left, right)
-                return eq if op == '===' else not eq
+                return eq if operator == '===' else not eq
             case '<':
                 return self._js_compare(left, right) < 0
             case '<=':
@@ -256,7 +260,7 @@ class ExpressionSimplifier(Transform):
             case '>=':
                 return self._js_compare(left, right) >= 0
             case _:
-                raise ValueError(f'Unknown operator: {op}')
+                raise ValueError(f'Unknown operator: {operator}')
 
     def _js_abstract_eq(self, left, right):
         """JS == (null and undefined are equal to each other only)."""
@@ -274,27 +278,27 @@ class ExpressionSimplifier(Transform):
             return False
         return left == right and type(left) == type(right)
 
-    def _js_truthy(self, val):
-        if val is None or val is _JS_NULL:
+    def _js_truthy(self, value):
+        if value is None or value is _JS_NULL:
             return False
-        match val:
+        match value:
             case bool():
-                return val
+                return value
             case int() | float():
-                return val != 0 and not (isinstance(val, float) and math.isnan(val))
+                return value != 0 and not (isinstance(value, float) and math.isnan(value))
             case str():
-                return len(val) > 0
+                return len(value) > 0
             case list() | dict():
                 return True
             case _:
-                return bool(val)
+                return bool(value)
 
-    def _js_typeof(self, val):
-        if val is _JS_NULL:
+    def _js_typeof(self, value):
+        if value is _JS_NULL:
             return 'object'  # typeof null === 'object' in JS
-        if val is None:
+        if value is None:
             return 'undefined'
-        match val:
+        match value:
             case bool():
                 return 'boolean'
             case int() | float():
@@ -306,23 +310,27 @@ class ExpressionSimplifier(Transform):
             case _:
                 return 'undefined'
 
-    def _js_to_int32(self, val):
+    def _js_to_int32(self, value):
         """Coerce to 32-bit integer (for bitwise ops)."""
-        return int(self._js_to_number(val))
+        return int(self._js_to_number(value))
 
-    def _js_to_number(self, val):
-        if val is _JS_NULL:
+    def _js_to_number(self, value):
+        if value is _JS_NULL:
             return 0  # Number(null) → 0
-        if val is None:
+        if value is None:
             return float('nan')  # Number(undefined) → NaN
-        match val:
+        match value:
             case bool():
-                return 1 if val else 0
+                return 1 if value else 0
             case int() | float():
-                return val
+                return value
             case str():
                 try:
-                    return int(val) if val.isdigit() or (val.startswith('-') and val[1:].isdigit()) else float(val)
+                    return (
+                        int(value)
+                        if value.isdigit() or (value.startswith('-') and value[1:].isdigit())
+                        else float(value)
+                    )
                 except (ValueError, IndexError):
                     return 0
             case list():
@@ -330,26 +338,26 @@ class ExpressionSimplifier(Transform):
             case _:
                 return 0
 
-    def _js_to_string(self, val):
-        if val is _JS_NULL:
+    def _js_to_string(self, value):
+        if value is _JS_NULL:
             return 'null'
-        if val is None:
+        if value is None:
             return 'undefined'
-        match val:
+        match value:
             case bool():
-                return 'true' if val else 'false'
+                return 'true' if value else 'false'
             case int() | float():
-                if isinstance(val, float) and val == int(val):
-                    return str(int(val))
-                return str(val)
+                if isinstance(value, float) and value == int(value):
+                    return str(int(value))
+                return str(value)
             case str():
-                return val
+                return value
             case list():
                 return ''
             case dict():
                 return '[object Object]'
             case _:
-                return str(val)
+                return str(value)
 
     def _js_compare(self, left, right):
         # JS compares strings lexicographically, not numerically
@@ -359,38 +367,38 @@ class ExpressionSimplifier(Transform):
             if left > right:
                 return 1
             return 0
-        l = self._js_to_number(left)
-        r = self._js_to_number(right)
+        left_num = self._js_to_number(left)
+        right_num = self._js_to_number(right)
         # NaN comparisons always return false in JS; returning NaN
         # ensures < <= > >= all evaluate to False in the caller.
-        if isinstance(l, float) and math.isnan(l):
+        if isinstance(left_num, float) and math.isnan(left_num):
             return float('nan')
-        if isinstance(r, float) and math.isnan(r):
+        if isinstance(right_num, float) and math.isnan(right_num):
             return float('nan')
-        if l < r:
+        if left_num < right_num:
             return -1
-        if l > r:
+        if left_num > right_num:
             return 1
         return 0
 
-    def _value_to_node(self, val):
-        if val is _JS_NULL:
+    def _value_to_node(self, value):
+        if value is _JS_NULL:
             return make_literal(None)  # null literal
-        if val is None:
+        if value is None:
             return {'type': 'Identifier', 'name': 'undefined'}
-        if isinstance(val, bool):
-            return make_literal(val)
-        if isinstance(val, (int, float)):
-            if isinstance(val, float) and (val != val or math.isinf(val)):
+        if isinstance(value, bool):
+            return make_literal(value)
+        if isinstance(value, (int, float)):
+            if isinstance(value, float) and (value != value or math.isinf(value)):
                 return None
-            if val < 0:
+            if value < 0:
                 return {
                     'type': 'UnaryExpression',
                     'operator': '-',
                     'prefix': True,
-                    'argument': make_literal(abs(val)),
+                    'argument': make_literal(abs(value)),
                 }
-            return make_literal(val)
-        if isinstance(val, str):
-            return make_literal(val)
+            return make_literal(value)
+        if isinstance(value, str):
+            return make_literal(value)
         return None

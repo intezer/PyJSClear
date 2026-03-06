@@ -4,6 +4,7 @@ Detects: var o = {}; o.x = 1; o.y = 2;
 Replaces: var o = {x: 1, y: 2};
 """
 
+from ..utils.ast_helpers import get_child_keys
 from ..utils.ast_helpers import is_identifier
 from .base import Transform
 
@@ -36,15 +37,15 @@ class ObjectPacker(Transform):
         """
         if stmt.get('type') != 'VariableDeclaration':
             return None
-        for d in stmt.get('declarations', []):
-            init = d.get('init')
+        for declaration in stmt.get('declarations', []):
+            initializer = declaration.get('init')
             if (
-                init
-                and init.get('type') == 'ObjectExpression'
-                and len(init.get('properties', [])) == 0
-                and d.get('id', {}).get('type') == 'Identifier'
+                initializer
+                and initializer.get('type') == 'ObjectExpression'
+                and len(initializer.get('properties', [])) == 0
+                and declaration.get('id', {}).get('type') == 'Identifier'
             ):
-                return d['id']['name'], d, init
+                return declaration['id']['name'], declaration, initializer
         return None
 
     def _try_pack_body(self, body):
@@ -67,47 +68,47 @@ class ObjectPacker(Transform):
             assignments = []
             j = i + 1
             while j < len(body):
-                s = body[j]
-                if not isinstance(s, dict) or s.get('type') != 'ExpressionStatement':
+                statement = body[j]
+                if not isinstance(statement, dict) or statement.get('type') != 'ExpressionStatement':
                     break
-                expr = s.get('expression')
+                expr = statement.get('expression')
                 if not expr or expr.get('type') != 'AssignmentExpression' or expr.get('operator') != '=':
                     break
                 left = expr.get('left')
                 if not left or left.get('type') != 'MemberExpression':
                     break
-                obj = left.get('object')
-                if not is_identifier(obj) or obj.get('name') != obj_name:
+                object_reference = left.get('object')
+                if not is_identifier(object_reference) or object_reference.get('name') != obj_name:
                     break
-                prop = left.get('property')
+                property_node = left.get('property')
                 right = expr.get('right')
                 # Get property key
-                if prop is None:
+                if property_node is None:
                     break
                 # Support both computed and non-computed property keys
-                prop_key = prop
+                property_key = property_node
 
                 # Don't pack self-referential assignments (o.x = o.y)
                 if self._references_name(right, obj_name):
                     break
 
                 computed = left.get('computed', False)
-                assignments.append((prop_key, right, computed))
+                assignments.append((property_key, right, computed))
                 j += 1
 
             if assignments:
                 # Pack into the object literal
-                for prop_key, value, computed in assignments:
-                    prop = {
+                for property_key, value, computed in assignments:
+                    property_node = {
                         'type': 'Property',
-                        'key': prop_key,
+                        'key': property_key,
                         'value': value,
                         'kind': 'init',
                         'method': False,
                         'shorthand': False,
                         'computed': computed,
                     }
-                    obj_expr['properties'].append(prop)
+                    obj_expr['properties'].append(property_node)
                 # Remove the assignment statements
                 del body[i + 1 : j]
                 self.set_changed()
@@ -120,8 +121,6 @@ class ObjectPacker(Transform):
             return False
         if node.get('type') == 'Identifier' and node.get('name') == name:
             return True
-        from ..utils.ast_helpers import get_child_keys
-
         for key in get_child_keys(node):
             child = node.get(key)
             if child is None:

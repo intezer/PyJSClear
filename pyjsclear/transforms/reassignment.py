@@ -5,6 +5,8 @@ And replaces all references to x with y, then removes x.
 """
 
 from ..scope import build_scope_tree
+from ..traverser import REMOVE
+from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
 from .base import Transform
 
@@ -66,11 +68,11 @@ class ReassignmentRemover(Transform):
             if not isinstance(node, dict) or node.get('type') != 'VariableDeclarator':
                 continue
 
-            init = node.get('init')
-            if not init or not is_identifier(init):
+            initializer = node.get('init')
+            if not initializer or not is_identifier(initializer):
                 continue
 
-            target_name = init.get('name', '')
+            target_name = initializer.get('name', '')
             if target_name == name:
                 continue
             target_binding = scope.get_binding(target_name)
@@ -82,16 +84,20 @@ class ReassignmentRemover(Transform):
                 continue
 
             # Replace all references to `name` with `target_name`
-            for ref_node, ref_parent, ref_key, ref_index in binding.references:
-                if ref_parent and ref_parent.get('type') == 'AssignmentExpression' and ref_key == 'left':
+            for reference_node, reference_parent, reference_key, reference_index in binding.references:
+                if (
+                    reference_parent
+                    and reference_parent.get('type') == 'AssignmentExpression'
+                    and reference_key == 'left'
+                ):
                     continue
-                if ref_parent and ref_parent.get('type') == 'VariableDeclarator' and ref_key == 'id':
+                if reference_parent and reference_parent.get('type') == 'VariableDeclarator' and reference_key == 'id':
                     continue
                 new_id = {'type': 'Identifier', 'name': target_name}
-                if ref_index is not None:
-                    ref_parent[ref_key][ref_index] = new_id
+                if reference_index is not None:
+                    reference_parent[reference_key][reference_index] = new_id
                 else:
-                    ref_parent[ref_key] = new_id
+                    reference_parent[reference_key] = new_id
                 self.set_changed()
 
         for child in scope.children:
@@ -107,8 +113,6 @@ class ReassignmentRemover(Transform):
 
     def _remove_assignment_statement(self, assignment_node):
         """Remove the ExpressionStatement containing the given assignment expression."""
-        from ..traverser import REMOVE
-        from ..traverser import traverse
 
         def enter(node, parent, key, index):
             if node.get('type') == 'ExpressionStatement' and node.get('expression') is assignment_node:
@@ -133,22 +137,26 @@ class ReassignmentRemover(Transform):
             # Look for exactly one write (assignment) in references
             writes = []
             reads = []
-            for ref_node, ref_parent, ref_key, ref_index in binding.references:
-                if ref_parent and ref_parent.get('type') == 'AssignmentExpression' and ref_key == 'left':
-                    writes.append((ref_node, ref_parent, ref_key, ref_index))
+            for reference_node, reference_parent, reference_key, reference_index in binding.references:
+                if (
+                    reference_parent
+                    and reference_parent.get('type') == 'AssignmentExpression'
+                    and reference_key == 'left'
+                ):
+                    writes.append((reference_node, reference_parent, reference_key, reference_index))
                 else:
-                    reads.append((ref_node, ref_parent, ref_key, ref_index))
+                    reads.append((reference_node, reference_parent, reference_key, reference_index))
 
             if len(writes) != 1:
                 continue
 
             # The single write must be: x = <identifier>
             _, write_parent, _, _ = writes[0]
-            rhs = write_parent.get('right')
-            if not rhs or not is_identifier(rhs):
+            right_hand_side = write_parent.get('right')
+            if not right_hand_side or not is_identifier(right_hand_side):
                 continue
 
-            target_name = rhs['name']
+            target_name = right_hand_side['name']
             if target_name == name:
                 continue
 
@@ -161,12 +169,12 @@ class ReassignmentRemover(Transform):
                 continue
 
             # Replace all reads of `name` with `target_name`
-            for ref_node, ref_parent, ref_key, ref_index in reads:
+            for reference_node, reference_parent, reference_key, reference_index in reads:
                 new_id = {'type': 'Identifier', 'name': target_name}
-                if ref_index is not None:
-                    ref_parent[ref_key][ref_index] = new_id
+                if reference_index is not None:
+                    reference_parent[reference_key][reference_index] = new_id
                 else:
-                    ref_parent[ref_key] = new_id
+                    reference_parent[reference_key] = new_id
                 self.set_changed()
 
             self._remove_assignment_statement(write_parent)

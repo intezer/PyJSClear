@@ -17,16 +17,16 @@ def _fast_to_dict(obj):
     if isinstance(obj, re.Pattern):
         return {}
     # Object with __dict__ (esprima node)
-    d = obj if isinstance(obj, dict) else obj.__dict__
-    result = {}
-    for k, v in d.items():
-        if k.startswith('_'):
+    result_dict = obj if isinstance(obj, dict) else obj.__dict__
+    output = {}
+    for key, value in result_dict.items():
+        if key.startswith('_'):
             continue
-        if k == 'optional' and v is False:
+        if key == 'optional' and value is False:
             continue
-        k = _ASYNC_MAP.get(k, k)
-        result[k] = _fast_to_dict(v)
-    return result
+        key = _ASYNC_MAP.get(key, key)
+        output[key] = _fast_to_dict(value)
+    return output
 
 
 def parse(code):

@@ -36,41 +36,39 @@ def traverse(node, visitor):
     _REMOVE = REMOVE
     _SKIP = SKIP
 
-    def _visit(node, parent, key, index):
-        ntype = node.get('type')
-        if ntype is None:
-            return node
+    def _visit(current_node, parent, key, index):
+        node_type = current_node.get('type')
+        if node_type is None:
+            return current_node
 
         # Enter
         if enter_fn:
-            result = enter_fn(node, parent, key, index)
+            result = enter_fn(current_node, parent, key, index)
             if result is _REMOVE:
                 return _REMOVE
             if result is _SKIP:
                 if not exit_fn:
-                    return node
-                exit_result = exit_fn(node, parent, key, index)
+                    return current_node
+                exit_result = exit_fn(current_node, parent, key, index)
                 if exit_result is _REMOVE:
                     return _REMOVE
                 if _isinstance(exit_result, _dict) and 'type' in exit_result:
                     return exit_result
-                return node
+                return current_node
             if _isinstance(result, _dict) and 'type' in result:
-                node = result
+                current_node = result
                 if parent is not None:
                     if index is not None:
-                        parent[key][index] = node
+                        parent[key][index] = current_node
                     else:
-                        parent[key] = node
+                        parent[key] = current_node
 
         # Visit children
-        ckeys = child_keys_map.get(node.get('type'))
-        if ckeys is None:
-            from .utils.ast_helpers import get_child_keys
-
-            ckeys = get_child_keys(node)
-        for ckey in ckeys:
-            child = node.get(ckey)
+        child_keys = child_keys_map.get(current_node.get('type'))
+        if child_keys is None:
+            child_keys = get_child_keys(current_node)
+        for child_key in child_keys:
+            child = current_node.get(child_key)
             if child is None:
                 continue
             if _isinstance(child, _list):
@@ -78,7 +76,7 @@ def traverse(node, visitor):
                 while i < len(child):
                     item = child[i]
                     if _isinstance(item, _dict) and 'type' in item:
-                        result = _visit(item, node, ckey, i)
+                        result = _visit(item, current_node, child_key, i)
                         if result is _REMOVE:
                             child.pop(i)
                             continue
@@ -86,21 +84,21 @@ def traverse(node, visitor):
                             child[i] = result
                     i += 1
             elif _isinstance(child, _dict) and 'type' in child:
-                result = _visit(child, node, ckey, None)
+                result = _visit(child, current_node, child_key, None)
                 if result is _REMOVE:
-                    node[ckey] = None
+                    current_node[child_key] = None
                 elif result is not child:
-                    node[ckey] = result
+                    current_node[child_key] = result
 
         # Exit
         if exit_fn:
-            result = exit_fn(node, parent, key, index)
+            result = exit_fn(current_node, parent, key, index)
             if result is _REMOVE:
                 return _REMOVE
             if _isinstance(result, _dict) and 'type' in result:
                 return result
 
-        return node
+        return current_node
 
     _visit(node, None, None, None)
 
@@ -111,26 +109,24 @@ def simple_traverse(node, callback):
     """
     child_keys_map = _CHILD_KEYS
 
-    def _visit(n, parent):
-        ntype = n.get('type')
-        if ntype is None:
+    def _visit(current_node, parent):
+        node_type = current_node.get('type')
+        if node_type is None:
             return
-        callback(n, parent)
-        ckeys = child_keys_map.get(ntype)
-        if ckeys is None:
-            from .utils.ast_helpers import get_child_keys
-
-            ckeys = get_child_keys(n)
-        for key in ckeys:
-            child = n.get(key)
+        callback(current_node, parent)
+        child_keys = child_keys_map.get(node_type)
+        if child_keys is None:
+            child_keys = get_child_keys(current_node)
+        for key in child_keys:
+            child = current_node.get(key)
             if child is None:
                 continue
             if _isinstance(child, _list):
                 for item in child:
                     if _isinstance(item, _dict) and 'type' in item:
-                        _visit(item, n)
+                        _visit(item, current_node)
             elif _isinstance(child, _dict) and 'type' in child:
-                _visit(child, n)
+                _visit(child, current_node)
 
     _visit(node, None)
 
@@ -162,18 +158,18 @@ def find_parent(ast, target_node):
     def _visit(node):
         if not isinstance(node, dict) or 'type' not in node:
             return
-        for ckey in get_child_keys(node):
-            child = node.get(ckey)
+        for child_key in get_child_keys(node):
+            child = node.get(child_key)
             if child is None:
                 continue
             if isinstance(child, list):
                 for i, item in enumerate(child):
                     if item is target_node:
-                        raise _FoundParent((node, ckey, i))
+                        raise _FoundParent((node, child_key, i))
                     _visit(item)
             elif isinstance(child, dict):
                 if child is target_node:
-                    raise _FoundParent((node, ckey, None))
+                    raise _FoundParent((node, child_key, None))
                 _visit(child)
 
     try:

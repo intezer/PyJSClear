@@ -196,8 +196,8 @@ def get_child_keys(node):
     """Get keys of a node that may contain child nodes/arrays."""
     if not isinstance(node, dict) or 'type' not in node:
         return ()
-    ntype = node['type']
-    keys = _CHILD_KEYS.get(ntype)
+    node_type = node['type']
+    keys = _CHILD_KEYS.get(node_type)
     if keys is not None:
         return keys
     # Fallback: return all keys that look like they might contain nodes
@@ -205,7 +205,7 @@ def get_child_keys(node):
         k
         for k, v in node.items()
         if k not in _SKIP_KEYS
-        and not (k == 'expression' and ntype != 'ExpressionStatement')
+        and not (k == 'expression' and node_type != 'ExpressionStatement')
         and isinstance(v, (dict, list))
     ]
 

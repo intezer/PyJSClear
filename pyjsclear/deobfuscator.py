@@ -68,9 +68,9 @@ class Deobfuscator:
         any_transform_changed = False
         for i in range(self.max_iterations):
             modified = False
-            for cls in TRANSFORM_CLASSES:
+            for transform_class in TRANSFORM_CLASSES:
                 try:
-                    transform = cls(ast)
+                    transform = transform_class(ast)
                     result = transform.execute()
                 except Exception:
                     continue

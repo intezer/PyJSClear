@@ -11,16 +11,16 @@ def _is_truthy_literal(node):
         return None
     match node.get('type', ''):
         case 'Literal':
-            val = node.get('value')
-            if val is None:
+            value = node.get('value')
+            if value is None:
                 return False  # null is falsy
-            match val:
+            match value:
                 case bool():
-                    return val
+                    return value
                 case int() | float():
-                    return val != 0
+                    return value != 0
                 case str():
-                    return len(val) > 0
+                    return len(value) > 0
                 case _:
                     return True
         case 'UnaryExpression' if node.get('operator') == '!':
@@ -48,9 +48,9 @@ class DeadBranchRemover(Transform):
 
     def execute(self):
         def enter(node, parent, key, index):
-            ntype = node.get('type', '')
+            node_type = node.get('type', '')
 
-            if ntype == 'IfStatement':
+            if node_type == 'IfStatement':
                 truthy = _is_truthy_literal(node.get('test'))
                 if truthy is None:
                     return
@@ -60,7 +60,7 @@ class DeadBranchRemover(Transform):
                 alt = node.get('alternate')
                 return alt if alt else REMOVE
 
-            if ntype == 'ConditionalExpression':
+            if node_type == 'ConditionalExpression':
                 truthy = _is_truthy_literal(node.get('test'))
                 if truthy is None:
                     return

@@ -70,11 +70,11 @@ def generate(node, indent=0):
     if not isinstance(node, dict):
         return str(node)
 
-    ntype = node.get('type', '')
-    gen = _GENERATORS.get(ntype)
+    node_type = node.get('type', '')
+    gen = _GENERATORS.get(node_type)
     if gen:
         return gen(node, indent)
-    return f'/* unknown: {ntype} */'
+    return f'/* unknown: {node_type} */'
 
 
 def _indent_str(level):
@@ -99,9 +99,9 @@ def _gen_program(node, indent):
             continue
         if stmt.get('type') == 'EmptyStatement':
             continue
-        s = _gen_stmt(stmt, indent)
-        if s.strip():
-            parts.append(s)
+        statement_code = _gen_stmt(stmt, indent)
+        if statement_code.strip():
+            parts.append(statement_code)
             if _is_directive(stmt) and i + 1 < len(body):
                 parts.append('')
     return '\n'.join(parts)
@@ -113,8 +113,8 @@ def _gen_stmt(node, indent):
         return ''
     prefix = _indent_str(indent)
     code = generate(node, indent)
-    ntype = node.get('type', '')
-    if ntype in _NO_SEMI_TYPES:
+    node_type = node.get('type', '')
+    if node_type in _NO_SEMI_TYPES:
         return prefix + code
     if code.endswith(';'):
         return prefix + code
@@ -136,15 +136,15 @@ def _gen_block(node, indent):
 
 def _gen_var_declaration(node, indent):
     kind = node.get('kind', 'var')
-    decls = []
-    for d in node.get('declarations', []):
-        name = generate(d['id'], indent)
-        init = d.get('init')
-        if init:
-            decls.append(f'{name} = {generate(init, indent)}')
+    declarations = []
+    for declaration in node.get('declarations', []):
+        name = generate(declaration['id'], indent)
+        initializer = declaration.get('init')
+        if initializer:
+            declarations.append(f'{name} = {generate(initializer, indent)}')
         else:
-            decls.append(name)
-    return f'{kind} {", ".join(decls)}'
+            declarations.append(name)
+    return f'{kind} {", ".join(declarations)}'
 
 
 def _gen_function(node, indent, is_expression=False):
@@ -181,25 +181,25 @@ def _gen_arrow(node, indent):
 
 
 def _gen_return(node, indent):
-    arg = node.get('argument')
-    if arg:
-        return f'return {generate(arg, indent)}'
+    argument = node.get('argument')
+    if argument:
+        return f'return {generate(argument, indent)}'
     return 'return'
 
 
 def _gen_if(node, indent):
     test = generate(node['test'], indent)
-    cons = generate(node['consequent'], indent)
+    consequent_code = generate(node['consequent'], indent)
     if node['consequent'].get('type') != 'BlockStatement':
-        cons = '\n' + _gen_stmt(node['consequent'], indent + 1)
-    alt = node.get('alternate')
-    if alt:
-        if alt.get('type') in ('IfStatement', 'BlockStatement'):
-            alt_str = ' else ' + generate(alt, indent)
+        consequent_code = '\n' + _gen_stmt(node['consequent'], indent + 1)
+    alternate = node.get('alternate')
+    if alternate:
+        if alternate.get('type') in ('IfStatement', 'BlockStatement'):
+            alternate_code = ' else ' + generate(alternate, indent)
         else:
-            alt_str = ' else\n' + _gen_stmt(alt, indent + 1)
-        return f'if ({test}) {cons}{alt_str}'
-    return f'if ({test}) {cons}'
+            alternate_code = ' else\n' + _gen_stmt(alternate, indent + 1)
+        return f'if ({test}) {consequent_code}{alternate_code}'
+    return f'if ({test}) {consequent_code}'
 
 
 def _gen_while(node, indent):
@@ -239,8 +239,8 @@ def _gen_for_of(node, indent):
 
 
 def _gen_switch(node, indent):
-    disc = generate(node['discriminant'], indent)
-    lines = [f'switch ({disc}) {{']
+    discriminant = generate(node['discriminant'], indent)
+    lines = [f'switch ({discriminant}) {{']
     for case in node.get('cases', []):
         if case.get('test'):
             lines.append(_indent_str(indent + 1) + f'case {generate(case["test"], indent + 1)}:')
@@ -258,11 +258,11 @@ def _gen_try(node, indent):
     handler = node.get('handler')
     if handler:
         param = generate(handler.get('param'), indent) if handler.get('param') else ''
-        hbody = generate(handler['body'], indent)
+        handler_body = generate(handler['body'], indent)
         if param:
-            result += f' catch ({param}) {hbody}'
+            result += f' catch ({param}) {handler_body}'
         else:
-            result += f' catch {hbody}'
+            result += f' catch {handler_body}'
     finalizer = node.get('finalizer')
     if finalizer:
         result += f' finally {generate(finalizer, indent)}'
@@ -296,17 +296,17 @@ def _gen_expr_stmt(node, indent):
 
 
 def _gen_binary(node, indent):
-    op = node.get('operator', '')
+    operator = node.get('operator', '')
     left = generate(node['left'], indent)
     right = generate(node['right'], indent)
-    my_prec = _PRECEDENCE.get(op, 1)
+    my_prec = _PRECEDENCE.get(operator, 1)
     left_prec = _expr_precedence(node['left'])
     right_prec = _expr_precedence(node['right'])
     if left_prec < my_prec:
         left = f'({left})'
-    if right_prec < my_prec or (right_prec == my_prec and op not in ('+', '*', '|', '&', '^')):
+    if right_prec < my_prec or (right_prec == my_prec and operator not in ('+', '*', '|', '&', '^')):
         right = f'({right})'
-    return f'{left} {op} {right}'
+    return f'{left} {operator} {right}'
 
 
 def _gen_logical(node, indent):
@@ -314,35 +314,35 @@ def _gen_logical(node, indent):
 
 
 def _gen_unary(node, indent):
-    op = node.get('operator', '')
-    arg = generate(node['argument'], indent)
-    arg_prec = _expr_precedence(node['argument'])
-    if arg_prec < _UNARY_PRECEDENCE:
-        arg = f'({arg})'
-    if op in ('typeof', 'void', 'delete'):
-        return f'{op} {arg}'
+    operator = node.get('operator', '')
+    operand = generate(node['argument'], indent)
+    operand_prec = _expr_precedence(node['argument'])
+    if operand_prec < _UNARY_PRECEDENCE:
+        operand = f'({operand})'
+    if operator in ('typeof', 'void', 'delete'):
+        return f'{operator} {operand}'
     if node.get('prefix', True):
-        return f'{op}{arg}'
-    return f'{arg}{op}'
+        return f'{operator}{operand}'
+    return f'{operand}{operator}'
 
 
 def _gen_update(node, indent):
-    arg = generate(node['argument'], indent)
-    op = node.get('operator', '++')
+    argument = generate(node['argument'], indent)
+    operator = node.get('operator', '++')
     if node.get('prefix'):
-        return f'{op}{arg}'
-    return f'{arg}{op}'
+        return f'{operator}{argument}'
+    return f'{argument}{operator}'
 
 
 def _gen_assignment(node, indent):
     left = generate(node['left'], indent)
     right = generate(node['right'], indent)
-    op = node.get('operator', '=')
-    return f'{left} {op} {right}'
+    operator = node.get('operator', '=')
+    return f'{left} {operator} {right}'
 
 
 def _gen_member(node, indent):
-    obj = generate(node['object'], indent)
+    object_code = generate(node['object'], indent)
     obj_type = node['object'].get('type', '')
     computed = node.get('computed')
 
@@ -360,18 +360,18 @@ def _gen_member(node, indent):
         needs_parens = _expr_precedence(node['object']) < 19
 
     if needs_parens:
-        obj = f'({obj})'
+        object_code = f'({object_code})'
 
-    prop = generate(node['property'], indent)
+    property_code = generate(node['property'], indent)
     if computed:
-        return f'{obj}[{prop}]'
-    return f'{obj}.{prop}'
+        return f'{object_code}[{property_code}]'
+    return f'{object_code}.{property_code}'
 
 
 def _gen_call(node, indent):
     callee = generate(node['callee'], indent)
-    ctype = node['callee'].get('type', '')
-    if ctype in ('FunctionExpression', 'ArrowFunctionExpression', 'SequenceExpression'):
+    callee_type = node['callee'].get('type', '')
+    if callee_type in ('FunctionExpression', 'ArrowFunctionExpression', 'SequenceExpression'):
         callee = f'({callee})'
     args = ', '.join(generate(a, indent) for a in node.get('arguments', []))
     return f'{callee}({args})'
@@ -395,9 +395,9 @@ def _wrap_if_sequence(node, code):
 
 def _gen_conditional(node, indent):
     test = generate(node['test'], indent)
-    cons = _wrap_if_sequence(node.get('consequent'), generate(node['consequent'], indent))
-    alt = _wrap_if_sequence(node.get('alternate'), generate(node['alternate'], indent))
-    return f'{test} ? {cons} : {alt}'
+    consequent_code = _wrap_if_sequence(node.get('consequent'), generate(node['consequent'], indent))
+    alternate_code = _wrap_if_sequence(node.get('alternate'), generate(node['alternate'], indent))
+    return f'{test} ? {consequent_code} : {alternate_code}'
 
 
 def _gen_sequence(node, indent):
@@ -415,47 +415,47 @@ def _gen_array(node, indent):
     return _gen_bracket_list(node.get('elements', []), indent)
 
 
-def _gen_object_property(p, indent):
+def _gen_object_property(property_node, indent):
     """Generate a single object property string."""
-    if p.get('type') == 'SpreadElement':
-        return '...' + generate(p['argument'], indent)
+    if property_node.get('type') == 'SpreadElement':
+        return '...' + generate(property_node['argument'], indent)
 
-    key = generate(p['key'], indent)
-    if p.get('computed'):
+    key = generate(property_node['key'], indent)
+    if property_node.get('computed'):
         key = f'[{key}]'
 
-    kind = p.get('kind', 'init')
-    if kind in ('get', 'set') or p.get('method'):
+    kind = property_node.get('kind', 'init')
+    if kind in ('get', 'set') or property_node.get('method'):
         prefix = f'{kind} ' if kind in ('get', 'set') else ''
-        params = ', '.join(generate(pp, indent) for pp in p['value'].get('params', []))
-        body = generate(p['value'].get('body'), indent)
+        params = ', '.join(generate(pp, indent) for pp in property_node['value'].get('params', []))
+        body = generate(property_node['value'].get('body'), indent)
         return f'{prefix}{key}({params}) {body}'
 
-    if p.get('shorthand'):
+    if property_node.get('shorthand'):
         return key
 
-    val = generate(p['value'], indent)
+    value = generate(property_node['value'], indent)
     # Quote non-computed identifier keys (Babel style)
-    if p['key'].get('type') == 'Identifier' and not p.get('computed'):
-        key = f"'{p['key']['name']}'"
-    return f'{key}: {val}'
+    if property_node['key'].get('type') == 'Identifier' and not property_node.get('computed'):
+        key = f"'{property_node['key']['name']}'"
+    return f'{key}: {value}'
 
 
 def _gen_object(node, indent):
-    props = node.get('properties', [])
-    if not props:
+    properties = node.get('properties', [])
+    if not properties:
         return '{}'
-    parts = [_gen_object_property(p, indent + 1) for p in props]
-    inner = _indent_str(indent + 1)
-    outer = _indent_str(indent)
-    lines = ',\n'.join(inner + p for p in parts)
-    return '{\n' + lines + '\n' + outer + '}'
+    parts = [_gen_object_property(property_node, indent + 1) for property_node in properties]
+    inner_indent = _indent_str(indent + 1)
+    outer_indent = _indent_str(indent)
+    lines = ',\n'.join(inner_indent + part for part in parts)
+    return '{\n' + lines + '\n' + outer_indent + '}'
 
 
 def _gen_property(node, indent):
     key = generate(node['key'], indent)
-    val = generate(node['value'], indent)
-    return f'{key}: {val}'
+    value = generate(node['value'], indent)
+    return f'{key}: {value}'
 
 
 def _gen_spread(node, indent):
@@ -478,20 +478,20 @@ def _escape_string(val, raw):
 
 def _gen_literal(node, indent):
     raw = node.get('raw')
-    val = node.get('value')
-    if isinstance(val, str):
-        return _escape_string(val, raw)
+    value = node.get('value')
+    if isinstance(value, str):
+        return _escape_string(value, raw)
     if raw is not None:
         return str(raw)
-    if val is None:
+    if value is None:
         return 'null'
-    if isinstance(val, bool):
-        return 'true' if val else 'false'
-    if isinstance(val, (int, float)):
-        if isinstance(val, float) and val == int(val) and val >= 0:
-            return str(int(val))
-        return str(val)
-    return str(val)
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    if isinstance(value, (int, float)):
+        if isinstance(value, float) and value == int(value) and value >= 0:
+            return str(int(value))
+        return str(value)
+    return str(value)
 
 
 def _gen_identifier(node, indent):
@@ -526,13 +526,13 @@ def _gen_tagged_template(node, indent):
 
 def _gen_class_decl(node, indent):
     name = generate(node['id'], indent) if node.get('id') else ''
-    sup = ''
+    superclass_clause = ''
     if node.get('superClass'):
-        sup = f' extends {generate(node["superClass"], indent)}'
+        superclass_clause = f' extends {generate(node["superClass"], indent)}'
     body = generate(node['body'], indent)
     if name:
-        return f'class {name}{sup} {body}'
-    return f'class{sup} {body}'
+        return f'class {name}{superclass_clause} {body}'
+    return f'class{superclass_clause} {body}'
 
 
 def _gen_class_body(node, indent):
@@ -551,9 +551,9 @@ def _gen_method_def(node, indent):
         key = f'[{key}]'
     static = 'static ' if node.get('static') else ''
     kind = node.get('kind', 'method')
-    val = node.get('value', {})
-    params = ', '.join(generate(p, indent) for p in val.get('params', []))
-    body = generate(val.get('body'), indent)
+    value = node.get('value', {})
+    params = ', '.join(generate(p, indent) for p in value.get('params', []))
+    body = generate(value.get('body'), indent)
     match kind:
         case 'constructor':
             return f'{static}constructor({params}) {body}'
@@ -562,16 +562,16 @@ def _gen_method_def(node, indent):
         case 'set':
             return f'{static}set {key}({params}) {body}'
         case _:
-            async_prefix = 'async ' if val.get('async') else ''
-            gen_prefix = '*' if val.get('generator') else ''
+            async_prefix = 'async ' if value.get('async') else ''
+            gen_prefix = '*' if value.get('generator') else ''
             return f'{static}{async_prefix}{gen_prefix}{key}({params}) {body}'
 
 
 def _gen_yield(node, indent):
-    arg = generate(node.get('argument'), indent) if node.get('argument') else ''
+    argument = generate(node.get('argument'), indent) if node.get('argument') else ''
     delegate = '*' if node.get('delegate') else ''
-    if arg:
-        return f'yield{delegate} {arg}'
+    if argument:
+        return f'yield{delegate} {argument}'
     return f'yield{delegate}'
 
 
@@ -589,25 +589,25 @@ def _gen_array_pattern(node, indent):
     return _gen_bracket_list(node.get('elements', []), indent)
 
 
-def _generate_object_pattern_part(p, indent):
+def _gen_object_pattern_part(property_node, indent):
     """Generate a single destructuring pattern property."""
-    if p.get('type') == 'RestElement':
-        return '...' + generate(p['argument'], indent)
-    key = generate(p['key'], indent)
-    if p.get('shorthand'):
+    if property_node.get('type') == 'RestElement':
+        return '...' + generate(property_node['argument'], indent)
+    key = generate(property_node['key'], indent)
+    if property_node.get('shorthand'):
         return key
-    val = generate(p['value'], indent)
-    return f'{key}: {val}'
+    value = generate(property_node['value'], indent)
+    return f'{key}: {value}'
 
 
 def _gen_object_pattern(node, indent):
-    props = [_generate_object_pattern_part(p, indent + 1) for p in node.get('properties', [])]
-    if not props:
+    properties = [_gen_object_pattern_part(property_node, indent + 1) for property_node in node.get('properties', [])]
+    if not properties:
         return '{}'
-    inner = _indent_str(indent + 1)
-    outer = _indent_str(indent)
-    lines = ',\n'.join(inner + p for p in props)
-    return '{\n' + lines + '\n' + outer + '}'
+    inner_indent = _indent_str(indent + 1)
+    outer_indent = _indent_str(indent)
+    lines = ',\n'.join(inner_indent + part for part in properties)
+    return '{\n' + lines + '\n' + outer_indent + '}'
 
 
 def _gen_rest_element(node, indent):

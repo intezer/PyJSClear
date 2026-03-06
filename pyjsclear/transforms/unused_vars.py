@@ -55,12 +55,12 @@ class UnusedVariableRemover(Transform):
             if not isinstance(node, dict):
                 continue
 
-            ntype = node.get('type')
-            if ntype == 'VariableDeclarator':
+            node_type = node.get('type')
+            if node_type == 'VariableDeclarator':
                 init = node.get('init')
                 if not init or not self._has_side_effects(init):
                     declarators.add(id(node))
-            elif ntype == 'FunctionDeclaration':
+            elif node_type == 'FunctionDeclaration':
                 functions.add(id(node))
 
         for child in scope.children:
@@ -70,11 +70,11 @@ class UnusedVariableRemover(Transform):
         """Remove all collected unused declarations in a single traversal."""
 
         def enter(node, parent, key, index):
-            ntype = node.get('type')
-            if ntype == 'FunctionDeclaration' and id(node) in functions_to_remove:
+            node_type = node.get('type')
+            if node_type == 'FunctionDeclaration' and id(node) in functions_to_remove:
                 self.set_changed()
                 return REMOVE
-            if ntype == 'VariableDeclaration':
+            if node_type == 'VariableDeclaration':
                 decls = node.get('declarations')
                 if decls:
                     new_decls = [d for d in decls if id(d) not in declarators_to_remove]
@@ -90,10 +90,10 @@ class UnusedVariableRemover(Transform):
         """Conservative check for side effects in an expression."""
         if not isinstance(node, dict):
             return False
-        ntype = node.get('type', '')
-        if ntype in _SIDE_EFFECT_TYPES:
+        node_type = node.get('type', '')
+        if node_type in _SIDE_EFFECT_TYPES:
             return True
-        if ntype in _PURE_TYPES:
+        if node_type in _PURE_TYPES:
             return False
         # For binary/unary/etc, recurse into children
         for key in get_child_keys(node):

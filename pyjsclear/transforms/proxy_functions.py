@@ -8,6 +8,7 @@ Detects patterns like:
 from ..scope import build_scope_tree
 from ..traverser import traverse
 from ..utils.ast_helpers import deep_copy
+from ..utils.ast_helpers import get_child_keys
 from ..utils.ast_helpers import is_identifier
 from ..utils.ast_helpers import replace_identifiers
 from .base import Transform
@@ -85,14 +86,14 @@ class ProxyFunctionInliner(Transform):
         """Get the function expression from a binding."""
         node = binding.node
         if isinstance(node, dict):
-            ntype = node.get('type', '')
-            if ntype in (
+            node_type = node.get('type', '')
+            if node_type in (
                 'FunctionDeclaration',
                 'FunctionExpression',
                 'ArrowFunctionExpression',
             ):
                 return node
-            if ntype == 'VariableDeclarator':
+            if node_type == 'VariableDeclarator':
                 init = node.get('init')
                 if init and init.get('type') in (
                     'FunctionExpression',
@@ -104,7 +105,7 @@ class ProxyFunctionInliner(Transform):
     def _is_proxy_function(self, func_node):
         """Check if a function is a simple proxy (single return of an expression)."""
         params = func_node.get('params', [])
-        if not all(p.get('type') == 'Identifier' for p in params):
+        if not all(parameter.get('type') == 'Identifier' for parameter in params):
             return False
 
         body = func_node.get('body')
@@ -147,8 +148,6 @@ class ProxyFunctionInliner(Transform):
             return False
         if node.get('type', '') in self._DISALLOWED_PROXY_TYPES:
             return False
-        from ..utils.ast_helpers import get_child_keys
-
         for key in get_child_keys(node):
             child = node.get(key)
             if child is None:
@@ -183,12 +182,12 @@ class ProxyFunctionInliner(Transform):
         # Build parameter map
         params = func_node.get('params', [])
         param_map = {}
-        for i, p in enumerate(params):
-            if p.get('type') == 'Identifier':
+        for i, parameter in enumerate(params):
+            if parameter.get('type') == 'Identifier':
                 if i < len(args):
-                    param_map[p['name']] = args[i]
+                    param_map[parameter['name']] = args[i]
                 else:
-                    param_map[p['name']] = {'type': 'Identifier', 'name': 'undefined'}
+                    param_map[parameter['name']] = {'type': 'Identifier', 'name': 'undefined'}
 
         replace_identifiers(expr, param_map)
         return expr

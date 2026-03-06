@@ -5,6 +5,7 @@ Replaces: ... 1 ... "hello" ...
 """
 
 from ..scope import build_scope_tree
+from ..traverser import find_parent
 from ..utils.ast_helpers import deep_copy
 from ..utils.ast_helpers import is_literal
 from ..utils.ast_helpers import is_string_literal
@@ -29,28 +30,28 @@ class ObjectSimplifier(Transform):
             node = binding.node
             if not isinstance(node, dict) or node.get('type') != 'VariableDeclarator':
                 continue
-            init = node.get('init')
-            if not init or init.get('type') != 'ObjectExpression':
+            initializer = node.get('init')
+            if not initializer or initializer.get('type') != 'ObjectExpression':
                 continue
 
             # Build property map (only literals and simple function expressions)
-            props = init.get('properties', [])
-            if not self._is_proxy_object(props):
+            properties = initializer.get('properties', [])
+            if not self._is_proxy_object(properties):
                 continue
 
             prop_map = {}
-            for p in props:
-                key = self._get_property_key(p)
+            for property_node in properties:
+                key = self._get_property_key(property_node)
                 if key is None:
                     continue
-                val = p.get('value')
-                if is_literal(val):
-                    prop_map[key] = val
-                elif val and val.get('type') in (
+                value = property_node.get('value')
+                if is_literal(value):
+                    prop_map[key] = value
+                elif value and value.get('type') in (
                     'FunctionExpression',
                     'ArrowFunctionExpression',
                 ):
-                    prop_map[key] = val
+                    prop_map[key] = value
 
             if not prop_map:
                 continue
@@ -59,41 +60,39 @@ class ObjectSimplifier(Transform):
                 continue
 
             # Replace property accesses
-            for ref_node, ref_parent, ref_key, ref_index in binding.references:
+            for reference_node, ref_parent, ref_key, ref_index in binding.references:
                 if not ref_parent or ref_parent.get('type') != 'MemberExpression':
                     continue
                 if ref_key != 'object':
                     continue
 
-                me = ref_parent
-                prop_name = self._get_member_prop_name(me)
-                if prop_name is None or prop_name not in prop_map:
+                member_expression = ref_parent
+                property_name = self._get_member_prop_name(member_expression)
+                if property_name is None or property_name not in prop_map:
                     continue
 
-                val = prop_map[prop_name]
-                if is_literal(val):
-                    self._replace_node(me, deep_copy(val))
+                value = prop_map[property_name]
+                if is_literal(value):
+                    self._replace_node(member_expression, deep_copy(value))
                     self.set_changed()
                     continue
 
-                if val.get('type') not in (
+                if value.get('type') not in (
                     'FunctionExpression',
                     'ArrowFunctionExpression',
                 ):
                     continue
-                self._try_inline_function_call(me, val)
+                self._try_inline_function_call(member_expression, value)
 
         for child in scope.children:
             self._process_scope(child)
 
     def _has_property_assignment(self, binding):
         """Check if any reference to the binding is a property assignment target."""
-        from ..traverser import find_parent
-
-        for ref_node, ref_parent, ref_key, ref_index in binding.references:
-            if not (ref_parent and ref_parent.get('type') == 'MemberExpression' and ref_key == 'object'):
+        for reference_node, reference_parent, ref_key, ref_index in binding.references:
+            if not (reference_parent and reference_parent.get('type') == 'MemberExpression' and ref_key == 'object'):
                 continue
-            me_parent_info = find_parent(self.ast, ref_parent)
+            me_parent_info = find_parent(self.ast, reference_parent)
             if not me_parent_info:
                 continue
             parent, key, _ = me_parent_info
@@ -103,8 +102,6 @@ class ObjectSimplifier(Transform):
 
     def _try_inline_function_call(self, member_expression, function_value):
         """Try to inline a function call at a MemberExpression site."""
-        from ..traverser import find_parent
-
         me_parent_info = find_parent(self.ast, member_expression)
         if not me_parent_info:
             return
@@ -117,9 +114,9 @@ class ObjectSimplifier(Transform):
         self._replace_node(parent, replacement)
         self.set_changed()
 
-    def _is_proxy_object(self, props):
+    def _is_proxy_object(self, properties):
         """Check if all properties are literals or simple functions."""
-        for p in props:
+        for p in properties:
             if p.get('type') != 'Property':
                 return False
             val = p.get('value')
@@ -158,8 +155,6 @@ class ObjectSimplifier(Transform):
 
     def _replace_node(self, target, replacement):
         """Replace target node in the AST."""
-        from ..traverser import find_parent
-
         result = find_parent(self.ast, target)
         if result:
             parent, key, index = result
@@ -179,18 +174,18 @@ class ObjectSimplifier(Transform):
             stmts = body.get('body', [])
             if len(stmts) != 1 or stmts[0].get('type') != 'ReturnStatement':
                 return None
-            arg = stmts[0].get('argument')
-            if not arg:
+            argument = stmts[0].get('argument')
+            if not argument:
                 return None
-            expr = deep_copy(arg)
+            expr = deep_copy(argument)
         else:
             return None
 
         params = func.get('params', [])
         param_map = {}
-        for i, p in enumerate(params):
-            if p.get('type') == 'Identifier':
-                param_map[p['name']] = args[i] if i < len(args) else {'type': 'Identifier', 'name': 'undefined'}
+        for i, parameter in enumerate(params):
+            if parameter.get('type') == 'Identifier':
+                param_map[parameter['name']] = args[i] if i < len(args) else {'type': 'Identifier', 'name': 'undefined'}
 
         replace_identifiers(expr, param_map)
         return expr

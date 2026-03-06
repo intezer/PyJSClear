@@ -21,14 +21,14 @@ def main():
     if args.input == '-':
         code = sys.stdin.read()
     else:
-        with open(args.input, 'r', errors='replace') as f:
-            code = f.read()
+        with open(args.input, 'r', errors='replace') as input_file:
+            code = input_file.read()
 
     result = deobfuscate(code, max_iterations=args.max_iterations)
 
     if args.output:
-        with open(args.output, 'w') as f:
-            f.write(result)
+        with open(args.output, 'w') as output_file:
+            output_file.write(result)
     else:
         sys.stdout.write(result)
 

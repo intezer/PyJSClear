@@ -83,11 +83,11 @@ class AntiTamperRemover(Transform):
                 return
 
             try:
-                src = generate(callee)
+                source_code = generate(callee)
             except Exception:
                 return
 
-            if self._matches_anti_tamper_pattern(src):
+            if self._matches_anti_tamper_pattern(source_code):
                 nodes_to_remove.append(node)
 
         traverse(self.ast, {'enter': enter})

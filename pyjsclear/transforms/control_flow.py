@@ -7,6 +7,7 @@ Detects patterns like:
 And reconstructs the linear statement sequence.
 """
 
+from ..utils.ast_helpers import get_child_keys
 from ..utils.ast_helpers import is_identifier
 from ..utils.ast_helpers import is_literal
 from ..utils.ast_helpers import is_string_literal
@@ -24,8 +25,6 @@ class ControlFlowRecoverer(Transform):
 
     def _recover_in_bodies(self, root):
         """Walk through the AST looking for bodies containing CFF patterns."""
-        from ..utils.ast_helpers import get_child_keys
-
         stack = [root]
         visited = set()
         while stack:
@@ -38,10 +37,10 @@ class ControlFlowRecoverer(Transform):
                 continue
             visited.add(node_id)
 
-            ntype = node.get('type', '')
+            node_type = node.get('type', '')
 
             # Check in body arrays
-            if ntype in ('Program', 'BlockStatement'):
+            if node_type in ('Program', 'BlockStatement'):
                 self._try_recover_body(node, 'body', node.get('body', []))
 
             # Queue children for processing
@@ -60,14 +59,14 @@ class ControlFlowRecoverer(Transform):
         """Try to find and recover CFF patterns in a body array."""
         i = 0
         while i < len(body):
-            stmt = body[i]
-            if not isinstance(stmt, dict):
+            statement = body[i]
+            if not isinstance(statement, dict):
                 i += 1
                 continue
 
-            if self._try_recover_variable_pattern(body, i, stmt):
+            if self._try_recover_variable_pattern(body, i, statement):
                 continue
-            if self._try_recover_expression_pattern(body, i, stmt):
+            if self._try_recover_expression_pattern(body, i, statement):
                 continue
 
             i += 1
@@ -104,9 +103,9 @@ class ControlFlowRecoverer(Transform):
         next_idx = i + 1
         counter_var = None
         if next_idx < len(body):
-            cvar = self._find_counter_init(body[next_idx])
-            if cvar is not None:
-                counter_var = cvar
+            counter_variable = self._find_counter_init(body[next_idx])
+            if counter_variable is not None:
+                counter_var = counter_variable
                 next_idx += 1
         if next_idx >= len(body):
             return False
@@ -119,30 +118,34 @@ class ControlFlowRecoverer(Transform):
 
     def _find_state_array_in_decl(self, decl):
         """Find "X".split("|") pattern in a VariableDeclaration."""
-        for d in decl.get('declarations', []):
-            init = d.get('init')
-            if not init or not self._is_split_call(init):
+        for declaration in decl.get('declarations', []):
+            initializer = declaration.get('init')
+            if not initializer or not self._is_split_call(initializer):
                 continue
-            states = self._extract_split_states(init)
+            states = self._extract_split_states(initializer)
             if not states:
                 continue
-            if d.get('id', {}).get('type') != 'Identifier':
+            if declaration.get('id', {}).get('type') != 'Identifier':
                 continue
-            state_var = d['id']['name']
-            counter_var = self._find_counter_in_declaration(decl, exclude=d)
+            state_var = declaration['id']['name']
+            counter_var = self._find_counter_in_declaration(decl, exclude=declaration)
             return states, state_var, counter_var
         return None
 
     def _find_counter_in_declaration(self, decl, exclude):
         """Find a numeric-initialized counter variable in a declaration, skipping *exclude*."""
-        for d in decl.get('declarations', []):
-            if d is exclude:
+        for declaration in decl.get('declarations', []):
+            if declaration is exclude:
                 continue
-            if d.get('id', {}).get('type') != 'Identifier':
+            if declaration.get('id', {}).get('type') != 'Identifier':
                 continue
-            init = d.get('init')
-            if init and init.get('type') == 'Literal' and isinstance(init.get('value'), (int, float)):
-                return d['id']['name']
+            initializer = declaration.get('init')
+            if (
+                initializer
+                and initializer.get('type') == 'Literal'
+                and isinstance(initializer.get('value'), (int, float))
+            ):
+                return declaration['id']['name']
         return None
 
     def _find_state_from_assignment(self, expr):
@@ -158,18 +161,22 @@ class ControlFlowRecoverer(Transform):
                 return states, expr['left']['name']
         return None
 
-    def _find_counter_init(self, stmt):
+    def _find_counter_init(self, statement):
         """Find counter variable initialization."""
-        if not isinstance(stmt, dict):
+        if not isinstance(statement, dict):
             return None
-        if stmt.get('type') == 'VariableDeclaration':
-            for d in stmt.get('declarations', []):
-                if d.get('id', {}).get('type') == 'Identifier':
-                    init = d.get('init')
-                    if init and init.get('type') == 'Literal' and isinstance(init.get('value'), (int, float)):
-                        return d['id']['name']
-        if stmt.get('type') == 'ExpressionStatement':
-            expr = stmt.get('expression')
+        if statement.get('type') == 'VariableDeclaration':
+            for declaration in statement.get('declarations', []):
+                if declaration.get('id', {}).get('type') == 'Identifier':
+                    initializer = declaration.get('init')
+                    if (
+                        initializer
+                        and initializer.get('type') == 'Literal'
+                        and isinstance(initializer.get('value'), (int, float))
+                    ):
+                        return declaration['id']['name']
+        if statement.get('type') == 'ExpressionStatement':
+            expr = statement.get('expression')
             if (
                 expr
                 and expr.get('type') == 'AssignmentExpression'
@@ -189,12 +196,12 @@ class ControlFlowRecoverer(Transform):
         callee = node.get('callee')
         if not callee or callee.get('type') != 'MemberExpression':
             return False
-        obj = callee.get('object')
-        prop = callee.get('property')
-        if not is_string_literal(obj):
+        object_expression = callee.get('object')
+        property_expression = callee.get('property')
+        if not is_string_literal(object_expression):
             return False
-        if not (is_identifier(prop) and prop.get('name') == 'split') and not (
-            is_string_literal(prop) and prop.get('value') == 'split'
+        if not (is_identifier(property_expression) and property_expression.get('name') == 'split') and not (
+            is_string_literal(property_expression) and property_expression.get('value') == 'split'
         ):
             return False
         args = node.get('arguments', [])
@@ -214,23 +221,23 @@ class ControlFlowRecoverer(Transform):
         if not isinstance(loop, dict):
             return None
 
-        ltype = loop.get('type', '')
+        loop_type = loop.get('type', '')
         switch_body = None
         initial_value = 0
 
-        if ltype == 'ForStatement':
+        if loop_type == 'ForStatement':
             # for(var _i = 0; ...) { switch(_array[_i++]) { ... } break; }
-            init = loop.get('init')
-            if init:
-                if init.get('type') == 'VariableDeclaration':
-                    for d in init.get('declarations', []):
-                        if d.get('init') and d['init'].get('type') == 'Literal':
-                            initial_value = int(d['init'].get('value', 0))
-                elif init.get('type') == 'AssignmentExpression' and is_literal(init.get('right')):
-                    initial_value = int(init['right'].get('value', 0))
+            initializer = loop.get('init')
+            if initializer:
+                if initializer.get('type') == 'VariableDeclaration':
+                    for declaration in initializer.get('declarations', []):
+                        if declaration.get('init') and declaration['init'].get('type') == 'Literal':
+                            initial_value = int(declaration['init'].get('value', 0))
+                elif initializer.get('type') == 'AssignmentExpression' and is_literal(initializer.get('right')):
+                    initial_value = int(initializer['right'].get('value', 0))
             switch_body = self._extract_switch_from_loop_body(loop.get('body'))
 
-        elif ltype == 'WhileStatement':
+        elif loop_type == 'WhileStatement':
             test = loop.get('test')
             if self._is_truthy(test):
                 switch_body = self._extract_switch_from_loop_body(loop.get('body'))
@@ -244,19 +251,19 @@ class ControlFlowRecoverer(Transform):
         for case in cases:
             test = case.get('test')
             if test and test.get('type') == 'Literal':
-                val = test['value']
+                test_value = test['value']
                 # Normalize key: float 1.0 -> '1', string '1' -> '1'
-                if isinstance(val, float) and val == int(val):
-                    key = str(int(val))
+                if isinstance(test_value, float) and test_value == int(test_value):
+                    key = str(int(test_value))
                 else:
-                    key = str(val)
+                    key = str(test_value)
                 # Filter out continue and break statements
-                stmts = [
-                    s
-                    for s in case.get('consequent', [])
-                    if s.get('type') not in ('ContinueStatement', 'BreakStatement')
+                statements = [
+                    statement
+                    for statement in case.get('consequent', [])
+                    if statement.get('type') not in ('ContinueStatement', 'BreakStatement')
                 ]
-                cases_map[key] = (stmts, case.get('consequent', []))
+                cases_map[key] = (statements, case.get('consequent', []))
 
         # Reconstruct statement sequence
         recovered = []
@@ -264,8 +271,8 @@ class ControlFlowRecoverer(Transform):
             state = states[idx]
             if state not in cases_map:
                 break
-            stmts, original = cases_map[state]
-            recovered.extend(stmts)
+            statements, original = cases_map[state]
+            recovered.extend(statements)
             # Stop if there's a return statement
             if original and original[-1].get('type') == 'ReturnStatement':
                 recovered.append(original[-1])

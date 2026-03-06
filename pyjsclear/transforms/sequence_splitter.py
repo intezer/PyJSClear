@@ -23,8 +23,8 @@ class SequenceSplitter(Transform):
         """Ensure if/while/for bodies are BlockStatements."""
 
         def enter(node, parent, key, index):
-            ntype = node.get('type', '')
-            if ntype in (
+            node_type = node.get('type', '')
+            if node_type in (
                 'IfStatement',
                 'WhileStatement',
                 'DoWhileStatement',
@@ -36,18 +36,18 @@ class SequenceSplitter(Transform):
                 if body and body.get('type') != 'BlockStatement':
                     node['body'] = make_block_statement([body])
                     self.set_changed()
-                if ntype == 'IfStatement':
-                    cons = node.get('consequent')
-                    if cons and cons.get('type') != 'BlockStatement':
-                        node['consequent'] = make_block_statement([cons])
+                if node_type == 'IfStatement':
+                    consequent = node.get('consequent')
+                    if consequent and consequent.get('type') != 'BlockStatement':
+                        node['consequent'] = make_block_statement([consequent])
                         self.set_changed()
-                    alt = node.get('alternate')
-                    if alt and alt.get('type') not in (
+                    alternate = node.get('alternate')
+                    if alternate and alternate.get('type') not in (
                         'BlockStatement',
                         'IfStatement',
                         None,
                     ):
-                        node['alternate'] = make_block_statement([alt])
+                        node['alternate'] = make_block_statement([alternate])
                         self.set_changed()
 
         traverse(ast, {'enter': enter})
@@ -113,63 +113,63 @@ class SequenceSplitter(Transform):
 
         return prefixes
 
-    def _process_stmt_array(self, stmts):
+    def _process_stmt_array(self, statements):
         """Split sequence expressions and multi-var declarations in a statement array."""
         i = 0
-        while i < len(stmts):
-            stmt = stmts[i]
-            if not isinstance(stmt, dict):
+        while i < len(statements):
+            statement = statements[i]
+            if not isinstance(statement, dict):
                 i += 1
                 continue
 
             # Extract dead prefix from indirect call patterns: (0, fn)(args) → 0; fn(args);
-            prefixes = self._extract_indirect_call_prefixes(stmt)
+            prefixes = self._extract_indirect_call_prefixes(statement)
             if prefixes:
-                new_stmts = [make_expression_statement(e) for e in prefixes]
-                new_stmts.append(stmt)
-                stmts[i : i + 1] = new_stmts
+                new_stmts = [make_expression_statement(expression) for expression in prefixes]
+                new_stmts.append(statement)
+                statements[i : i + 1] = new_stmts
                 i += len(new_stmts)
                 self.set_changed()
                 continue
 
             # Split SequenceExpression in ExpressionStatement
             if (
-                stmt.get('type') == 'ExpressionStatement'
-                and isinstance(stmt.get('expression'), dict)
-                and stmt['expression'].get('type') == 'SequenceExpression'
+                statement.get('type') == 'ExpressionStatement'
+                and isinstance(statement.get('expression'), dict)
+                and statement['expression'].get('type') == 'SequenceExpression'
             ):
-                exprs = stmt['expression'].get('expressions', [])
-                if len(exprs) > 1:
-                    new_stmts = [make_expression_statement(e) for e in exprs]
-                    stmts[i : i + 1] = new_stmts
+                expressions = statement['expression'].get('expressions', [])
+                if len(expressions) > 1:
+                    new_stmts = [make_expression_statement(expression) for expression in expressions]
+                    statements[i : i + 1] = new_stmts
                     i += len(new_stmts)
                     self.set_changed()
                     continue
 
             # Split multi-declarator VariableDeclaration
             # (but not inside for-loop init — those aren't in body arrays)
-            if stmt.get('type') == 'VariableDeclaration':
-                decls = stmt.get('declarations', [])
+            if statement.get('type') == 'VariableDeclaration':
+                decls = statement.get('declarations', [])
                 if len(decls) > 1:
-                    kind = stmt.get('kind', 'var')
+                    kind = statement.get('kind', 'var')
                     new_stmts = [
                         {
                             'type': 'VariableDeclaration',
                             'kind': kind,
-                            'declarations': [d],
+                            'declarations': [declaration],
                         }
-                        for d in decls
+                        for declaration in decls
                     ]
-                    stmts[i : i + 1] = new_stmts
+                    statements[i : i + 1] = new_stmts
                     i += len(new_stmts)
                     self.set_changed()
                     continue
 
                 # Split SequenceExpression in single declarator init
                 if len(decls) == 1:
-                    split_result = self._try_split_single_declarator_init(stmt, decls[0])
+                    split_result = self._try_split_single_declarator_init(statement, decls[0])
                     if split_result:
-                        stmts[i : i + 1] = split_result
+                        statements[i : i + 1] = split_result
                         i += len(split_result)
                         self.set_changed()
                         continue

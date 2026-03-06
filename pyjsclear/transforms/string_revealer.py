@@ -5,6 +5,8 @@ import re
 
 from ..generator import generate
 from ..scope import build_scope_tree
+from ..traverser import REMOVE
+from ..traverser import find_parent
 from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
@@ -60,9 +62,9 @@ def _js_parse_int(s):
     return float('nan')
 
 
-def _apply_arith(op, left, right):
+def _apply_arith(operator, left, right):
     """Apply a binary arithmetic operator."""
-    match op:
+    match operator:
         case '+':
             return left + right
         case '-':
@@ -91,10 +93,10 @@ class WrapperInfo:
         """Given call argument values, compute the effective decoder index."""
         if self.param_index >= len(call_args):
             return None
-        val = call_args[self.param_index]
-        if not isinstance(val, (int, float)):
+        value = call_args[self.param_index]
+        if not isinstance(value, (int, float)):
             return None
-        return int(val) + self.wrapper_offset
+        return int(value) + self.wrapper_offset
 
     def get_key(self, call_args):
         """Get the RC4 key argument if applicable."""
@@ -219,8 +221,8 @@ class StringRevealer(Transform):
     def _extract_array_from_statement(self, stmt):
         """Extract string array from a variable declaration or assignment."""
         if stmt.get('type') == 'VariableDeclaration':
-            for d in stmt.get('declarations', []):
-                result = self._string_array_from_expression(d.get('init'))
+            for declaration in stmt.get('declarations', []):
+                result = self._string_array_from_expression(declaration.get('init'))
                 if result is not None:
                     return result
         elif stmt.get('type') == 'ExpressionStatement':
@@ -246,9 +248,9 @@ class StringRevealer(Transform):
 
             offset = self._extract_decoder_offset(stmt)
 
-            src = generate(stmt)
-            if _BASE_64_REGEX.search(src):
-                dtype = DecoderType.RC4 if _RC4_REGEX.search(src) else DecoderType.BASE_64
+            source = generate(stmt)
+            if _BASE_64_REGEX.search(source):
+                dtype = DecoderType.RC4 if _RC4_REGEX.search(source) else DecoderType.BASE_64
             else:
                 dtype = DecoderType.BASIC
 
@@ -292,12 +294,12 @@ class StringRevealer(Transform):
                 return
             if not (is_identifier(right.get('left')) and right['left']['name'] == left['name']):
                 return
-            op = right.get('operator')
-            if op not in ('+', '-'):
+            operator = right.get('operator')
+            if operator not in ('+', '-'):
                 return
-            rval = _eval_numeric(right.get('right'))
-            if rval is not None:
-                found_offset[0] = int(-rval) if op == '-' else int(rval)
+            right_value = _eval_numeric(right.get('right'))
+            if right_value is not None:
+                found_offset[0] = int(-right_value) if operator == '-' else int(right_value)
 
         simple_traverse(func_node, find_offset)
         return found_offset[0] if found_offset[0] is not None else 0
@@ -350,26 +352,26 @@ class StringRevealer(Transform):
         """Analyze a function node (declaration or expression) as a potential wrapper."""
         func_body = func_node.get('body', {})
         if func_body.get('type') == 'BlockStatement':
-            stmts = func_body.get('body', [])
+            statements = func_body.get('body', [])
         else:
             return None
 
-        if len(stmts) != 1:
+        if len(statements) != 1:
             return None
 
-        ret_stmt = stmts[0]
-        if ret_stmt.get('type') != 'ReturnStatement':
+        return_statement = statements[0]
+        if return_statement.get('type') != 'ReturnStatement':
             return None
 
-        arg = ret_stmt.get('argument')
-        if not arg or arg.get('type') != 'CallExpression':
+        argument = return_statement.get('argument')
+        if not argument or argument.get('type') != 'CallExpression':
             return None
 
-        callee = arg.get('callee')
+        callee = argument.get('callee')
         if not (is_identifier(callee) and callee['name'] == decoder_name):
             return None
 
-        call_args = arg.get('arguments', [])
+        call_args = argument.get('arguments', [])
         if not call_args:
             return None
 
@@ -398,20 +400,20 @@ class StringRevealer(Transform):
 
         if expr.get('type') != 'BinaryExpression':
             return None, None
-        op = expr.get('operator')
-        if op not in ('+', '-'):
+        operator = expr.get('operator')
+        if operator not in ('+', '-'):
             return None, None
 
         left = expr.get('left')
         if not (is_identifier(left) and left['name'] in param_names):
             return None, None
 
-        rval = _eval_numeric(expr.get('right'))
-        if rval is None:
+        right_value = _eval_numeric(expr.get('right'))
+        if right_value is None:
             return None, None
 
         param_idx = param_names.index(left['name'])
-        offset = int(-rval) if op == '-' else int(rval)
+        offset = int(-right_value) if operator == '-' else int(right_value)
         return param_idx, offset
 
     def _remove_decoder_aliases(self, decoder_name, aliases):
@@ -430,9 +432,9 @@ class StringRevealer(Transform):
             decls = node.get('declarations', [])
             i = 0
             while i < len(decls):
-                d = decls[i]
-                name_node = d.get('id')
-                init = d.get('init')
+                declaration = decls[i]
+                name_node = declaration.get('id')
+                init = declaration.get('init')
                 if (
                     is_identifier(name_node)
                     and name_node['name'] in aliases
@@ -445,8 +447,6 @@ class StringRevealer(Transform):
                 else:
                     i += 1
             if not decls:
-                from ..traverser import REMOVE
-
                 return REMOVE
 
         traverse(self.ast, {'enter': enter})
@@ -711,28 +711,28 @@ class StringRevealer(Transform):
                 all_replaced[0] = False
                 return
 
-            idx_val = _eval_numeric(call_args[wrapper.param_index])
-            if idx_val is None and is_string_literal(call_args[wrapper.param_index]):
+            index_value = _eval_numeric(call_args[wrapper.param_index])
+            if index_value is None and is_string_literal(call_args[wrapper.param_index]):
                 try:
                     s = call_args[wrapper.param_index]['value']
-                    idx_val = int(s, 16) if s.startswith('0x') else int(s)
+                    index_value = int(s, 16) if s.startswith('0x') else int(s)
                 except (ValueError, TypeError):
                     pass
-            if idx_val is None:
+            if index_value is None:
                 all_replaced[0] = False
                 return
 
-            effective_idx = int(idx_val) + wrapper.wrapper_offset
+            effective_idx = int(index_value) + wrapper.wrapper_offset
 
             key = None
             if wrapper.key_param_index is not None and wrapper.key_param_index < len(call_args):
-                ka = call_args[wrapper.key_param_index]
-                if is_string_literal(ka):
-                    key = ka['value']
+                key_argument = call_args[wrapper.key_param_index]
+                if is_string_literal(key_argument):
+                    key = key_argument['value']
                 else:
-                    kv = _eval_numeric(ka)
-                    if kv is not None:
-                        key = str(int(kv))
+                    key_value = _eval_numeric(key_argument)
+                    if key_value is not None:
+                        key = str(int(key_value))
 
             try:
                 decoded = (
@@ -798,8 +798,8 @@ class StringRevealer(Transform):
     def _find_array_expression_in_statement(stmt):
         """Find the first ArrayExpression node in a variable declaration or assignment."""
         if stmt.get('type') == 'VariableDeclaration':
-            for d in stmt.get('declarations', []):
-                init = d.get('init')
+            for declaration in stmt.get('declarations', []):
+                init = declaration.get('init')
                 if init and init.get('type') == 'ArrayExpression':
                     return init
         elif stmt.get('type') == 'ExpressionStatement':
@@ -884,11 +884,11 @@ class StringRevealer(Transform):
         for i, stmt in enumerate(body[:3]):
             if stmt.get('type') != 'VariableDeclaration':
                 continue
-            for d in stmt.get('declarations', []):
-                name_node = d.get('id')
+            for declaration in stmt.get('declarations', []):
+                name_node = declaration.get('id')
                 if not is_identifier(name_node):
                     continue
-                init = d.get('init')
+                init = declaration.get('init')
                 if not init or init.get('type') != 'ArrayExpression':
                     continue
                 elements = init.get('elements', [])
@@ -938,15 +938,15 @@ class StringRevealer(Transform):
         for i, stmt in enumerate(body):
             if stmt.get('type') != 'VariableDeclaration':
                 continue
-            for d in stmt.get('declarations', []):
-                name_node = d.get('id')
+            for declaration in stmt.get('declarations', []):
+                name_node = declaration.get('id')
                 if not is_identifier(name_node):
                     continue
-                init = d.get('init')
+                init = declaration.get('init')
                 if not init or init.get('type') != 'FunctionExpression':
                     continue
-                src = generate(init)
-                if array_name not in src:
+                source = generate(init)
+                if array_name not in source:
                     continue
                 offset = self._extract_decoder_offset(init)
                 return name_node['name'], offset, i
@@ -985,8 +985,8 @@ class StringRevealer(Transform):
                 continue
 
             string_array = [e['value'] for e in elements]
-            for ref_node, ref_parent, ref_key, ref_index in binding.references[:]:
-                self._try_replace_array_access(ref_parent, ref_key, string_array)
+            for reference_node, reference_parent, reference_key, ref_index in binding.references[:]:
+                self._try_replace_array_access(reference_parent, reference_key, string_array)
             for child in scope_tree.children:
                 self._process_direct_arrays_in_scope(child, name, string_array)
 
@@ -995,13 +995,11 @@ class StringRevealer(Transform):
         binding = scope.get_binding(name)
         if not binding:
             return
-        for ref_node, ref_parent, ref_key, ref_index in binding.references[:]:
-            self._try_replace_array_access(ref_parent, ref_key, string_array)
+        for reference_node, reference_parent, reference_key, ref_index in binding.references[:]:
+            self._try_replace_array_access(reference_parent, reference_key, string_array)
 
     def _replace_node_in_ast(self, target, replacement):
         """Replace a node in the AST with a replacement."""
-        from ..traverser import find_parent
-
         result = find_parent(self.ast, target)
         if result:
             parent, key, index = result

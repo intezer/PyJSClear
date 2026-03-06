@@ -13,27 +13,27 @@ class DecoderType(Enum):
 _BASE_64_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/='
 
 
-def base64_transform(s):
+def base64_transform(encoded_string):
     """Decode obfuscator.io's custom base64 encoding."""
     # Decode 4 base64 chars into 3 bytes using 6-bit groups.
-    # d accumulates bits; every non-first char in a group yields a byte
+    # bit_buffer accumulates bits; every non-first char in a group yields a byte
     # via right-shift with mask derived from position within the group.
-    a = ''
-    c = 0
-    d = 0
-    for ch in s:
-        e = _BASE_64_ALPHABET.find(ch)
-        if e != -1:
-            d = d * 64 + e if (c % 4) else e
-            if c % 4:
-                a += chr(255 & (d >> ((-2 * c) & 6)))
-            c += 1
+    decoded_chars = ''
+    bit_count = 0
+    bit_buffer = 0
+    for ch in encoded_string:
+        char_index = _BASE_64_ALPHABET.find(ch)
+        if char_index != -1:
+            bit_buffer = bit_buffer * 64 + char_index if (bit_count % 4) else char_index
+            if bit_count % 4:
+                decoded_chars += chr(255 & (bit_buffer >> ((-2 * bit_count) & 6)))
+            bit_count += 1
     # Percent-encode each byte then URI-decode for UTF-8 support
-    encoded = ''.join(f'%{ord(ch):02x}' for ch in a)
+    percent_encoded = ''.join(f'%{ord(ch):02x}' for ch in decoded_chars)
     try:
-        return unquote(encoded)
+        return unquote(percent_encoded)
     except Exception:
-        return a
+        return decoded_chars
 
 
 class StringDecoder:
@@ -66,9 +66,9 @@ class BasicStringDecoder(StringDecoder):
         return DecoderType.BASIC
 
     def get_string(self, index, *args):
-        idx = index + self.index_offset
-        if 0 <= idx < len(self.string_array):
-            return self.string_array[idx]
+        array_index = index + self.index_offset
+        if 0 <= array_index < len(self.string_array):
+            return self.string_array[array_index]
         return None
 
 
@@ -86,10 +86,10 @@ class Base64StringDecoder(StringDecoder):
     def get_string(self, index, *args):
         if index in self._cache:
             return self._cache[index]
-        idx = index + self.index_offset
-        if not (0 <= idx < len(self.string_array)):
+        array_index = index + self.index_offset
+        if not (0 <= array_index < len(self.string_array)):
             return None
-        decoded = base64_transform(self.string_array[idx])
+        decoded = base64_transform(self.string_array[array_index])
         self._cache[index] = decoded
         return decoded
 
@@ -112,30 +112,30 @@ class Rc4StringDecoder(StringDecoder):
         cache_key = (index, key)
         if cache_key in self._cache:
             return self._cache[cache_key]
-        idx = index + self.index_offset
-        if not (0 <= idx < len(self.string_array)):
+        array_index = index + self.index_offset
+        if not (0 <= array_index < len(self.string_array)):
             return None
-        encoded = self.string_array[idx]
+        encoded = self.string_array[array_index]
         decoded = self._rc4_decode(encoded, key)
         self._cache[cache_key] = decoded
         return decoded
 
-    def _rc4_decode(self, s, key):
+    def _rc4_decode(self, encoded_string, key):
         """RC4 decryption with base64 pre-processing."""
-        s = base64_transform(s)
+        encoded_string = base64_transform(encoded_string)
         # KSA
-        S = list(range(256))
+        state_box = list(range(256))
         j = 0
         for i in range(256):
-            j = (j + S[i] + ord(key[i % len(key)])) % 256
-            S[i], S[j] = S[j], S[i]
+            j = (j + state_box[i] + ord(key[i % len(key)])) % 256
+            state_box[i], state_box[j] = state_box[j], state_box[i]
         # PRGA
         i = 0
         j = 0
         decoded = []
-        for y in range(len(s)):
+        for position in range(len(encoded_string)):
             i = (i + 1) % 256
-            j = (j + S[i]) % 256
-            S[i], S[j] = S[j], S[i]
-            decoded.append(chr(ord(s[y]) ^ S[(S[i] + S[j]) % 256]))
+            j = (j + state_box[i]) % 256
+            state_box[i], state_box[j] = state_box[j], state_box[i]
+            decoded.append(chr(ord(encoded_string[position]) ^ state_box[(state_box[i] + state_box[j]) % 256]))
         return ''.join(decoded)

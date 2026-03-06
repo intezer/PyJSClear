@@ -71,29 +71,29 @@ class LogicalToIf(Transform):
 
     def _handle_expression_stmt(self, stmt):
         """Handle ExpressionStatement with logical or conditional."""
-        expr = stmt.get('expression')
-        if not isinstance(expr, dict):
+        expression = stmt.get('expression')
+        if not isinstance(expression, dict):
             return None
-        match expr.get('type'):
+        match expression.get('type'):
             case 'LogicalExpression':
-                return self._logical_to_if(expr)
+                return self._logical_to_if(expression)
             case 'ConditionalExpression':
-                return self._ternary_to_if(expr)
+                return self._ternary_to_if(expression)
         return None
 
     def _handle_return_stmt(self, stmt):
         """Handle ReturnStatement with sequence or logical expressions."""
-        arg = stmt.get('argument')
-        if not isinstance(arg, dict):
+        argument = stmt.get('argument')
+        if not isinstance(argument, dict):
             return None
 
         # return a, b, c → a; b; return c;
-        if arg.get('type') == 'SequenceExpression':
-            return self._split_return_sequence(arg)
+        if argument.get('type') == 'SequenceExpression':
+            return self._split_return_sequence(argument)
 
         # return a || (b(), c) → if (!a) { b(); } return c;
-        if arg.get('type') == 'LogicalExpression':
-            return self._split_return_logical(arg)
+        if argument.get('type') == 'LogicalExpression':
+            return self._split_return_logical(argument)
 
         return None
 
@@ -103,13 +103,13 @@ class LogicalToIf(Transform):
         if len(exprs) <= 1:
             return None
         new_stmts = []
-        for e in exprs[:-1]:
-            if isinstance(e, dict) and e.get('type') == 'LogicalExpression':
-                converted = self._logical_to_if(e)
+        for expression in exprs[:-1]:
+            if isinstance(expression, dict) and expression.get('type') == 'LogicalExpression':
+                converted = self._logical_to_if(expression)
                 if converted:
                     new_stmts.extend(converted)
                     continue
-            new_stmts.append(make_expression_statement(e))
+            new_stmts.append(make_expression_statement(expression))
         new_stmts.append({'type': 'ReturnStatement', 'argument': exprs[-1]})
         return new_stmts
 

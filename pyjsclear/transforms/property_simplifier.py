@@ -15,10 +15,10 @@ class PropertySimplifier(Transform):
                 return
             if not node.get('computed'):
                 return
-            prop = node.get('property')
-            if not is_string_literal(prop):
+            property_node = node.get('property')
+            if not is_string_literal(property_node):
                 return
-            name = prop.get('value', '')
+            name = property_node.get('value', '')
             if not is_valid_identifier(name):
                 return
             # Convert to dot notation
@@ -34,9 +34,9 @@ class PropertySimplifier(Transform):
                 return
             if not node.get('computed'):
                 # Check string literal keys
-                k = node.get('key')
-                if is_string_literal(k) and is_valid_identifier(k.get('value', '')):
-                    node['key'] = {'type': 'Identifier', 'name': k['value']}
+                key_node = node.get('key')
+                if is_string_literal(key_node) and is_valid_identifier(key_node.get('value', '')):
+                    node['key'] = {'type': 'Identifier', 'name': key_node['value']}
                     self.set_changed()
 
         traverse(self.ast, {'enter': enter_obj})

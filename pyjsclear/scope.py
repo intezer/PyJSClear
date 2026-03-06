@@ -70,20 +70,38 @@ def _is_non_reference_identifier(parent, parent_key):
     """Return True if this Identifier usage is not a variable reference."""
     if not parent:
         return False
-    ptype = parent.get('type')
+    parent_type = parent.get('type')
     # Property names in member expressions (non-computed)
-    if ptype == 'MemberExpression' and parent_key == 'property' and not parent.get('computed'):
+    if parent_type == 'MemberExpression' and parent_key == 'property' and not parent.get('computed'):
         return True
     # Property keys in object literals (non-computed)
-    if ptype == 'Property' and parent_key == 'key' and not parent.get('computed'):
+    if parent_type == 'Property' and parent_key == 'key' and not parent.get('computed'):
         return True
     # Function/class names at declaration site
-    if ptype in ('FunctionDeclaration', 'FunctionExpression', 'ClassDeclaration') and parent_key == 'id':
+    if parent_type in ('FunctionDeclaration', 'FunctionExpression', 'ClassDeclaration') and parent_key == 'id':
         return True
     # VariableDeclarator id
-    if ptype == 'VariableDeclarator' and parent_key == 'id':
+    if parent_type == 'VariableDeclarator' and parent_key == 'id':
         return True
     return False
+
+
+def _recurse_into_children(node, child_keys_map, callback):
+    """Walk child nodes, calling callback(child_node) for each dict with 'type'."""
+    node_type = node.get('type')
+    child_keys = child_keys_map.get(node_type)
+    if child_keys is None:
+        child_keys = get_child_keys(node)
+    for key in child_keys:
+        child = node.get(key)
+        if child is None:
+            continue
+        if isinstance(child, list):
+            for item in child:
+                if isinstance(item, dict) and 'type' in item:
+                    callback(item)
+        elif isinstance(child, dict) and 'type' in child:
+            callback(child)
 
 
 def build_scope_tree(ast):
@@ -99,9 +117,9 @@ def build_scope_tree(ast):
 
     def _get_scope_for(node, current_scope):
         """Get or create the scope for a node."""
-        nid = id(node)
-        if nid in node_scope:
-            return node_scope[nid]
+        node_id = id(node)
+        if node_id in node_scope:
+            return node_scope[node_id]
         return current_scope
 
     _child_keys_map = _CHILD_KEYS
@@ -110,12 +128,12 @@ def build_scope_tree(ast):
         """Walk the AST collecting variable declarations into scopes."""
         if not isinstance(node, dict):
             return
-        ntype = node.get('type')
-        if ntype is None:
+        node_type = node.get('type')
+        if node_type is None:
             return
 
         # Create new scope for functions
-        if ntype in (
+        if node_type in (
             'FunctionDeclaration',
             'FunctionExpression',
             'ArrowFunctionExpression',
@@ -125,9 +143,9 @@ def build_scope_tree(ast):
             all_scopes.append(new_scope)
 
             # Function name goes in outer scope (for declarations) or inner (for expressions)
-            if ntype == 'FunctionDeclaration' and node.get('id'):
+            if node_type == 'FunctionDeclaration' and node.get('id'):
                 scope.add_binding(node['id']['name'], node, 'function')
-            elif ntype == 'FunctionExpression' and node.get('id'):
+            elif node_type == 'FunctionExpression' and node.get('id'):
                 new_scope.add_binding(node['id']['name'], node, 'function')
 
             # Params go in function scope
@@ -142,36 +160,36 @@ def build_scope_tree(ast):
             if body:
                 if isinstance(body, dict) and body.get('type') == 'BlockStatement':
                     node_scope[id(body)] = new_scope
-                    for stmt in body.get('body', []):
-                        _collect_declarations(stmt, new_scope)
+                    for statement in body.get('body', []):
+                        _collect_declarations(statement, new_scope)
                 else:
                     _collect_declarations(body, new_scope)
             return
 
         # Variable declarations
-        if ntype == 'VariableDeclaration':
+        if node_type == 'VariableDeclaration':
             kind = node.get('kind', 'var')
             # var is function-scoped, let/const are block-scoped
             target_scope = _nearest_function_scope(scope) or scope if kind == 'var' else scope
-            for decl in node.get('declarations', []):
-                decl_id = decl.get('id')
-                if decl_id and decl_id.get('type') == 'Identifier':
-                    target_scope.add_binding(decl_id['name'], decl, kind)
+            for declaration in node.get('declarations', []):
+                declaration_id = declaration.get('id')
+                if declaration_id and declaration_id.get('type') == 'Identifier':
+                    target_scope.add_binding(declaration_id['name'], declaration, kind)
                 # Handle destructuring patterns
-                _collect_pattern_names(decl_id, target_scope, kind, decl)
+                _collect_pattern_names(declaration_id, target_scope, kind, declaration)
             return
 
         # Block scopes (for, if, etc. with block statements)
-        if ntype == 'BlockStatement' and id(node) not in node_scope:
+        if node_type == 'BlockStatement' and id(node) not in node_scope:
             # Only create block scope if parent is not a function (handled above)
             new_scope = Scope(scope, node)
             node_scope[id(node)] = new_scope
             all_scopes.append(new_scope)
-            for stmt in node.get('body', []):
-                _collect_declarations(stmt, new_scope)
+            for statement in node.get('body', []):
+                _collect_declarations(statement, new_scope)
             return
 
-        if ntype == 'ForStatement':
+        if node_type == 'ForStatement':
             new_scope = Scope(scope, node)
             node_scope[id(node)] = new_scope
             all_scopes.append(new_scope)
@@ -182,50 +200,38 @@ def build_scope_tree(ast):
             return
 
         # Recurse into children
-        ckeys = _child_keys_map.get(ntype)
-        if ckeys is None:
-            ckeys = get_child_keys(node)
-        for key in ckeys:
-            child = node.get(key)
-            if child is None:
-                continue
-            if isinstance(child, list):
-                for item in child:
-                    if isinstance(item, dict) and 'type' in item:
-                        _collect_declarations(item, scope)
-            elif isinstance(child, dict) and 'type' in child:
-                _collect_declarations(child, scope)
+        _recurse_into_children(node, _child_keys_map, lambda child_node: _collect_declarations(child_node, scope))
 
-    def _collect_pattern_names(pattern, scope, kind, decl):
+    def _collect_pattern_names(pattern, scope, kind, declaration):
         """Collect binding names from destructuring patterns."""
         if not isinstance(pattern, dict):
             return
         match pattern.get('type', ''):
             case 'ArrayPattern':
-                for elem in pattern.get('elements', []):
-                    if not elem:
+                for element in pattern.get('elements', []):
+                    if not element:
                         continue
-                    if elem.get('type') == 'Identifier':
-                        scope.add_binding(elem['name'], decl, kind)
+                    if element.get('type') == 'Identifier':
+                        scope.add_binding(element['name'], declaration, kind)
                     else:
-                        _collect_pattern_names(elem, scope, kind, decl)
+                        _collect_pattern_names(element, scope, kind, declaration)
             case 'ObjectPattern':
-                for prop in pattern.get('properties', []):
-                    val = prop.get('value', prop.get('argument'))
-                    if not val:
+                for property_node in pattern.get('properties', []):
+                    value_node = property_node.get('value', property_node.get('argument'))
+                    if not value_node:
                         continue
-                    if val.get('type') == 'Identifier':
-                        scope.add_binding(val['name'], decl, kind)
+                    if value_node.get('type') == 'Identifier':
+                        scope.add_binding(value_node['name'], declaration, kind)
                     else:
-                        _collect_pattern_names(val, scope, kind, decl)
+                        _collect_pattern_names(value_node, scope, kind, declaration)
             case 'RestElement':
-                arg = pattern.get('argument')
-                if arg and arg.get('type') == 'Identifier':
-                    scope.add_binding(arg['name'], decl, kind)
+                argument_node = pattern.get('argument')
+                if argument_node and argument_node.get('type') == 'Identifier':
+                    scope.add_binding(argument_node['name'], declaration, kind)
             case 'AssignmentPattern':
                 left = pattern.get('left')
                 if left and left.get('type') == 'Identifier':
-                    scope.add_binding(left['name'], decl, kind)
+                    scope.add_binding(left['name'], declaration, kind)
 
     _collect_declarations(ast, root_scope)
 
@@ -233,14 +239,14 @@ def build_scope_tree(ast):
     def _collect_references(node, scope, parent=None, parent_key=None, parent_index=None):
         if not isinstance(node, dict):
             return
-        ntype = node.get('type')
-        if ntype is None:
+        node_type = node.get('type')
+        if node_type is None:
             return
 
         # Look up scope for this node
         scope = _get_scope_for(node, scope)
 
-        if ntype == 'Identifier':
+        if node_type == 'Identifier':
             name = node.get('name', '')
             if _is_non_reference_identifier(parent, parent_key):
                 return
@@ -256,10 +262,10 @@ def build_scope_tree(ast):
             return
 
         # Recurse
-        ckeys = _child_keys_map.get(ntype)
-        if ckeys is None:
-            ckeys = get_child_keys(node)
-        for key in ckeys:
+        child_keys = _child_keys_map.get(node_type)
+        if child_keys is None:
+            child_keys = get_child_keys(node)
+        for key in child_keys:
             child = node.get(key)
             if child is None:
                 continue

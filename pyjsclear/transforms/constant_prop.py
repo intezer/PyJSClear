@@ -1,6 +1,7 @@
 """Constant propagation — replace references to constant variables with their literal values."""
 
 from ..scope import build_scope_tree
+from ..traverser import REMOVE
 from ..traverser import SKIP
 from ..traverser import traverse
 from ..utils.ast_helpers import deep_copy
@@ -12,12 +13,12 @@ def _should_skip_reference(ref_parent, ref_key):
     """Return True if this reference should not be replaced with its literal value."""
     if not ref_parent:
         return True
-    ptype = ref_parent.get('type')
-    if ptype == 'AssignmentExpression' and ref_key == 'left':
+    parent_type = ref_parent.get('type')
+    if parent_type == 'AssignmentExpression' and ref_key == 'left':
         return True
-    if ptype == 'UpdateExpression':
+    if parent_type == 'UpdateExpression':
         return True
-    if ptype == 'VariableDeclarator' and ref_key == 'id':
+    if parent_type == 'VariableDeclarator' and ref_key == 'id':
         return True
     return False
 
@@ -90,14 +91,12 @@ class ConstantProp(Transform):
             if node.get('type') != 'VariableDeclaration':
                 return
             decls = node.get('declarations', [])
-            for i, d in enumerate(decls):
-                if d is not declarator_node:
+            for i, declaration in enumerate(decls):
+                if declaration is not declarator_node:
                     continue
                 decls.pop(i)
                 self.set_changed()
                 if not decls:
-                    from ..traverser import REMOVE
-
                     return REMOVE
                 return SKIP
 
