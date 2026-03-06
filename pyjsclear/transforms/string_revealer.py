@@ -79,6 +79,72 @@ def _apply_arith(operator, left, right):
             return None
 
 
+def _collect_object_literals(ast):
+    """Collect simple object literal assignments: var o = {a: 0x1b1, b: 'str'}.
+
+    Returns a dict mapping (object_name, property_name) -> value (int or str).
+    """
+    result = {}
+
+    def visitor(node, parent):
+        if node.get('type') != 'VariableDeclarator':
+            return
+        name_node = node.get('id')
+        init = node.get('init')
+        if not is_identifier(name_node) or not init or init.get('type') != 'ObjectExpression':
+            return
+        object_name = name_node['name']
+        for prop in init.get('properties', []):
+            if prop.get('type') != 'Property':
+                continue
+            key = prop.get('key')
+            value = prop.get('value')
+            if not key or not value:
+                continue
+            if is_identifier(key):
+                property_name = key.get('name')
+            elif is_string_literal(key):
+                property_name = key.get('value')
+            else:
+                continue
+            numeric_value = _eval_numeric(value)
+            if numeric_value is not None:
+                result[(object_name, property_name)] = numeric_value
+            elif is_string_literal(value):
+                result[(object_name, property_name)] = value['value']
+
+    simple_traverse(ast, visitor)
+    return result
+
+
+def _resolve_arg_value(arg, object_literals):
+    """Try to resolve a call argument to a numeric value.
+
+    Handles numeric literals, string hex literals, and member expressions
+    referencing known object literal properties.
+    """
+    numeric_value = _eval_numeric(arg)
+    if numeric_value is not None:
+        return numeric_value
+
+    if is_string_literal(arg):
+        try:
+            string_value = arg['value']
+            return int(string_value, 16) if string_value.startswith('0x') else int(string_value)
+        except (ValueError, TypeError):
+            pass
+
+    if arg.get('type') == 'MemberExpression' and not arg.get('computed'):
+        object_node = arg.get('object')
+        property_node = arg.get('property')
+        if is_identifier(object_node) and is_identifier(property_node):
+            looked_up = object_literals.get((object_node['name'], property_node['name']))
+            if isinstance(looked_up, (int, float)):
+                return looked_up
+
+    return None
+
+
 class WrapperInfo:
     """Info about a wrapper function that calls the decoder."""
 
@@ -166,11 +232,14 @@ class StringRevealer(Transform):
         if rotation_idx is not None:
             self._update_ast_array(body[array_func_idx], string_array)
 
+        # Collect object literals for member expression resolution
+        obj_literals = _collect_object_literals(self.ast)
+
         # Step 6: Replace all wrapper calls with decoded strings
-        all_replaced = self._replace_all_wrapper_calls(wrappers, decoder)
+        all_replaced = self._replace_all_wrapper_calls(wrappers, decoder, obj_literals)
 
         # Step 7: Replace direct decoder calls (including aliases)
-        self._replace_direct_decoder_calls(decoder_name, decoder, decoder_aliases)
+        self._replace_direct_decoder_calls(decoder_name, decoder, decoder_aliases, obj_literals)
 
         # Step 8: Remove decoder aliases (const x = decoderName)
         self._remove_decoder_aliases(decoder_name, decoder_aliases)
@@ -203,7 +272,7 @@ class StringRevealer(Transform):
                 continue
 
             string_array = self._extract_array_from_statement(func_body[0])
-            if string_array is not None and len(string_array) >= 5:
+            if string_array is not None and len(string_array) >= 2:
                 return func_name, string_array, i
 
         return None, None, None
@@ -688,11 +757,12 @@ class StringRevealer(Transform):
 
     # ---- Replacement ----
 
-    def _replace_all_wrapper_calls(self, wrappers, decoder):
+    def _replace_all_wrapper_calls(self, wrappers, decoder, obj_literals=None):
         """Replace all calls to wrapper functions with decoded string literals."""
         if not wrappers:
             return True
         all_replaced = [True]
+        _obj_literals = obj_literals or {}
 
         def enter(node, parent, key, index):
             if node.get('type') != 'CallExpression':
@@ -711,13 +781,7 @@ class StringRevealer(Transform):
                 all_replaced[0] = False
                 return
 
-            index_value = _eval_numeric(call_args[wrapper.param_index])
-            if index_value is None and is_string_literal(call_args[wrapper.param_index]):
-                try:
-                    s = call_args[wrapper.param_index]['value']
-                    index_value = int(s, 16) if s.startswith('0x') else int(s)
-                except (ValueError, TypeError):
-                    pass
+            index_value = _resolve_arg_value(call_args[wrapper.param_index], _obj_literals)
             if index_value is None:
                 all_replaced[0] = False
                 return
@@ -750,11 +814,12 @@ class StringRevealer(Transform):
         traverse(self.ast, {'enter': enter})
         return all_replaced[0]
 
-    def _replace_direct_decoder_calls(self, decoder_name, decoder, decoder_aliases=None):
+    def _replace_direct_decoder_calls(self, decoder_name, decoder, decoder_aliases=None, obj_literals=None):
         """Replace direct calls to the decoder function (and its aliases) with literals."""
         names = {decoder_name}
         if decoder_aliases:
             names.update(decoder_aliases)
+        _obj_literals = obj_literals or {}
 
         def enter(node, parent, key, index):
             if node.get('type') != 'CallExpression':
@@ -766,15 +831,7 @@ class StringRevealer(Transform):
             if not args:
                 return
 
-            first_val = _eval_numeric(args[0])
-            # Also handle string hex arguments like '0x0', '0xa' (JS coerces to number)
-            if first_val is None and is_string_literal(args[0]):
-                try:
-                    first_val = (
-                        int(args[0]['value'], 16) if args[0]['value'].startswith('0x') else int(args[0]['value'])
-                    )
-                except (ValueError, TypeError):
-                    pass
+            first_val = _resolve_arg_value(args[0], _obj_literals)
             if first_val is None:
                 return
 
@@ -862,12 +919,13 @@ class StringRevealer(Transform):
         decoder = BasicStringDecoder(string_array, decoder_offset)
         wrappers = self._find_all_wrappers(decoder_name)
         decoder_aliases = self._find_decoder_aliases(decoder_name)
+        object_literals = _collect_object_literals(self.ast)
 
         # Step 6: Replace wrapper calls
-        self._replace_all_wrapper_calls(wrappers, decoder)
+        self._replace_all_wrapper_calls(wrappers, decoder, object_literals)
 
         # Step 7: Replace direct decoder calls (including aliases)
-        self._replace_direct_decoder_calls(decoder_name, decoder, decoder_aliases)
+        self._replace_direct_decoder_calls(decoder_name, decoder, decoder_aliases, object_literals)
 
         # Step 8: Remove aliases
         self._remove_decoder_aliases(decoder_name, decoder_aliases)

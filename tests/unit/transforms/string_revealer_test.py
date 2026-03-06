@@ -246,9 +246,8 @@ class TestNoStringArrays:
 class TestObfuscatorIoShortArray:
     """Short string arrays (< 5 elements) should not trigger obfuscator.io strategy."""
 
-    def test_short_array_function_not_detected(self):
-        # This mimics an obfuscator.io function pattern but with < 5 strings.
-        # The array function detection requires >= 5 strings.
+    def test_short_array_function_decoded(self):
+        # Arrays with >= 2 elements in obfuscator.io function pattern are decoded.
         js = """
         function _0xArr() {
             var a = ["s1", "s2", "s3"];
@@ -263,5 +262,5 @@ class TestObfuscatorIoShortArray:
         console.log(_0xDec(0));
         """
         code, changed = roundtrip(js, StringRevealer)
-        # Should NOT have decoded since array has < 5 elements
-        assert '_0xDec' in code or changed is False
+        assert changed is True
+        assert '"s1"' in code
