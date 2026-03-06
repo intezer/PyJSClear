@@ -58,10 +58,13 @@ def make_literal(value, raw=None):
 
     match value:
         case str():
-            raw = repr(value).replace("'", '"')
-            # Ensure double-quote wrapping
-            if not raw.startswith('"'):
-                raw = '"' + raw[1:-1].replace('"', '\\"') + '"'
+            escaped = value.replace('\\', '\\\\')
+            escaped = escaped.replace('"', '\\"')
+            escaped = escaped.replace('\n', '\\n')
+            escaped = escaped.replace('\r', '\\r')
+            escaped = escaped.replace('\t', '\\t')
+            escaped = escaped.replace('\0', '\\0')
+            raw = f'"{escaped}"'
         case bool():
             raw = 'true' if value else 'false'
         case int() | float():

@@ -171,7 +171,7 @@ def build_scope_tree(ast):
         if node_type == 'VariableDeclaration':
             kind = node.get('kind', 'var')
             # var is function-scoped, let/const are block-scoped
-            target_scope = _nearest_function_scope(scope) or scope if kind == 'var' else scope
+            target_scope = (_nearest_function_scope(scope) or scope) if kind == 'var' else scope
             for declaration in node.get('declarations', []):
                 declaration_id = declaration.get('id')
                 if declaration_id and declaration_id.get('type') == 'Identifier':

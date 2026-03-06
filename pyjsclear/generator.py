@@ -435,9 +435,6 @@ def _gen_object_property(property_node, indent):
         return key
 
     value = generate(property_node['value'], indent)
-    # Quote non-computed identifier keys (Babel style)
-    if property_node['key'].get('type') == 'Identifier' and not property_node.get('computed'):
-        key = f"'{property_node['key']['name']}'"
     return f'{key}: {value}'
 
 
