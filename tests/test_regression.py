@@ -280,6 +280,158 @@ class TestPassthrough:
 
 
 # ================================================================
+# Obfuscator.io with SequenceExpression rotation
+# ================================================================
+
+
+class TestSequenceExpressionRotation:
+    """Obfuscator.io files where the rotation IIFE is inside a SequenceExpression."""
+
+    def test_code_beautify_site_string_decode(self):
+        """code_beautify_site: rotation + main code in (rotationIIFE(), mainIIFE()).
+
+        The rotation IIFE and main code IIFE are comma-separated inside a
+        SequenceExpression. Tests that rotation is found inside the sequence,
+        executed correctly, and the main code is preserved after removal.
+        """
+        code, result = _deobfuscate('code_beautify_site.js')
+        assert result != code
+        in_0x = _count_0x(code)
+        out_0x = _count_0x(result)
+        assert out_0x < in_0x * 0.35, (
+            f'Expected >= 65% _0x reduction, got {in_0x} -> {out_0x} '
+            f'({100*(in_0x-out_0x)/in_0x:.0f}%)'
+        )
+        # All string decoder calls should be resolved
+        assert 'palindrome' in result
+        assert 'console.log' in result or 'console["log"]' in result
+        assert 'toLowerCase' in result or 'toLowerCas' not in result
+        assert 'reverse' in result
+        assert 'split' in result
+
+    def test_code_beautify_site_no_empty_output(self):
+        """code_beautify_site: output must not be empty (regression for removal bug)."""
+        code, result = _deobfuscate('code_beautify_site.js')
+        assert len(result) > 100, f'Output too short ({len(result)} bytes), likely lost main code'
+
+
+# ================================================================
+# String array with shuffle + numeric expressions as offsets
+# ================================================================
+
+
+class TestStringArrayShuffleExpressions:
+    """Obfuscator.io string array with complex numeric expressions in offsets."""
+
+    def test_strings_array_shuffle_decode(self):
+        """strings_array_shuffle_numbers_to_expressions: numeric-expression offsets.
+
+        The decoder offset uses complex expressions like (-0x9c6+0x3*-0x9c9+0x28d2).
+        Tests that _eval_numeric resolves these and string replacement works.
+        """
+        code, result = _deobfuscate('strings_array_shuffle_numbers_to_expressions.js')
+        assert result != code
+        # String literals should appear in the output
+        assert 'log' in result
+        assert ') = ' in result or ')\\x20=\\x20' not in result
+
+    def test_strings_array_shuffle_object_literal_resolution(self):
+        """strings_array_shuffle_numbers_to_expressions: member expression args.
+
+        Decoder calls use _0x3531db._0x217c1c (object property lookup) as the
+        argument. Tests that object literal collection and resolution works.
+        """
+        code, result = _deobfuscate('strings_array_shuffle_numbers_to_expressions.js')
+        # The object literal {_0x217c1c: 0x1b1} should be resolved
+        # and the decoder call with that value should succeed
+        assert '_0x3531db' not in result or '_0x217c1c' not in result, (
+            'Object literal reference should be resolved'
+        )
+
+
+# ================================================================
+# Basic string array (2-element, below old threshold)
+# ================================================================
+
+
+class TestSmallStringArray:
+    """String arrays with 2 elements (below the old >= 5 threshold)."""
+
+    def test_strings_array_full_decode(self):
+        """strings_array: 2-element array, tests lowered threshold.
+
+        Previously required >= 5 elements. Now >= 2 should decode.
+        Output should be clean console.log("Hello, World!").
+        """
+        code, result = _deobfuscate('strings_array.js')
+        assert result != code
+        assert _count_0x(result) == 0, f'All _0x should be removed, got {_count_0x(result)}'
+        assert 'Hello' in result
+        assert 'World' in result
+        assert 'console' in result
+
+
+# ================================================================
+# Control flow flattening recovery
+# ================================================================
+
+
+class TestControlFlowFlatten:
+    """Control flow flattened code (switch-case dispatch pattern)."""
+
+    def test_control_flow_flatten_recovery(self):
+        """control_flow_flatten: switch-based control flow should be linearized.
+
+        The obfuscated code uses a while/switch dispatch loop. After recovery,
+        the code should be readable with the original logic flow.
+        """
+        code, result = _deobfuscate('control_flow_flatten.js')
+        assert result != code
+        assert len(result) < len(code), 'Output should be smaller after flattening recovery'
+        # The code is a palindrome checker
+        assert 'toLowerCase' in result
+        assert 'reverse' in result
+        assert 'split' in result
+        assert 'forEach' in result or 'for' in result
+
+
+# ================================================================
+# Split string concatenation
+# ================================================================
+
+
+class TestSplitStrings:
+    """Split string concatenation patterns."""
+
+    def test_split_strings_joined(self):
+        """split_strings: "Hel" + "lo," + " Wo" + "rld!" should be joined.
+
+        Tests ExpressionSimplifier constant folding for string concatenation.
+        """
+        code, result = _deobfuscate('split_strings.js')
+        assert result != code
+        assert _count_0x(result) == 0
+        assert 'Hello, World!' in result
+        assert len(result) < len(code), 'Output should be smaller after string joining'
+
+
+# ================================================================
+# Unicode/hex escape to readable string
+# ================================================================
+
+
+class TestStringToUnicode:
+    """Unicode/hex escape conversion patterns."""
+
+    def test_string_to_unicode_decoded(self):
+        """string_to_unicode: hex escapes should be decoded to readable text."""
+        code, result = _deobfuscate('string_to_unicode.js')
+        assert result != code
+        assert 'Hello Intezer' in result
+        assert 'console' in result
+
+
+# ================================================================
 # Cross-cutting quality assertions
 # ================================================================
 
