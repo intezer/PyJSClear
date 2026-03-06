@@ -14,8 +14,11 @@ into a single Python library with no Node.js dependency.
 ## Installation
 
 ```bash
-pip install esprima2      # only runtime dependency
-pip install -e .          # install PyJSClear
+pip install -r requirements.txt   # install runtime dependencies
+pip install -e .                  # install PyJSClear
+
+# For development/testing
+pip install -r test-requirements.txt
 ```
 
 ## Usage
@@ -58,7 +61,7 @@ are made (up to 50 iterations by default):
 
 | # | Transform | Description |
 |---|-----------|-------------|
-| 1 | **StringRevealer** | Decode obfuscator.io string arrays (basic, base64, RC4), including rotation IIFEs and wrapper functions |
+| 1 | **StringRevealer** | Decode obfuscator.io string arrays (basic, base64, RC4), including rotation IIFEs, wrapper functions, multiple decoders per file, and SequenceExpression-wrapped rotation patterns |
 | 2 | **HexEscapes** | Normalize `\xHH`/`\uHHHH` escape sequences in string literal AST nodes |
 | 3 | **UnusedVariableRemover** | Remove variables with zero references |
 | 4 | **ConstantProp** | Propagate constant literals to all reference sites |
@@ -83,6 +86,12 @@ are made (up to 50 iterations by default):
   source. Transform exceptions are caught per-transform and skipped.
 
 ## Testing
+
+```bash
+pytest tests/                           # all tests
+pytest tests/test_regression.py         # regression suite (35 tests across 25 samples)
+pytest tests/ -n auto                   # parallel execution (requires pytest-xdist)
+```
 
 Validated against six datasets totalling 47,836 files (full datasets, no sampling):
 
@@ -112,7 +121,9 @@ Built on [esprima2](https://github.com/s0md3v/esprima2) (ESTree-compatible JS pa
 - Large files (>100KB) with deep obfuscation can be slow due to the
   multi-pass architecture. Consider using `max_iterations` to limit passes.
 - Not all obfuscator.io configurations are handled — some advanced string
-  encoding patterns may not be fully decoded.
+  encoding patterns may not be fully decoded. Supported encodings: basic
+  (index lookup), base64, RC4, and multi-decoder (multiple encoding types
+  sharing one string array).
 
 ## License
 

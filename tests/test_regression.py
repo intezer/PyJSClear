@@ -432,6 +432,91 @@ class TestStringToUnicode:
 
 
 # ================================================================
+# Base64 string encoding
+# ================================================================
+
+
+class TestBase64Strings:
+    """Obfuscator.io base64 string encoding pattern."""
+
+    def test_base64_full_decode(self):
+        """base64_strings: all strings should be decoded from base64 encoding."""
+        code, result = _deobfuscate('base64_strings.js')
+        assert result != code
+        assert _count_0x(result) == 0, f'All _0x should be removed, got {_count_0x(result)}'
+        for s in ['split', 'reverse', 'join', 'replace', 'radar', 'hello', 'level', 'world', 'log', 'palindrome']:
+            assert s in result, f'Expected decoded string {s!r} in output'
+
+    def test_base64_clean_output(self):
+        """base64_strings: output should be a clean palindrome checker."""
+        code, result = _deobfuscate('base64_strings.js')
+        assert len(result) < 300, f'Expected compact output, got {len(result)} chars'
+        assert 'forEach' in result
+
+
+# ================================================================
+# RC4 string encoding
+# ================================================================
+
+
+class TestRc4Strings:
+    """Obfuscator.io RC4 string encoding pattern."""
+
+    def test_rc4_full_decode(self):
+        """rc4_strings: all strings should be decoded from RC4 encoding."""
+        code, result = _deobfuscate('rc4_strings.js')
+        assert result != code
+        assert _count_0x(result) == 0, f'All _0x should be removed, got {_count_0x(result)}'
+        for s in ['split', 'reverse', 'join', 'replace', 'radar', 'hello', 'level', 'world', 'log', 'palindrome']:
+            assert s in result, f'Expected decoded string {s!r} in output'
+
+    def test_rc4_clean_output(self):
+        """rc4_strings: output should be a clean palindrome checker."""
+        code, result = _deobfuscate('rc4_strings.js')
+        assert len(result) < 300, f'Expected compact output, got {len(result)} chars'
+
+
+# ================================================================
+# Hex index string array
+# ================================================================
+
+
+class TestStringHexIndex:
+    """String array accessed via hex index literals (e.g. arr[0x0])."""
+
+    def test_hex_index_full_decode(self):
+        """string_hex_index: hex indices should resolve to correct strings."""
+        code, result = _deobfuscate('string_hex_index.js')
+        assert result != code
+        assert _count_0x(result) == 0, f'All _0x should be removed, got {_count_0x(result)}'
+        for s in ['radar', 'hello', 'level', 'world', 'palindrome']:
+            assert s in result, f'Expected decoded string {s!r} in output'
+
+
+# ================================================================
+# Multiple decoders (base64 + RC4 sharing one array)
+# ================================================================
+
+
+class TestMultipleDecoders:
+    """Obfuscator.io pattern with two decoder functions sharing one string array."""
+
+    def test_multiple_decoders_full_decode(self):
+        """string_multiple: dual base64+RC4 decoders should both resolve."""
+        code, result = _deobfuscate('string_multiple.js')
+        assert result != code
+        assert _count_0x(result) == 0, f'All _0x should be removed, got {_count_0x(result)}'
+        for s in ['split', 'reverse', 'join', 'replace', 'radar', 'hello', 'level', 'world', 'log', 'palindrome']:
+            assert s in result, f'Expected decoded string {s!r} in output'
+
+    def test_multiple_decoders_clean_output(self):
+        """string_multiple: output should be compact after both decoders resolve."""
+        code, result = _deobfuscate('string_multiple.js')
+        assert len(result) < 300, f'Expected compact output, got {len(result)} chars'
+        assert 'forEach' in result
+
+
+# ================================================================
 # Cross-cutting quality assertions
 # ================================================================
 
