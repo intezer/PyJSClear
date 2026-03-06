@@ -5,10 +5,12 @@ Detects patterns like:
   _proxy(x, y)  ->  x + y
 """
 
-from ..scope import build_scope_tree
-from ..traverser import simple_traverse, traverse
-from ..utils.ast_helpers import deep_copy, is_identifier
 from .base import Transform
+from ..scope import build_scope_tree
+from ..traverser import traverse
+from ..utils.ast_helpers import deep_copy
+from ..utils.ast_helpers import is_identifier
+from ..utils.ast_helpers import replace_identifiers
 
 
 class ProxyFunctionInliner(Transform):
@@ -212,45 +214,5 @@ class ProxyFunctionInliner(Transform):
                 else:
                     param_map[p['name']] = {'type': 'Identifier', 'name': 'undefined'}
 
-        # Replace parameter references in the expression
-        self._replace_params(expr, param_map)
+        replace_identifiers(expr, param_map)
         return expr
-
-    def _replace_params(self, node, param_map):
-        """Replace parameter identifiers with argument expressions."""
-        if not isinstance(node, dict) or 'type' not in node:
-            return
-        from ..utils.ast_helpers import get_child_keys
-
-        for key in get_child_keys(node):
-            child = node.get(key)
-            if child is None:
-                continue
-            if isinstance(child, list):
-                for i, item in enumerate(child):
-                    if isinstance(item, dict) and item.get('type') == 'Identifier':
-                        name = item.get('name', '')
-                        # Don't replace property names in non-computed member expressions
-                        if (
-                            key == 'property'
-                            and node.get('type') == 'MemberExpression'
-                            and not node.get('computed')
-                        ):
-                            continue
-                        if name in param_map:
-                            child[i] = deep_copy(param_map[name])
-                    elif isinstance(item, dict) and 'type' in item:
-                        self._replace_params(item, param_map)
-            elif isinstance(child, dict):
-                if child.get('type') == 'Identifier':
-                    name = child.get('name', '')
-                    if (
-                        key == 'property'
-                        and node.get('type') == 'MemberExpression'
-                        and not node.get('computed')
-                    ):
-                        continue
-                    if name in param_map:
-                        node[key] = deep_copy(param_map[name])
-                elif 'type' in child:
-                    self._replace_params(child, param_map)

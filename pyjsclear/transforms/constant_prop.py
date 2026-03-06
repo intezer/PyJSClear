@@ -1,11 +1,11 @@
 """Constant propagation — replace references to constant variables with their literal values."""
 
-import copy
-
-from ..scope import build_scope_tree
-from ..traverser import SKIP, traverse
-from ..utils.ast_helpers import deep_copy, is_identifier, is_literal
 from .base import Transform
+from ..scope import build_scope_tree
+from ..traverser import SKIP
+from ..traverser import traverse
+from ..utils.ast_helpers import deep_copy
+from ..utils.ast_helpers import is_literal
 
 
 class ConstantProp(Transform):

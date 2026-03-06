@@ -1,37 +1,36 @@
 """Remove unreachable if/ternary branches based on literal tests."""
 
-from ..traverser import REMOVE, traverse
 from .base import Transform
+from ..traverser import REMOVE
+from ..traverser import traverse
 
 
 def _is_truthy_literal(node):
-    """Check if node is a literal that is truthy in JS."""
+    """Check if node is a literal that is truthy in JS. Returns None if unknown."""
     if not isinstance(node, dict):
         return None
-    ntype = node.get('type', '')
-    if ntype == 'Literal':
-        val = node.get('value')
-        if val is None:
-            return False  # null is falsy
-        if isinstance(val, bool):
-            return val
-        if isinstance(val, (int, float)):
-            return val != 0
-        if isinstance(val, str):
-            return len(val) > 0
-        return True
-    # !0 = true, !1 = false, !"" = true, ![] = false
-    if ntype == 'UnaryExpression' and node.get('operator') == '!':
-        arg = node.get('argument')
-        inner = _is_truthy_literal(arg)
-        if inner is not None:
-            return not inner
-    # [] is truthy
-    if ntype == 'ArrayExpression' and len(node.get('elements', [])) == 0:
-        return True
-    # {} is truthy
-    if ntype == 'ObjectExpression' and len(node.get('properties', [])) == 0:
-        return True
+    match node.get('type', ''):
+        case 'Literal':
+            val = node.get('value')
+            if val is None:
+                return False  # null is falsy
+            match val:
+                case bool():
+                    return val
+                case int() | float():
+                    return val != 0
+                case str():
+                    return len(val) > 0
+                case _:
+                    return True
+        case 'UnaryExpression' if node.get('operator') == '!':
+            inner = _is_truthy_literal(node.get('argument'))
+            if inner is not None:
+                return not inner
+        case 'ArrayExpression' if len(node.get('elements', [])) == 0:
+            return True  # [] is truthy
+        case 'ObjectExpression' if len(node.get('properties', [])) == 0:
+            return True  # {} is truthy
     return None
 
 

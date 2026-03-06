@@ -1,6 +1,7 @@
 """ESTree AST traversal with visitor pattern."""
 
-from .utils.ast_helpers import _CHILD_KEYS, get_child_keys
+from .utils.ast_helpers import _CHILD_KEYS
+from .utils.ast_helpers import get_child_keys
 
 # Sentinel to signal node removal
 REMOVE = object()

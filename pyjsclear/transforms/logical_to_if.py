@@ -8,8 +8,19 @@ Converts:
   return await x(), y  →  await x(); return y;
 """
 
-from ..utils.ast_helpers import make_block_statement, make_expression_statement
 from .base import Transform
+from ..utils.ast_helpers import make_block_statement
+from ..utils.ast_helpers import make_expression_statement
+
+
+def _negate(expr):
+    """Wrap an expression in a logical NOT."""
+    return {
+        'type': 'UnaryExpression',
+        'operator': '!',
+        'prefix': True,
+        'argument': expr,
+    }
 
 
 class LogicalToIf(Transform):
@@ -40,113 +51,103 @@ class LogicalToIf(Transform):
                 i += 1
                 continue
 
-            # ExpressionStatement with LogicalExpression or ConditionalExpression
-            if stmt.get('type') == 'ExpressionStatement':
-                expr = stmt.get('expression')
-                if isinstance(expr, dict):
-                    if expr.get('type') == 'LogicalExpression':
-                        replacement = self._logical_to_if(expr)
-                        if replacement:
-                            stmts[i : i + 1] = replacement
-                            self.set_changed()
-                            i += len(replacement)
-                            continue
-                    elif expr.get('type') == 'ConditionalExpression':
-                        replacement = self._ternary_to_if(expr)
-                        if replacement:
-                            stmts[i : i + 1] = replacement
-                            self.set_changed()
-                            i += len(replacement)
-                            continue
-
-            # ReturnStatement with SequenceExpression: return a, b, c → a; b; return c;
-            if stmt.get('type') == 'ReturnStatement':
-                arg = stmt.get('argument')
-                if isinstance(arg, dict) and arg.get('type') == 'SequenceExpression':
-                    exprs = arg.get('expressions', [])
-                    if len(exprs) > 1:
-                        new_stmts = []
-                        for e in exprs[:-1]:
-                            # If sub-expression is a logical, convert to if
-                            if (
-                                isinstance(e, dict)
-                                and e.get('type') == 'LogicalExpression'
-                            ):
-                                converted = self._logical_to_if(e)
-                                if converted:
-                                    new_stmts.extend(converted)
-                                else:
-                                    new_stmts.append(make_expression_statement(e))
-                            else:
-                                new_stmts.append(make_expression_statement(e))
-                        # Last expression becomes the return value
-                        last = exprs[-1]
-                        ret = {'type': 'ReturnStatement', 'argument': last}
-                        new_stmts.append(ret)
-                        stmts[i : i + 1] = new_stmts
-                        self.set_changed()
-                        i += len(new_stmts)
-                        continue
-
-                # ReturnStatement with logical: return a || b → if (!a) { } return b;
-                # (Only when the right side has side effects — sequence expressions)
-                if isinstance(arg, dict) and arg.get('type') == 'LogicalExpression':
-                    right = arg.get('right')
-                    if (
-                        isinstance(right, dict)
-                        and right.get('type') == 'SequenceExpression'
-                    ):
-                        exprs = right.get('expressions', [])
-                        if len(exprs) > 1:
-                            op = arg.get('operator')
-                            test = arg.get('left')
-                            if op == '||':
-                                test = {
-                                    'type': 'UnaryExpression',
-                                    'operator': '!',
-                                    'prefix': True,
-                                    'argument': test,
-                                }
-                            # elif op == '&&': test stays as-is
-
-                            body_stmts = [
-                                make_expression_statement(e) for e in exprs[:-1]
-                            ]
-                            if_stmt = {
-                                'type': 'IfStatement',
-                                'test': test,
-                                'consequent': make_block_statement(body_stmts),
-                                'alternate': None,
-                            }
-                            ret = {'type': 'ReturnStatement', 'argument': exprs[-1]}
-                            stmts[i : i + 1] = [if_stmt, ret]
-                            self.set_changed()
-                            i += 2
-                            continue
+            replacement = self._try_convert_stmt(stmt)
+            if replacement is not None:
+                stmts[i : i + 1] = replacement
+                self.set_changed()
+                i += len(replacement)
+                continue
 
             i += 1
 
-    def _logical_to_if(self, expr):
-        """Convert a LogicalExpression to if-statement(s). Returns list of stmts or None."""
-        op = expr.get('operator')
-        left = expr.get('left')
-        right = expr.get('right')
+    def _try_convert_stmt(self, stmt):
+        """Try to convert a statement. Returns replacement list or None."""
+        match stmt.get('type'):
+            case 'ExpressionStatement':
+                return self._handle_expression_stmt(stmt)
+            case 'ReturnStatement':
+                return self._handle_return_stmt(stmt)
+        return None
 
-        if op == '&&':
-            test = left
-        elif op == '||':
-            test = {
-                'type': 'UnaryExpression',
-                'operator': '!',
-                'prefix': True,
-                'argument': left,
-            }
-        else:
+    def _handle_expression_stmt(self, stmt):
+        """Handle ExpressionStatement with logical or conditional."""
+        expr = stmt.get('expression')
+        if not isinstance(expr, dict):
+            return None
+        match expr.get('type'):
+            case 'LogicalExpression':
+                return self._logical_to_if(expr)
+            case 'ConditionalExpression':
+                return self._ternary_to_if(expr)
+        return None
+
+    def _handle_return_stmt(self, stmt):
+        """Handle ReturnStatement with sequence or logical expressions."""
+        arg = stmt.get('argument')
+        if not isinstance(arg, dict):
             return None
 
-        # Expand the right-hand side into statement(s)
-        body_stmts = self._expr_to_stmts(right)
+        # return a, b, c → a; b; return c;
+        if arg.get('type') == 'SequenceExpression':
+            return self._split_return_sequence(arg)
 
+        # return a || (b(), c) → if (!a) { b(); } return c;
+        if arg.get('type') == 'LogicalExpression':
+            return self._split_return_logical(arg)
+
+        return None
+
+    def _split_return_sequence(self, seq):
+        """Split return (a, b, c) into a; b; return c."""
+        exprs = seq.get('expressions', [])
+        if len(exprs) <= 1:
+            return None
+        new_stmts = []
+        for e in exprs[:-1]:
+            if isinstance(e, dict) and e.get('type') == 'LogicalExpression':
+                converted = self._logical_to_if(e)
+                if converted:
+                    new_stmts.extend(converted)
+                    continue
+            new_stmts.append(make_expression_statement(e))
+        new_stmts.append({'type': 'ReturnStatement', 'argument': exprs[-1]})
+        return new_stmts
+
+    def _split_return_logical(self, logical):
+        """Split return a || (b(), c) into if (!a) { b(); } return c."""
+        right = logical.get('right')
+        if not (isinstance(right, dict) and right.get('type') == 'SequenceExpression'):
+            return None
+        exprs = right.get('expressions', [])
+        if len(exprs) <= 1:
+            return None
+
+        test = logical.get('left')
+        if logical.get('operator') == '||':
+            test = _negate(test)
+
+        body_stmts = [make_expression_statement(e) for e in exprs[:-1]]
+        if_stmt = {
+            'type': 'IfStatement',
+            'test': test,
+            'consequent': make_block_statement(body_stmts),
+            'alternate': None,
+        }
+        ret = {'type': 'ReturnStatement', 'argument': exprs[-1]}
+        return [if_stmt, ret]
+
+    def _logical_to_if(self, expr):
+        """Convert a LogicalExpression to if-statement(s). Returns list of stmts or None."""
+        left = expr.get('left')
+        match expr.get('operator'):
+            case '&&':
+                test = left
+            case '||':
+                test = _negate(left)
+            case _:
+                return None
+
+        body_stmts = self._expr_to_stmts(expr.get('right'))
         if_stmt = {
             'type': 'IfStatement',
             'test': test,
@@ -157,18 +158,15 @@ class LogicalToIf(Transform):
 
     def _ternary_to_if(self, expr):
         """Convert a ConditionalExpression to if-else. Returns list of stmts or None."""
-        test = expr.get('test')
-        consequent = expr.get('consequent')
-        alternate = expr.get('alternate')
-
-        cons_stmts = self._expr_to_stmts(consequent)
-        alt_stmts = self._expr_to_stmts(alternate)
-
         if_stmt = {
             'type': 'IfStatement',
-            'test': test,
-            'consequent': make_block_statement(cons_stmts),
-            'alternate': make_block_statement(alt_stmts),
+            'test': expr.get('test'),
+            'consequent': make_block_statement(
+                self._expr_to_stmts(expr.get('consequent'))
+            ),
+            'alternate': make_block_statement(
+                self._expr_to_stmts(expr.get('alternate'))
+            ),
         }
         return [if_stmt]
 

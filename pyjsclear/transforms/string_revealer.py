@@ -3,24 +3,19 @@
 import math
 import re
 
+from .base import Transform
 from ..generator import generate
 from ..scope import build_scope_tree
-from ..traverser import simple_traverse, traverse
-from ..utils.ast_helpers import (
-    get_child_keys,
-    is_identifier,
-    is_literal,
-    is_numeric_literal,
-    is_string_literal,
-    make_literal,
-)
-from ..utils.string_decoders import (
-    Base64StringDecoder,
-    BasicStringDecoder,
-    DecoderType,
-    Rc4StringDecoder,
-)
-from .base import Transform
+from ..traverser import simple_traverse
+from ..traverser import traverse
+from ..utils.ast_helpers import is_identifier
+from ..utils.ast_helpers import is_numeric_literal
+from ..utils.ast_helpers import is_string_literal
+from ..utils.ast_helpers import make_literal
+from ..utils.string_decoders import Base64StringDecoder
+from ..utils.string_decoders import BasicStringDecoder
+from ..utils.string_decoders import DecoderType
+from ..utils.string_decoders import Rc4StringDecoder
 
 _BASE_64_REGEX = re.compile(
     r"""['"]abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\+/=['"]\.indexOf"""
@@ -32,39 +27,26 @@ def _eval_numeric(node):
     """Evaluate an AST node to a numeric value if it's a constant expression."""
     if not isinstance(node, dict):
         return None
-    ntype = node.get('type', '')
-    if ntype == 'Literal':
-        val = node.get('value')
-        if isinstance(val, (int, float)):
-            return val
-        return None
-    if ntype == 'UnaryExpression':
-        op = node.get('operator')
-        arg = _eval_numeric(node.get('argument'))
-        if arg is None:
+    match node.get('type', ''):
+        case 'Literal':
+            val = node.get('value')
+            return val if isinstance(val, (int, float)) else None
+        case 'UnaryExpression':
+            arg = _eval_numeric(node.get('argument'))
+            if arg is None:
+                return None
+            match node.get('operator'):
+                case '-':
+                    return -arg
+                case '+':
+                    return +arg
             return None
-        if op == '-':
-            return -arg
-        if op == '+':
-            return +arg
-        return None
-    if ntype == 'BinaryExpression':
-        op = node.get('operator')
-        left = _eval_numeric(node.get('left'))
-        right = _eval_numeric(node.get('right'))
-        if left is None or right is None:
-            return None
-        if op == '+':
-            return left + right
-        if op == '-':
-            return left - right
-        if op == '*':
-            return left * right
-        if op == '/':
-            return left / right if right != 0 else None
-        if op == '%':
-            return left % right if right != 0 else None
-        return None
+        case 'BinaryExpression':
+            left = _eval_numeric(node.get('left'))
+            right = _eval_numeric(node.get('right'))
+            if left is None or right is None:
+                return None
+            return _apply_arith(node.get('operator'), left, right)
     return None
 
 
@@ -77,6 +59,23 @@ def _js_parse_int(s):
     if m:
         return int(m.group())
     return float('nan')
+
+
+def _apply_arith(op, left, right):
+    """Apply a binary arithmetic operator."""
+    match op:
+        case '+':
+            return left + right
+        case '-':
+            return left - right
+        case '*':
+            return left * right
+        case '/':
+            return left / right if right != 0 else None
+        case '%':
+            return left % right if right != 0 else None
+        case _:
+            return None
 
 
 class WrapperInfo:
@@ -313,11 +312,13 @@ class StringRevealer(Transform):
 
     def _create_base_decoder(self, string_array, offset, dtype):
         """Create the appropriate decoder instance."""
-        if dtype == DecoderType.RC4:
-            return Rc4StringDecoder(string_array, offset)
-        elif dtype == DecoderType.BASE_64:
-            return Base64StringDecoder(string_array, offset)
-        return BasicStringDecoder(string_array, offset)
+        match dtype:
+            case DecoderType.RC4:
+                return Rc4StringDecoder(string_array, offset)
+            case DecoderType.BASE_64:
+                return Base64StringDecoder(string_array, offset)
+            case _:
+                return BasicStringDecoder(string_array, offset)
 
     def _find_all_wrappers(self, decoder_name):
         """Find all wrapper functions throughout the AST that call the decoder.
@@ -590,135 +591,117 @@ class StringRevealer(Transform):
         """Parse a rotation expression into an operation tree."""
         if not isinstance(expr, dict):
             return None
-        ntype = expr.get('type', '')
-        _aliases = decoder_aliases or set()
+        aliases = decoder_aliases or set()
 
-        if ntype == 'Literal' and isinstance(expr.get('value'), (int, float)):
-            return {'op': 'literal', 'value': expr['value']}
+        match expr.get('type', ''):
+            case 'Literal' if isinstance(expr.get('value'), (int, float)):
+                return {'op': 'literal', 'value': expr['value']}
 
-        if ntype == 'UnaryExpression' and expr.get('operator') == '-':
-            child = self._parse_rotation_op(
-                expr.get('argument'), wrappers, decoder_aliases
-            )
-            if child:
-                return {'op': 'negate', 'child': child}
-            return None
+            case 'UnaryExpression' if expr.get('operator') == '-':
+                child = self._parse_rotation_op(
+                    expr.get('argument'), wrappers, decoder_aliases
+                )
+                return {'op': 'negate', 'child': child} if child else None
 
-        if ntype == 'BinaryExpression' and expr.get('operator') in (
-            '+',
-            '-',
-            '*',
-            '/',
-            '%',
-        ):
-            left = self._parse_rotation_op(expr.get('left'), wrappers, decoder_aliases)
-            right = self._parse_rotation_op(
-                expr.get('right'), wrappers, decoder_aliases
-            )
-            if left and right:
-                return {
-                    'op': 'binary',
-                    'operator': expr['operator'],
-                    'left': left,
-                    'right': right,
-                }
-            return None
-
-        if ntype == 'CallExpression':
-            callee = expr.get('callee')
-            args = expr.get('arguments', [])
-            if (
-                is_identifier(callee)
-                and callee['name'] == 'parseInt'
-                and len(args) == 1
+            case 'BinaryExpression' if expr.get('operator') in (
+                '+',
+                '-',
+                '*',
+                '/',
+                '%',
             ):
-                inner = args[0]
-                if inner.get('type') == 'CallExpression':
-                    inner_callee = inner.get('callee')
-                    if not is_identifier(inner_callee):
-                        return None
-                    cname = inner_callee['name']
-                    inner_args = inner.get('arguments', [])
-                    arg_values = []
-                    for a in inner_args:
-                        val = _eval_numeric(a)
-                        if val is not None:
-                            arg_values.append(int(val))
-                        elif is_string_literal(a):
-                            arg_values.append(a['value'])
-                        else:
-                            return None
-                    # Wrapper function call
-                    if cname in wrappers:
-                        return {'op': 'call', 'wrapper_name': cname, 'args': arg_values}
-                    # Direct decoder or alias call
-                    if cname in _aliases:
-                        return {'op': 'direct_decoder_call', 'args': arg_values}
-            return None
+                left = self._parse_rotation_op(
+                    expr.get('left'), wrappers, decoder_aliases
+                )
+                right = self._parse_rotation_op(
+                    expr.get('right'), wrappers, decoder_aliases
+                )
+                if left and right:
+                    return {
+                        'op': 'binary',
+                        'operator': expr['operator'],
+                        'left': left,
+                        'right': right,
+                    }
+                return None
+
+            case 'CallExpression':
+                return self._parse_parseInt_call(expr, wrappers, aliases)
 
         return None
 
+    def _parse_parseInt_call(self, expr, wrappers, aliases):
+        """Parse parseInt(wrapperOrDecoder(...)) into an operation node."""
+        callee = expr.get('callee')
+        args = expr.get('arguments', [])
+        if not (
+            is_identifier(callee) and callee['name'] == 'parseInt' and len(args) == 1
+        ):
+            return None
+        inner = args[0]
+        if inner.get('type') != 'CallExpression':
+            return None
+        inner_callee = inner.get('callee')
+        if not is_identifier(inner_callee):
+            return None
+        cname = inner_callee['name']
+        arg_values = []
+        for a in inner.get('arguments', []):
+            val = _eval_numeric(a)
+            if val is not None:
+                arg_values.append(int(val))
+            elif is_string_literal(a):
+                arg_values.append(a['value'])
+            else:
+                return None
+        if cname in wrappers:
+            return {'op': 'call', 'wrapper_name': cname, 'args': arg_values}
+        if cname in aliases:
+            return {'op': 'direct_decoder_call', 'args': arg_values}
+        return None
+
+    def _decode_and_parse_int(self, decoder, idx, key=None):
+        """Decode a string and parse it as an integer. Raises on failure."""
+        decoded = (
+            decoder.get_string(int(idx), key)
+            if key is not None
+            else decoder.get_string(int(idx))
+        )
+        if decoded is None:
+            raise ValueError('Decoder returned None')
+        result = _js_parse_int(decoded)
+        if math.isnan(result):
+            raise ValueError('NaN from parseInt')
+        return result
+
     def _apply_rotation_op(self, operation, wrappers, decoder):
         """Evaluate a parsed rotation operation tree."""
-        op = operation['op']
-
-        if op == 'literal':
-            return operation['value']
-
-        if op == 'negate':
-            return -self._apply_rotation_op(operation['child'], wrappers, decoder)
-
-        if op == 'binary':
-            left = self._apply_rotation_op(operation['left'], wrappers, decoder)
-            right = self._apply_rotation_op(operation['right'], wrappers, decoder)
-            o = operation['operator']
-            if o == '+':
-                return left + right
-            if o == '-':
-                return left - right
-            if o == '*':
-                return left * right
-            if o == '/':
-                return left / right if right != 0 else 0
-            if o == '%':
-                return left % right if right != 0 else 0
-
-        if op == 'call':
-            wrapper = wrappers[operation['wrapper_name']]
-            call_args = operation['args']
-            effective_idx = wrapper.get_effective_index(call_args)
-            if effective_idx is None:
-                raise ValueError('Invalid wrapper args')
-            key = wrapper.get_key(call_args)
-            if key is not None:
-                decoded = decoder.get_string(int(effective_idx), key)
-            else:
-                decoded = decoder.get_string(int(effective_idx))
-            if decoded is None:
-                raise ValueError('Decoder returned None')
-            result = _js_parse_int(decoded)
-            if math.isnan(result):
-                raise ValueError('NaN from parseInt')
-            return result
-
-        if op == 'direct_decoder_call':
-            call_args = operation['args']
-            if not call_args:
-                raise ValueError('No args for direct decoder call')
-            idx = int(call_args[0])
-            key = call_args[1] if len(call_args) > 1 else None
-            if key is not None:
-                decoded = decoder.get_string(idx, key)
-            else:
-                decoded = decoder.get_string(idx)
-            if decoded is None:
-                raise ValueError('Decoder returned None')
-            result = _js_parse_int(decoded)
-            if math.isnan(result):
-                raise ValueError('NaN from parseInt')
-            return result
-
-        raise ValueError(f'Unknown op: {op}')
+        match operation['op']:
+            case 'literal':
+                return operation['value']
+            case 'negate':
+                return -self._apply_rotation_op(operation['child'], wrappers, decoder)
+            case 'binary':
+                left = self._apply_rotation_op(operation['left'], wrappers, decoder)
+                right = self._apply_rotation_op(operation['right'], wrappers, decoder)
+                return _apply_arith(operation['operator'], left, right)
+            case 'call':
+                wrapper = wrappers[operation['wrapper_name']]
+                call_args = operation['args']
+                effective_idx = wrapper.get_effective_index(call_args)
+                if effective_idx is None:
+                    raise ValueError('Invalid wrapper args')
+                return self._decode_and_parse_int(
+                    decoder, effective_idx, wrapper.get_key(call_args)
+                )
+            case 'direct_decoder_call':
+                call_args = operation['args']
+                if not call_args:
+                    raise ValueError('No args for direct decoder call')
+                key = call_args[1] if len(call_args) > 1 else None
+                return self._decode_and_parse_int(decoder, int(call_args[0]), key)
+            case _:
+                raise ValueError(f'Unknown op: {operation["op"]}')
 
     def _execute_rotation(self, string_array, operation, wrappers, decoder, stop_value):
         """Rotate array until the expression evaluates to stop_value."""

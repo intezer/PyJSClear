@@ -48,6 +48,15 @@ class StringDecoder:
     def type(self):
         return DecoderType.BASIC
 
+    def get_string(self, index, *args):
+        raise NotImplementedError
+
+    def get_string_for_rotation(self, index, *args, **kwargs):
+        if self.is_first_call:
+            self.is_first_call = False
+            raise RuntimeError('First call')
+        return self.get_string(index, *args, **kwargs)
+
 
 class BasicStringDecoder(StringDecoder):
     """Simple array index + offset decoder."""
@@ -62,12 +71,6 @@ class BasicStringDecoder(StringDecoder):
             return self.string_array[idx]
         return None
 
-    def get_string_for_rotation(self, index, *args):
-        if self.is_first_call:
-            self.is_first_call = False
-            raise RuntimeError('First call')
-        return self.get_string(index, *args)
-
 
 class Base64StringDecoder(StringDecoder):
     """Base64 string decoder."""
@@ -81,22 +84,14 @@ class Base64StringDecoder(StringDecoder):
         return DecoderType.BASE_64
 
     def get_string(self, index, *args):
-        cache_key = index
-        if cache_key in self._cache:
-            return self._cache[cache_key]
+        if index in self._cache:
+            return self._cache[index]
         idx = index + self.index_offset
         if not (0 <= idx < len(self.string_array)):
             return None
-        encoded = self.string_array[idx]
-        decoded = base64_transform(encoded)
-        self._cache[cache_key] = decoded
+        decoded = base64_transform(self.string_array[idx])
+        self._cache[index] = decoded
         return decoded
-
-    def get_string_for_rotation(self, index, *args):
-        if self.is_first_call:
-            self.is_first_call = False
-            raise RuntimeError('First call')
-        return self.get_string(index, *args)
 
 
 class Rc4StringDecoder(StringDecoder):
@@ -124,12 +119,6 @@ class Rc4StringDecoder(StringDecoder):
         decoded = self._rc4_decode(encoded, key)
         self._cache[cache_key] = decoded
         return decoded
-
-    def get_string_for_rotation(self, index, key=None):
-        if self.is_first_call:
-            self.is_first_call = False
-            raise RuntimeError('First call')
-        return self.get_string(index, key)
 
     def _rc4_decode(self, s, key):
         """RC4 decryption with base64 pre-processing."""

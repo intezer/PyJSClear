@@ -8,9 +8,10 @@ Detects common obfuscator.io patterns:
 
 import re
 
-from ..generator import generate
-from ..traverser import REMOVE, traverse
 from .base import Transform
+from ..generator import generate
+from ..traverser import REMOVE
+from ..traverser import traverse
 
 
 class AntiTamperRemover(Transform):

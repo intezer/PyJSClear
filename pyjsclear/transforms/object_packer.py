@@ -4,8 +4,8 @@ Detects: var o = {}; o.x = 1; o.y = 2;
 Replaces: var o = {x: 1, y: 2};
 """
 
-from ..utils.ast_helpers import is_identifier, is_literal, make_literal
 from .base import Transform
+from ..utils.ast_helpers import is_identifier
 
 
 class ObjectPacker(Transform):

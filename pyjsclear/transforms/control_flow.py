@@ -7,9 +7,10 @@ Detects patterns like:
 And reconstructs the linear statement sequence.
 """
 
-from ..traverser import REMOVE, traverse
-from ..utils.ast_helpers import is_identifier, is_literal, is_string_literal
 from .base import Transform
+from ..utils.ast_helpers import is_identifier
+from ..utils.ast_helpers import is_literal
+from ..utils.ast_helpers import is_string_literal
 
 
 class ControlFlowRecoverer(Transform):

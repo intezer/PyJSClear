@@ -1,8 +1,9 @@
 """Convert computed property access to dot notation: obj["x"] -> obj.x"""
 
-from ..traverser import traverse
-from ..utils.ast_helpers import is_string_literal, is_valid_identifier
 from .base import Transform
+from ..traverser import traverse
+from ..utils.ast_helpers import is_string_literal
+from ..utils.ast_helpers import is_valid_identifier
 
 
 class PropertySimplifier(Transform):

@@ -1,8 +1,30 @@
 """Remove unreferenced variables."""
 
-from ..scope import build_scope_tree
-from ..traverser import REMOVE, traverse
 from .base import Transform
+from ..scope import build_scope_tree
+from ..traverser import REMOVE
+from ..traverser import traverse
+from ..utils.ast_helpers import get_child_keys
+
+_SIDE_EFFECT_TYPES = frozenset(
+    {
+        'CallExpression',
+        'NewExpression',
+        'AssignmentExpression',
+        'UpdateExpression',
+    }
+)
+_PURE_TYPES = frozenset(
+    {
+        'Literal',
+        'Identifier',
+        'ThisExpression',
+        'ArrayExpression',
+        'ObjectExpression',
+        'FunctionExpression',
+        'ArrowFunctionExpression',
+    }
+)
 
 
 class UnusedVariableRemover(Transform):
@@ -65,26 +87,11 @@ class UnusedVariableRemover(Transform):
         if not isinstance(node, dict):
             return False
         ntype = node.get('type', '')
-        if ntype == 'CallExpression':
+        if ntype in _SIDE_EFFECT_TYPES:
             return True
-        if ntype == 'NewExpression':
-            return True
-        if ntype == 'AssignmentExpression':
-            return True
-        if ntype == 'UpdateExpression':
-            return True
-        if ntype in ('Literal', 'Identifier', 'ThisExpression'):
+        if ntype in _PURE_TYPES:
             return False
-        if ntype in (
-            'ArrayExpression',
-            'ObjectExpression',
-            'FunctionExpression',
-            'ArrowFunctionExpression',
-        ):
-            return False
-        # For binary/unary, check children
-        from ..utils.ast_helpers import get_child_keys
-
+        # For binary/unary/etc, recurse into children
         for key in get_child_keys(node):
             child = node.get(key)
             if child is None:

@@ -1,6 +1,7 @@
 """Variable scope and binding analysis for ESTree ASTs."""
 
-from .utils.ast_helpers import _CHILD_KEYS, get_child_keys
+from .utils.ast_helpers import _CHILD_KEYS
+from .utils.ast_helpers import get_child_keys
 
 
 class Binding:
@@ -182,28 +183,28 @@ def build_scope_tree(ast):
         """Collect binding names from destructuring patterns."""
         if not isinstance(pattern, dict):
             return
-        ptype = pattern.get('type', '')
-        if ptype == 'ArrayPattern':
-            for elem in pattern.get('elements', []):
-                if elem and elem.get('type') == 'Identifier':
-                    scope.add_binding(elem['name'], decl, kind)
-                elif elem:
-                    _collect_pattern_names(elem, scope, kind, decl)
-        elif ptype == 'ObjectPattern':
-            for prop in pattern.get('properties', []):
-                val = prop.get('value', prop.get('argument'))
-                if val and val.get('type') == 'Identifier':
-                    scope.add_binding(val['name'], decl, kind)
-                elif val:
-                    _collect_pattern_names(val, scope, kind, decl)
-        elif ptype == 'RestElement':
-            arg = pattern.get('argument')
-            if arg and arg.get('type') == 'Identifier':
-                scope.add_binding(arg['name'], decl, kind)
-        elif ptype == 'AssignmentPattern':
-            left = pattern.get('left')
-            if left and left.get('type') == 'Identifier':
-                scope.add_binding(left['name'], decl, kind)
+        match pattern.get('type', ''):
+            case 'ArrayPattern':
+                for elem in pattern.get('elements', []):
+                    if elem and elem.get('type') == 'Identifier':
+                        scope.add_binding(elem['name'], decl, kind)
+                    elif elem:
+                        _collect_pattern_names(elem, scope, kind, decl)
+            case 'ObjectPattern':
+                for prop in pattern.get('properties', []):
+                    val = prop.get('value', prop.get('argument'))
+                    if val and val.get('type') == 'Identifier':
+                        scope.add_binding(val['name'], decl, kind)
+                    elif val:
+                        _collect_pattern_names(val, scope, kind, decl)
+            case 'RestElement':
+                arg = pattern.get('argument')
+                if arg and arg.get('type') == 'Identifier':
+                    scope.add_binding(arg['name'], decl, kind)
+            case 'AssignmentPattern':
+                left = pattern.get('left')
+                if left and left.get('type') == 'Identifier':
+                    scope.add_binding(left['name'], decl, kind)
 
     _collect_declarations(ast, root_scope)
 

@@ -5,9 +5,10 @@ Also splits multi-declarator var statements: var a = 1, b = 2 → var a = 1; var
 Also normalizes loop/if bodies to block statements.
 """
 
-from ..traverser import traverse
-from ..utils.ast_helpers import make_block_statement, make_expression_statement
 from .base import Transform
+from ..traverser import traverse
+from ..utils.ast_helpers import make_block_statement
+from ..utils.ast_helpers import make_expression_statement
 
 
 class SequenceSplitter(Transform):

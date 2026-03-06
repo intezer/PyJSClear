@@ -4,9 +4,9 @@ Detects: var x = y; (where y is also a variable)
 And replaces all references to x with y, then removes x.
 """
 
-from ..scope import build_scope_tree
-from ..utils.ast_helpers import deep_copy, is_identifier
 from .base import Transform
+from ..scope import build_scope_tree
+from ..utils.ast_helpers import is_identifier
 
 
 class ReassignmentRemover(Transform):

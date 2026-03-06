@@ -45,15 +45,6 @@ def decode_hex_escapes_source(code):
     are left as \\xHH to avoid breaking the parser.
     """
 
-    def replace_hex(m):
-        val = int(m.group(1), 16)
-        # Only decode printable ASCII (space through tilde), excluding
-        # backslash and the quote character that delimits this string
-        # (quote char is handled at the string level below).
-        if 0x20 <= val <= 0x7E and val != 0x5C:  # exclude backslash
-            return chr(val)
-        return m.group(0)  # keep original \xHH
-
     def replace_in_string(m):
         quote = m.group(1)
         content = m.group(2)

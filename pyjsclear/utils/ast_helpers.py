@@ -31,9 +31,7 @@ def is_numeric_literal(node):
 
 def is_boolean_literal(node):
     """Check if node is a boolean-ish literal (true/false or !0/!1)."""
-    if is_literal(node):
-        return isinstance(node.get('value'), bool)
-    return False
+    return is_literal(node) and isinstance(node.get('value'), bool)
 
 
 def is_null_literal(node):
@@ -105,13 +103,14 @@ def make_var_declaration(name, init=None, kind='var'):
     }
 
 
+_IDENT_RE = re.compile(r'^[a-zA-Z_$][a-zA-Z0-9_$]*$')
+
+
 def is_valid_identifier(name):
     """Check if a string is a valid JS identifier (for obj.prop access)."""
     if not isinstance(name, str) or not name:
         return False
-    # JS reserved words are fine as property names in member access
-    # But we check basic identifier syntax
-    return bool(re.match(r'^[a-zA-Z_$][a-zA-Z0-9_$]*$', name))
+    return bool(_IDENT_RE.match(name))
 
 
 _CHILD_KEYS = {
@@ -216,6 +215,37 @@ def get_child_keys(node):
         if isinstance(v, (dict, list)):
             result.append(k)
     return result
+
+
+def replace_identifiers(node, param_map):
+    """Replace Identifier nodes whose names are in param_map with deep copies.
+
+    Skips non-computed property names in MemberExpressions.
+    """
+    if not isinstance(node, dict) or 'type' not in node:
+        return
+    for key in get_child_keys(node):
+        child = node.get(key)
+        if child is None:
+            continue
+        is_noncomputed_prop = (
+            key == 'property'
+            and node.get('type') == 'MemberExpression'
+            and not node.get('computed')
+        )
+        if isinstance(child, list):
+            for i, item in enumerate(child):
+                if isinstance(item, dict) and item.get('type') == 'Identifier':
+                    if not is_noncomputed_prop and item.get('name', '') in param_map:
+                        child[i] = copy.deepcopy(param_map[item['name']])
+                elif isinstance(item, dict) and 'type' in item:
+                    replace_identifiers(item, param_map)
+        elif isinstance(child, dict):
+            if child.get('type') == 'Identifier':
+                if not is_noncomputed_prop and child.get('name', '') in param_map:
+                    node[key] = copy.deepcopy(param_map[child['name']])
+            elif 'type' in child:
+                replace_identifiers(child, param_map)
 
 
 def nodes_equal(a, b):

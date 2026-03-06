@@ -4,9 +4,12 @@ Detects: const o = {x: 1, y: "hello"}; ... o.x ... o.y ...
 Replaces: ... 1 ... "hello" ...
 """
 
-from ..scope import build_scope_tree
-from ..utils.ast_helpers import deep_copy, is_identifier, is_literal, is_string_literal
 from .base import Transform
+from ..scope import build_scope_tree
+from ..utils.ast_helpers import deep_copy
+from ..utils.ast_helpers import is_literal
+from ..utils.ast_helpers import is_string_literal
+from ..utils.ast_helpers import replace_identifiers
 
 
 class ObjectSimplifier(Transform):
@@ -93,7 +96,7 @@ class ObjectSimplifier(Transform):
                 val = prop_map[prop_name]
                 if is_literal(val):
                     replacement = deep_copy(val)
-                    self._replace_member_expr(me, replacement)
+                    self._replace_node(me, replacement)
                     self.set_changed()
                 elif val.get('type') in (
                     'FunctionExpression',
@@ -106,9 +109,6 @@ class ObjectSimplifier(Transform):
                     if me_parent_info:
                         mp, mk, mi = me_parent_info
                         if mp and mp.get('type') == 'CallExpression' and mk == 'callee':
-                            # Inline the function call
-                            from .proxy_functions import ProxyFunctionInliner
-
                             func = val
                             args = mp.get('arguments', [])
                             replacement = self._inline_func(func, args)
@@ -158,10 +158,6 @@ class ObjectSimplifier(Transform):
             return prop['name']
         return None
 
-    def _replace_member_expr(self, target, replacement):
-        """Replace a MemberExpression with a replacement node."""
-        self._replace_node(target, replacement)
-
     def _replace_node(self, target, replacement):
         """Replace target node in the AST."""
         from ..traverser import find_parent
@@ -205,43 +201,5 @@ class ObjectSimplifier(Transform):
                     else {'type': 'Identifier', 'name': 'undefined'}
                 )
 
-        self._replace_params(expr, param_map)
+        replace_identifiers(expr, param_map)
         return expr
-
-    def _replace_params(self, node, param_map):
-        """Replace parameter identifiers."""
-        if not isinstance(node, dict) or 'type' not in node:
-            return
-        from ..utils.ast_helpers import get_child_keys
-
-        for key in get_child_keys(node):
-            child = node.get(key)
-            if child is None:
-                continue
-            if isinstance(child, list):
-                for i, item in enumerate(child):
-                    if isinstance(item, dict) and item.get('type') == 'Identifier':
-                        name = item.get('name', '')
-                        if (
-                            key == 'property'
-                            and node.get('type') == 'MemberExpression'
-                            and not node.get('computed')
-                        ):
-                            continue
-                        if name in param_map:
-                            child[i] = deep_copy(param_map[name])
-                    elif isinstance(item, dict) and 'type' in item:
-                        self._replace_params(item, param_map)
-            elif isinstance(child, dict):
-                if child.get('type') == 'Identifier':
-                    name = child.get('name', '')
-                    if (
-                        key == 'property'
-                        and node.get('type') == 'MemberExpression'
-                        and not node.get('computed')
-                    ):
-                        continue
-                    if name in param_map:
-                        node[key] = deep_copy(param_map[name])
-                elif 'type' in child:
-                    self._replace_params(child, param_map)
