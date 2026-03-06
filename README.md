@@ -101,11 +101,11 @@ Files >200KB or exceeding a 15-second wall-clock timeout are skipped and counted
 
 On the Kaggle Obfuscated dataset (1,477 files), PyJSClear reduces 1,199 files while the Node.js pipeline changes zero — the dataset's lightweight obfuscation (hex escapes, basic string arrays without `parseInt` checksums) falls outside obfuscator-io-deobfuscator's detection heuristics. On the E1 and MalJS datasets (heavily obfuscated), PyJSClear produces smaller output on 93.8% of files where at least one tool changed output, driven by dead-code removal, proxy-function inlining, bracket-to-dot conversion, and control-flow recovery.
 
-**Parse coverage**: PyJSClear uses [esprima2](https://github.com/nicolo-ribaudo/esprima2) which supports up to ES2024 syntax, including arrow functions, optional chaining, nullish coalescing, and more.
+**Parse coverage**: PyJSClear uses [esprima2](https://github.com/s0md3v/esprima2) which supports ES2024 syntax, including arrow functions, optional chaining, nullish coalescing, and more.
 
 ## Architecture
 
-Built on [esprima2](https://github.com/nicolo-ribaudo/esprima2) (ESTree-compatible JS parser with ES2024 support) with a custom code generator, AST traverser (enter/exit/replace/remove), and scope analysis. Transforms run in a fixed order within a convergence loop; StringRevealer runs both first and last to handle string arrays before and after other transforms modify wrapper function structure.
+Built on [esprima2](https://github.com/s0md3v/esprima2) (ESTree-compatible JS parser with ES2024 support) with a custom code generator, AST traverser (enter/exit/replace/remove), and scope analysis. Transforms run in a fixed order within a convergence loop; StringRevealer runs both first and last to handle string arrays before and after other transforms modify wrapper function structure.
 
 ## Limitations
 
@@ -122,5 +122,7 @@ This project is a derivative work based on
 [obfuscator-io-deobfuscator](https://github.com/ben-sb/obfuscator-io-deobfuscator)
 (Apache 2.0) and
 [javascript-deobfuscator](https://github.com/ben-sb/javascript-deobfuscator)
-(Apache 2.0). See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and
+(Apache 2.0), and uses [esprima2](https://github.com/s0md3v/esprima2)
+(BSD 2-Clause) for JavaScript parsing.
+See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and
 [NOTICE](NOTICE) for full attribution.

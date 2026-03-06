@@ -13,7 +13,13 @@ This product is a derivative work based on the following projects:
    Licensed under the Apache License, Version 2.0
    https://github.com/ben-sb/javascript-deobfuscator
 
+3. esprima2 (v5.0.1)
+   Copyright JS Foundation and other contributors
+   Licensed under the BSD 2-Clause License
+   https://github.com/s0md3v/esprima2
+
 This Python library re-implements the deobfuscation algorithms and transform
-logic from the above Node.js/Babel-based tools in pure Python. No source code
-was directly copied; the implementations were written from scratch following
-the same algorithmic approaches.
+logic from the above Node.js/Babel-based tools (1, 2) in pure Python. No
+source code was directly copied; the implementations were written from scratch
+following the same algorithmic approaches. esprima2 (3) is used as a runtime
+dependency for JavaScript parsing.
