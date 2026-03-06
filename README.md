@@ -14,7 +14,7 @@ into a single Python library with no Node.js dependency.
 ## Installation
 
 ```bash
-pip install pyjsparser   # only runtime dependency
+pip install esprima2      # only runtime dependency
 pip install -e .          # install PyJSClear
 ```
 
@@ -53,29 +53,27 @@ python -m pyjsclear input.js --max-iterations 20
 
 ## What it does
 
-PyJSClear applies 14 transforms in a multi-pass loop until no further changes
+PyJSClear applies 16 transforms in a multi-pass loop until no further changes
 are made (up to 50 iterations by default):
 
 | # | Transform | Description |
 |---|-----------|-------------|
 | 1 | **StringRevealer** | Decode obfuscator.io string arrays (basic, base64, RC4), including rotation IIFEs and wrapper functions |
-| 2 | **UnusedVariableRemover** | Remove variables with zero references |
-| 3 | **ConstantProp** | Propagate constant literals to all reference sites |
-| 4 | **ReassignmentRemover** | Eliminate redundant `x = y` reassignment chains |
-| 5 | **DeadBranchRemover** | Remove unreachable `if(true)/if(false)` and ternary branches |
-| 6 | **ObjectPacker** | Consolidate sequential `obj.x = ...` assignments into object literals |
-| 7 | **ProxyFunctionInliner** | Inline single-return proxy functions at all call sites |
-| 8 | **ExpressionSimplifier** | Evaluate static expressions: `3 + 5` -> `8`, `![]` -> `false`, `typeof undefined` -> `"undefined"` |
-| 9 | **SequenceSplitter** | Split comma expressions `(a(), b(), c())` into separate statements |
-| 10 | **ControlFlowRecoverer** | Recover linear code from `"1\|0\|3".split("\|")` + `while/switch` dispatch patterns |
-| 11 | **PropertySimplifier** | Convert `obj["prop"]` to `obj.prop` where valid |
-| 12 | **AntiTamperRemover** | Remove self-defending and anti-debug IIFEs |
-| 13 | **ObjectSimplifier** | Inline proxy object property accesses |
-| 14 | **StringRevealer** | Second pass to catch strings exposed by earlier transforms |
-
-A pre-AST pass decodes `\xHH` hex escape sequences in string literals
-(printable ASCII only; control characters are left escaped). Files that
-cannot be parsed (ES2020+ syntax) still benefit from hex escape decoding.
+| 2 | **HexEscapes** | Normalize `\xHH`/`\uHHHH` escape sequences in string literal AST nodes |
+| 3 | **UnusedVariableRemover** | Remove variables with zero references |
+| 4 | **ConstantProp** | Propagate constant literals to all reference sites |
+| 5 | **ReassignmentRemover** | Eliminate redundant `x = y` reassignment chains |
+| 6 | **DeadBranchRemover** | Remove unreachable `if(true)/if(false)` and ternary branches |
+| 7 | **ObjectPacker** | Consolidate sequential `obj.x = ...` assignments into object literals |
+| 8 | **ProxyFunctionInliner** | Inline single-return proxy functions at all call sites |
+| 9 | **SequenceSplitter** | Split comma expressions `(a(), b(), c())` into separate statements; extract `(0, fn)(args)` indirect call prefixes; normalize loop/if bodies to block statements |
+| 10 | **ExpressionSimplifier** | Evaluate static expressions: `3 + 5` -> `8`, `![]` -> `false`, `typeof undefined` -> `"undefined"`, `test ? false : true` -> `!test` |
+| 11 | **LogicalToIf** | Convert `a && b()` / `a \|\| b()` in statement position to if-statements |
+| 12 | **ControlFlowRecoverer** | Recover linear code from `"1\|0\|3".split("\|")` + `while/switch` dispatch patterns |
+| 13 | **PropertySimplifier** | Convert `obj["prop"]` to `obj.prop` where valid |
+| 14 | **AntiTamperRemover** | Remove self-defending and anti-debug IIFEs |
+| 15 | **ObjectSimplifier** | Inline proxy object property accesses |
+| 16 | **StringRevealer** | Second pass to catch strings exposed by earlier transforms |
 
 ### Safety guarantees
 
@@ -103,17 +101,14 @@ Files >200KB or exceeding a 15-second wall-clock timeout are skipped and counted
 
 On the Kaggle Obfuscated dataset (1,477 files), PyJSClear reduces 1,199 files while the Node.js pipeline changes zero — the dataset's lightweight obfuscation (hex escapes, basic string arrays without `parseInt` checksums) falls outside obfuscator-io-deobfuscator's detection heuristics. On the E1 and MalJS datasets (heavily obfuscated), PyJSClear produces smaller output on 93.8% of files where at least one tool changed output, driven by dead-code removal, proxy-function inlining, bracket-to-dot conversion, and control-flow recovery.
 
-**Parse coverage gap**: pyjsparser does not support ES2020+ syntax, so ~85 files using arrow functions, optional chaining, etc. are returned unchanged. The Node.js pipeline (Babel-based) handles these files.
+**Parse coverage**: PyJSClear uses [esprima2](https://github.com/nicolo-ribaudo/esprima2) which supports up to ES2024 syntax, including arrow functions, optional chaining, nullish coalescing, and more.
 
 ## Architecture
 
-Built on [pyjsparser](https://github.com/PiotrDabkowski/pyjsparser) (ESTree-compatible JS parser) with a custom code generator, AST traverser (enter/exit/replace/remove), and scope analysis. Transforms run in a fixed order within a convergence loop; StringRevealer runs both first and last to handle string arrays before and after other transforms modify wrapper function structure.
+Built on [esprima2](https://github.com/nicolo-ribaudo/esprima2) (ESTree-compatible JS parser with ES2024 support) with a custom code generator, AST traverser (enter/exit/replace/remove), and scope analysis. Transforms run in a fixed order within a convergence loop; StringRevealer runs both first and last to handle string arrays before and after other transforms modify wrapper function structure.
 
 ## Limitations
 
-- **pyjsparser** does not support all ES2020+ syntax (optional chaining,
-  nullish coalescing, arrow functions, etc.). These files still get hex
-  escape decoding but miss AST-level transforms.
 - Large files (>100KB) with deep obfuscation can be slow due to the
   multi-pass architecture. Consider using `max_iterations` to limit passes.
 - Not all obfuscator.io configurations are handled — some advanced string
