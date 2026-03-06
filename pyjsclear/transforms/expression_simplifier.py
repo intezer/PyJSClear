@@ -2,10 +2,9 @@
 
 import math
 
-from .base import Transform
 from ..traverser import traverse
-from ..utils.ast_helpers import is_literal
-from ..utils.ast_helpers import make_literal
+from ..utils.ast_helpers import is_literal, make_literal
+from .base import Transform
 
 # Sentinel to distinguish JS null (Literal value=None) from JS undefined
 # (Identifier name='undefined'). Python None represents undefined.
@@ -90,15 +89,16 @@ class ExpressionSimplifier(Transform):
         """Simplify await (0x0, expr) → await expr."""
 
         def enter(node, parent, key, index):
-            if (
-                node.get('type') == 'AwaitExpression'
-                and isinstance(node.get('argument'), dict)
-                and node['argument'].get('type') == 'SequenceExpression'
-            ):
-                exprs = node['argument'].get('expressions', [])
-                if len(exprs) > 1:
-                    node['argument'] = exprs[-1]
-                    self.set_changed()
+            if node.get('type') != 'AwaitExpression':
+                return
+            arg = node.get('argument')
+            if not isinstance(arg, dict) or arg.get('type') != 'SequenceExpression':
+                return
+            exprs = arg.get('expressions', [])
+            if len(exprs) <= 1:
+                return
+            node['argument'] = exprs[-1]
+            self.set_changed()
 
         traverse(self.ast, {'enter': enter})
 
@@ -137,20 +137,19 @@ class ExpressionSimplifier(Transform):
         lval, lok = self._get_resolvable_value(left)
         rval, rok = self._get_resolvable_value(right)
 
-        if lok and rok:
-            try:
-                result = self._apply_binary(op, lval, rval)
-            except Exception:
-                return None
-            return self._value_to_node(result)
+        if not (lok and rok):
+            # Convert x - (-y) to x + y
+            if op == '-' and self._is_negative_numeric(right):
+                node['right'] = right['argument']
+                node['operator'] = '+'
+                return node
+            return None
 
-        # Convert x - (-y) to x + y
-        if op == '-' and self._is_negative_numeric(right):
-            node['right'] = right['argument']
-            node['operator'] = '+'
-            return node
-
-        return None
+        try:
+            result = self._apply_binary(op, lval, rval)
+        except Exception:
+            return None
+        return self._value_to_node(result)
 
     def _simplify_expr(self, node):
         if not isinstance(node, dict):
@@ -390,23 +389,19 @@ class ExpressionSimplifier(Transform):
             return make_literal(None)  # null literal
         if val is None:
             return {'type': 'Identifier', 'name': 'undefined'}
-        match val:
-            case bool():
-                return make_literal(val)
-            case int() | float():
-                if isinstance(val, float) and val != val:  # NaN
-                    return None
-                if isinstance(val, float) and math.isinf(val):
-                    return None
-                if val < 0:
-                    return {
-                        'type': 'UnaryExpression',
-                        'operator': '-',
-                        'prefix': True,
-                        'argument': make_literal(abs(val)),
-                    }
-                return make_literal(val)
-            case str():
-                return make_literal(val)
-            case _:
+        if isinstance(val, bool):
+            return make_literal(val)
+        if isinstance(val, (int, float)):
+            if isinstance(val, float) and (val != val or math.isinf(val)):
                 return None
+            if val < 0:
+                return {
+                    'type': 'UnaryExpression',
+                    'operator': '-',
+                    'prefix': True,
+                    'argument': make_literal(abs(val)),
+                }
+            return make_literal(val)
+        if isinstance(val, str):
+            return make_literal(val)
+        return None

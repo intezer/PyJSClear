@@ -4,9 +4,9 @@ Detects: var x = y; (where y is also a variable)
 And replaces all references to x with y, then removes x.
 """
 
-from .base import Transform
 from ..scope import build_scope_tree
 from ..utils.ast_helpers import is_identifier
+from .base import Transform
 
 
 class ReassignmentRemover(Transform):
@@ -113,9 +113,21 @@ class ReassignmentRemover(Transform):
         """
         self._process_assignment_aliases(scope_tree)
 
-    def _process_assignment_aliases(self, scope):
+    def _remove_assignment_statement(self, assignment_node):
+        """Remove the ExpressionStatement containing the given assignment expression."""
         from ..traverser import REMOVE, traverse
 
+        def enter(node, parent, key, index):
+            if (
+                node.get('type') == 'ExpressionStatement'
+                and node.get('expression') is assignment_node
+            ):
+                self.set_changed()
+                return REMOVE
+
+        traverse(self.ast, {'enter': enter})
+
+    def _process_assignment_aliases(self, scope):
         for name, binding in list(scope.bindings.items()):
             if binding.is_constant or binding.kind == 'param':
                 continue
@@ -171,16 +183,7 @@ class ReassignmentRemover(Transform):
                     ref_parent[ref_key] = new_id
                 self.set_changed()
 
-            # Remove the assignment statement `x = y;`
-            def remove_assign(n, parent, key, index):
-                if (
-                    n.get('type') == 'ExpressionStatement'
-                    and n.get('expression') is write_parent
-                ):
-                    self.set_changed()
-                    return REMOVE
-
-            traverse(self.ast, {'enter': remove_assign})
+            self._remove_assignment_statement(write_parent)
 
         for child in scope.children:
             self._process_assignment_aliases(child)

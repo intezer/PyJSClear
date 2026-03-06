@@ -5,12 +5,10 @@ Detects patterns like:
   _proxy(x, y)  ->  x + y
 """
 
-from .base import Transform
 from ..scope import build_scope_tree
 from ..traverser import traverse
-from ..utils.ast_helpers import deep_copy
-from ..utils.ast_helpers import is_identifier
-from ..utils.ast_helpers import replace_identifiers
+from ..utils.ast_helpers import deep_copy, is_identifier, replace_identifiers
+from .base import Transform
 
 
 class ProxyFunctionInliner(Transform):
@@ -137,22 +135,23 @@ class ProxyFunctionInliner(Transform):
 
         return False
 
-    def _is_proxy_value(self, node):
-        """Check if an expression is a valid proxy return value (no side effects)."""
-        if not isinstance(node, dict) or 'type' not in node:
-            return False
-        ntype = node.get('type', '')
-        # Disallow complex expressions
-        if ntype in (
+    _DISALLOWED_PROXY_TYPES = frozenset(
+        {
             'FunctionExpression',
             'FunctionDeclaration',
             'ArrowFunctionExpression',
             'BlockStatement',
             'SequenceExpression',
             'AssignmentExpression',
-        ):
+        }
+    )
+
+    def _is_proxy_value(self, node):
+        """Check if an expression is a valid proxy return value (no side effects)."""
+        if not isinstance(node, dict) or 'type' not in node:
             return False
-        # Recursively check children
+        if node.get('type', '') in self._DISALLOWED_PROXY_TYPES:
+            return False
         from ..utils.ast_helpers import get_child_keys
 
         for key in get_child_keys(node):
@@ -160,25 +159,17 @@ class ProxyFunctionInliner(Transform):
             if child is None:
                 continue
             if isinstance(child, list):
-                for item in child:
-                    if isinstance(item, dict) and 'type' in item:
-                        if item.get('type') in (
-                            'SequenceExpression',
-                            'BlockStatement',
-                            'FunctionExpression',
-                            'ArrowFunctionExpression',
-                            'AssignmentExpression',
-                        ):
-                            return False
-            elif isinstance(child, dict) and 'type' in child:
-                if child.get('type') in (
-                    'SequenceExpression',
-                    'BlockStatement',
-                    'FunctionExpression',
-                    'ArrowFunctionExpression',
-                    'AssignmentExpression',
+                if any(
+                    isinstance(item, dict)
+                    and item.get('type') in self._DISALLOWED_PROXY_TYPES
+                    for item in child
                 ):
                     return False
+            elif (
+                isinstance(child, dict)
+                and child.get('type') in self._DISALLOWED_PROXY_TYPES
+            ):
+                return False
         return True
 
     def _get_replacement(self, func_node, args):

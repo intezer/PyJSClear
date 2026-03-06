@@ -7,10 +7,8 @@ Detects patterns like:
 And reconstructs the linear statement sequence.
 """
 
+from ..utils.ast_helpers import is_identifier, is_literal, is_string_literal
 from .base import Transform
-from ..utils.ast_helpers import is_identifier
-from ..utils.ast_helpers import is_literal
-from ..utils.ast_helpers import is_string_literal
 
 
 class ControlFlowRecoverer(Transform):
@@ -65,81 +63,92 @@ class ControlFlowRecoverer(Transform):
                 i += 1
                 continue
 
-            # Pattern 1: VariableDeclaration containing split + for/while loop
-            if stmt.get('type') == 'VariableDeclaration':
-                state_info = self._find_state_array_in_decl(stmt)
-                if state_info:
-                    states, state_var, counter_var = state_info
-                    # Look for the loop in the same declaration or next statement
-                    next_idx = i + 1
-                    if next_idx < len(body):
-                        loop = body[next_idx]
-                        recovered = self._try_recover_from_loop(
-                            loop, states, state_var, counter_var
-                        )
-                        if recovered is not None:
-                            # Replace both statements with recovered statements
-                            body[i : next_idx + 1] = recovered
-                            self.set_changed()
-                            continue
-
-            # Pattern 2: ExpressionStatement with split assignment
-            if stmt.get('type') == 'ExpressionStatement':
-                expr = stmt.get('expression')
-                if expr and expr.get('type') == 'AssignmentExpression':
-                    state_info = self._find_state_from_assignment(expr)
-                    if state_info:
-                        states, state_var = state_info
-                        # Look for counter init + loop
-                        next_idx = i + 1
-                        counter_var = None
-                        if next_idx < len(body):
-                            nxt = body[next_idx]
-                            cvar = self._find_counter_init(nxt)
-                            if cvar is not None:
-                                counter_var = cvar
-                                next_idx += 1
-
-                        if next_idx < len(body):
-                            loop = body[next_idx]
-                            recovered = self._try_recover_from_loop(
-                                loop, states, state_var, counter_var or '_index'
-                            )
-                            if recovered is not None:
-                                body[i : next_idx + 1] = recovered
-                                self.set_changed()
-                                continue
+            if self._try_recover_variable_pattern(body, i, stmt):
+                continue
+            if self._try_recover_expression_pattern(body, i, stmt):
+                continue
 
             i += 1
+
+    def _try_recover_variable_pattern(self, body, i, stmt):
+        """Try Pattern 1: VariableDeclaration with split + loop. Returns True if recovered."""
+        if stmt.get('type') != 'VariableDeclaration':
+            return False
+        state_info = self._find_state_array_in_decl(stmt)
+        if not state_info:
+            return False
+        states, state_var, counter_var = state_info
+        next_idx = i + 1
+        if next_idx >= len(body):
+            return False
+        recovered = self._try_recover_from_loop(
+            body[next_idx], states, state_var, counter_var
+        )
+        if recovered is None:
+            return False
+        body[i : next_idx + 1] = recovered
+        self.set_changed()
+        return True
+
+    def _try_recover_expression_pattern(self, body, i, stmt):
+        """Try Pattern 2: ExpressionStatement with split assignment + loop."""
+        if stmt.get('type') != 'ExpressionStatement':
+            return False
+        expr = stmt.get('expression')
+        if not expr or expr.get('type') != 'AssignmentExpression':
+            return False
+        state_info = self._find_state_from_assignment(expr)
+        if not state_info:
+            return False
+        states, state_var = state_info
+        next_idx = i + 1
+        counter_var = None
+        if next_idx < len(body):
+            cvar = self._find_counter_init(body[next_idx])
+            if cvar is not None:
+                counter_var = cvar
+                next_idx += 1
+        if next_idx >= len(body):
+            return False
+        recovered = self._try_recover_from_loop(
+            body[next_idx], states, state_var, counter_var or '_index'
+        )
+        if recovered is None:
+            return False
+        body[i : next_idx + 1] = recovered
+        self.set_changed()
+        return True
 
     def _find_state_array_in_decl(self, decl):
         """Find "X".split("|") pattern in a VariableDeclaration."""
         for d in decl.get('declarations', []):
             init = d.get('init')
-            if not init:
+            if not init or not self._is_split_call(init):
                 continue
-            if self._is_split_call(init):
-                states = self._extract_split_states(init)
-                state_var = (
-                    d['id']['name']
-                    if d.get('id', {}).get('type') == 'Identifier'
-                    else None
-                )
-                if states and state_var:
-                    # Look for counter variable in the same declaration
-                    counter_var = None
-                    for d2 in decl.get('declarations', []):
-                        if d2 is d:
-                            continue
-                        if d2.get('id', {}).get('type') == 'Identifier':
-                            init2 = d2.get('init')
-                            if (
-                                init2
-                                and init2.get('type') == 'Literal'
-                                and isinstance(init2.get('value'), (int, float))
-                            ):
-                                counter_var = d2['id']['name']
-                    return states, state_var, counter_var
+            states = self._extract_split_states(init)
+            if not states:
+                continue
+            if d.get('id', {}).get('type') != 'Identifier':
+                continue
+            state_var = d['id']['name']
+            counter_var = self._find_counter_in_declaration(decl, exclude=d)
+            return states, state_var, counter_var
+        return None
+
+    def _find_counter_in_declaration(self, decl, exclude):
+        """Find a numeric-initialized counter variable in a declaration, skipping *exclude*."""
+        for d in decl.get('declarations', []):
+            if d is exclude:
+                continue
+            if d.get('id', {}).get('type') != 'Identifier':
+                continue
+            init = d.get('init')
+            if (
+                init
+                and init.get('type') == 'Literal'
+                and isinstance(init.get('value'), (int, float))
+            ):
+                return d['id']['name']
         return None
 
     def _find_state_from_assignment(self, expr):

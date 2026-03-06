@@ -1,7 +1,6 @@
 """Variable scope and binding analysis for ESTree ASTs."""
 
-from .utils.ast_helpers import _CHILD_KEYS
-from .utils.ast_helpers import get_child_keys
+from .utils.ast_helpers import _CHILD_KEYS, get_child_keys
 
 
 class Binding:
@@ -59,6 +58,40 @@ class Scope:
 
     def get_own_binding(self, name):
         return self.bindings.get(name)
+
+
+def _nearest_function_scope(scope):
+    """Walk up to the nearest function (or root) scope."""
+    while scope and not scope.is_function:
+        scope = scope.parent
+    return scope
+
+
+def _is_non_reference_identifier(parent, parent_key):
+    """Return True if this Identifier usage is not a variable reference."""
+    if not parent:
+        return False
+    ptype = parent.get('type')
+    # Property names in member expressions (non-computed)
+    if (
+        ptype == 'MemberExpression'
+        and parent_key == 'property'
+        and not parent.get('computed')
+    ):
+        return True
+    # Property keys in object literals (non-computed)
+    if ptype == 'Property' and parent_key == 'key' and not parent.get('computed'):
+        return True
+    # Function/class names at declaration site
+    if (
+        ptype in ('FunctionDeclaration', 'FunctionExpression', 'ClassDeclaration')
+        and parent_key == 'id'
+    ):
+        return True
+    # VariableDeclarator id
+    if ptype == 'VariableDeclarator' and parent_key == 'id':
+        return True
+    return False
 
 
 def build_scope_tree(ast):
@@ -129,20 +162,17 @@ def build_scope_tree(ast):
         # Variable declarations
         if ntype == 'VariableDeclaration':
             kind = node.get('kind', 'var')
-            target_scope = scope
             # var is function-scoped, let/const are block-scoped
-            if kind == 'var':
-                s = scope
-                while s and not s.is_function:
-                    s = s.parent
-                if s:
-                    target_scope = s
+            target_scope = (
+                _nearest_function_scope(scope) or scope if kind == 'var' else scope
+            )
             for decl in node.get('declarations', []):
                 decl_id = decl.get('id')
                 if decl_id and decl_id.get('type') == 'Identifier':
                     target_scope.add_binding(decl_id['name'], decl, kind)
                 # Handle destructuring patterns
                 _collect_pattern_names(decl_id, target_scope, kind, decl)
+            return
 
         # Block scopes (for, if, etc. with block statements)
         if ntype == 'BlockStatement' and id(node) not in node_scope:
@@ -186,16 +216,20 @@ def build_scope_tree(ast):
         match pattern.get('type', ''):
             case 'ArrayPattern':
                 for elem in pattern.get('elements', []):
-                    if elem and elem.get('type') == 'Identifier':
+                    if not elem:
+                        continue
+                    if elem.get('type') == 'Identifier':
                         scope.add_binding(elem['name'], decl, kind)
-                    elif elem:
+                    else:
                         _collect_pattern_names(elem, scope, kind, decl)
             case 'ObjectPattern':
                 for prop in pattern.get('properties', []):
                     val = prop.get('value', prop.get('argument'))
-                    if val and val.get('type') == 'Identifier':
+                    if not val:
+                        continue
+                    if val.get('type') == 'Identifier':
                         scope.add_binding(val['name'], decl, kind)
-                    elif val:
+                    else:
                         _collect_pattern_names(val, scope, kind, decl)
             case 'RestElement':
                 arg = pattern.get('argument')
@@ -223,50 +257,21 @@ def build_scope_tree(ast):
 
         if ntype == 'Identifier':
             name = node.get('name', '')
-            # Skip property names in member expressions (non-computed)
-            if (
-                parent
-                and parent.get('type') == 'MemberExpression'
-                and parent_key == 'property'
-                and not parent.get('computed')
-            ):
-                return
-            # Skip property keys in object literals
-            if (
-                parent
-                and parent.get('type') == 'Property'
-                and parent_key == 'key'
-                and not parent.get('computed')
-            ):
-                return
-            # Skip function/class names at declaration site
-            if (
-                parent
-                and parent.get('type')
-                in ('FunctionDeclaration', 'FunctionExpression', 'ClassDeclaration')
-                and parent_key == 'id'
-            ):
-                return
-            # Skip VariableDeclarator id
-            if (
-                parent
-                and parent.get('type') == 'VariableDeclarator'
-                and parent_key == 'id'
-            ):
+            if _is_non_reference_identifier(parent, parent_key):
                 return
 
             binding = scope.get_binding(name)
-            if binding:
-                binding.references.append((node, parent, parent_key, parent_index))
-                # Check if this is an assignment target
-                if (
-                    parent
-                    and parent.get('type') == 'AssignmentExpression'
-                    and parent_key == 'left'
-                ):
-                    binding.assignments.append(parent)
-                elif parent and parent.get('type') == 'UpdateExpression':
-                    binding.assignments.append(parent)
+            if not binding:
+                return
+            binding.references.append((node, parent, parent_key, parent_index))
+            if (
+                parent
+                and parent.get('type') == 'AssignmentExpression'
+                and parent_key == 'left'
+            ):
+                binding.assignments.append(parent)
+            elif parent and parent.get('type') == 'UpdateExpression':
+                binding.assignments.append(parent)
             return
 
         # Recurse

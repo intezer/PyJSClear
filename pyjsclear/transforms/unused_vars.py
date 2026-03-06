@@ -1,10 +1,9 @@
 """Remove unreferenced variables."""
 
-from .base import Transform
 from ..scope import build_scope_tree
-from ..traverser import REMOVE
-from ..traverser import traverse
+from ..traverser import REMOVE, traverse
 from ..utils.ast_helpers import get_child_keys
+from .base import Transform
 
 _SIDE_EFFECT_TYPES = frozenset(
     {
@@ -46,18 +45,21 @@ class UnusedVariableRemover(Transform):
         skip_global = scope.parent is None
 
         for name, binding in scope.bindings.items():
-            if not binding.references and binding.kind != 'param':
-                if skip_global and not name.startswith('_0x'):
-                    continue
-                node = binding.node
-                if isinstance(node, dict):
-                    ntype = node.get('type')
-                    if ntype == 'VariableDeclarator':
-                        init = node.get('init')
-                        if not init or not self._has_side_effects(init):
-                            declarators.add(id(node))
-                    elif ntype == 'FunctionDeclaration':
-                        functions.add(id(node))
+            if binding.references or binding.kind == 'param':
+                continue
+            if skip_global and not name.startswith('_0x'):
+                continue
+            node = binding.node
+            if not isinstance(node, dict):
+                continue
+
+            ntype = node.get('type')
+            if ntype == 'VariableDeclarator':
+                init = node.get('init')
+                if not init or not self._has_side_effects(init):
+                    declarators.add(id(node))
+            elif ntype == 'FunctionDeclaration':
+                functions.add(id(node))
 
         for child in scope.children:
             self._collect_unused(child, declarators, functions)
@@ -97,9 +99,11 @@ class UnusedVariableRemover(Transform):
             if child is None:
                 continue
             if isinstance(child, list):
-                for item in child:
-                    if isinstance(item, dict) and self._has_side_effects(item):
-                        return True
+                if any(
+                    isinstance(item, dict) and self._has_side_effects(item)
+                    for item in child
+                ):
+                    return True
             elif isinstance(child, dict) and self._has_side_effects(child):
                 return True
         return False

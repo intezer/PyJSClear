@@ -349,8 +349,11 @@ def _gen_member(node, indent):
     obj = generate(node['object'], indent)
     obj_type = node['object'].get('type', '')
     computed = node.get('computed')
-    if obj_type in (
-        'Literal',
+
+    needs_parens = False
+    if obj_type == 'Literal' and isinstance(node['object'].get('value'), (int, float)):
+        needs_parens = not computed
+    elif obj_type in (
         'BinaryExpression',
         'UnaryExpression',
         'ConditionalExpression',
@@ -358,14 +361,11 @@ def _gen_member(node, indent):
         'SequenceExpression',
         'ArrowFunctionExpression',
     ):
-        if obj_type == 'Literal' and isinstance(
-            node['object'].get('value'), (int, float)
-        ):
-            if not computed:
-                obj = f'({obj})'
-        elif obj_type not in ('Literal',):
-            if _expr_precedence(node['object']) < 19:
-                obj = f'({obj})'
+        needs_parens = _expr_precedence(node['object']) < 19
+
+    if needs_parens:
+        obj = f'({obj})'
+
     prop = generate(node['property'], indent)
     if computed:
         return f'{obj}[{prop}]'
@@ -468,21 +468,25 @@ def _gen_spread(node, indent):
     return '...' + generate(node['argument'], indent)
 
 
+def _escape_string(val, raw):
+    """Escape a string value and wrap in the appropriate quotes."""
+    if raw and len(raw) >= 2 and raw[0] in ('"', "'"):
+        quote = raw[0]
+    else:
+        quote = '"'
+    escaped = val.replace('\\', '\\\\')
+    escaped = escaped.replace('\n', '\\n')
+    escaped = escaped.replace('\r', '\\r')
+    escaped = escaped.replace('\t', '\\t')
+    escaped = escaped.replace(quote, '\\' + quote)
+    return f'{quote}{escaped}{quote}'
+
+
 def _gen_literal(node, indent):
     raw = node.get('raw')
     val = node.get('value')
     if isinstance(val, str):
-        # Preserve original quote style from raw when available
-        if raw and len(raw) >= 2 and raw[0] in ('"', "'"):
-            quote = raw[0]
-        else:
-            quote = '"'
-        escaped = val.replace('\\', '\\\\')
-        escaped = escaped.replace('\n', '\\n')
-        escaped = escaped.replace('\r', '\\r')
-        escaped = escaped.replace('\t', '\\t')
-        escaped = escaped.replace(quote, '\\' + quote)
-        return f'{quote}{escaped}{quote}'
+        return _escape_string(val, raw)
     if raw is not None:
         return str(raw)
     if val is None:
@@ -591,18 +595,21 @@ def _gen_array_pattern(node, indent):
     return _gen_bracket_list(node.get('elements', []), indent)
 
 
+def _generate_object_pattern_part(p, indent):
+    """Generate a single destructuring pattern property."""
+    if p.get('type') == 'RestElement':
+        return '...' + generate(p['argument'], indent)
+    key = generate(p['key'], indent)
+    if p.get('shorthand'):
+        return key
+    val = generate(p['value'], indent)
+    return f'{key}: {val}'
+
+
 def _gen_object_pattern(node, indent):
-    props = []
-    for p in node.get('properties', []):
-        if p.get('type') == 'RestElement':
-            props.append('...' + generate(p['argument'], indent + 1))
-        else:
-            key = generate(p['key'], indent + 1)
-            val = generate(p['value'], indent + 1)
-            if p.get('shorthand'):
-                props.append(key)
-            else:
-                props.append(f'{key}: {val}')
+    props = [
+        _generate_object_pattern_part(p, indent + 1) for p in node.get('properties', [])
+    ]
     if not props:
         return '{}'
     inner = _indent_str(indent + 1)

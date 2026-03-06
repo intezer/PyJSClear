@@ -8,10 +8,9 @@ Detects common obfuscator.io patterns:
 
 import re
 
-from .base import Transform
 from ..generator import generate
-from ..traverser import REMOVE
-from ..traverser import traverse
+from ..traverser import REMOVE, traverse
+from .base import Transform
 
 
 class AntiTamperRemover(Transform):
@@ -41,6 +40,33 @@ class AntiTamperRemover(Transform):
         ),
     ]
 
+    @staticmethod
+    def _extract_iife_call(expr):
+        """Extract a CallExpression from an IIFE pattern."""
+        if expr.get('type') == 'CallExpression':
+            return expr
+        if (
+            expr.get('type') == 'UnaryExpression'
+            and expr.get('argument', {}).get('type') == 'CallExpression'
+        ):
+            return expr.get('argument')
+        return None
+
+    def _matches_anti_tamper_pattern(self, src):
+        """Check if source matches any anti-tamper pattern."""
+        for pattern in self._SELF_DEFENDING_PATTERNS:
+            if pattern.search(src):
+                return True
+        if any(p.search(src) for p in self._DEBUG_PATTERNS):
+            if re.search(r'\bdebugger\b', src) and (
+                re.search(r'\bwhile\b|\bfor\b|\bsetInterval\b', src)
+            ):
+                return True
+        for pattern in self._CONSOLE_PATTERNS:
+            if pattern.search(src):
+                return True
+        return False
+
     def execute(self):
         nodes_to_remove = []
 
@@ -51,16 +77,7 @@ class AntiTamperRemover(Transform):
             if not expr:
                 return
 
-            # Check for IIFE patterns: (function(){...})() or !function(){...}()
-            call = None
-            if expr.get('type') == 'CallExpression':
-                call = expr
-            elif (
-                expr.get('type') == 'UnaryExpression'
-                and expr.get('argument', {}).get('type') == 'CallExpression'
-            ):
-                call = expr.get('argument')
-
+            call = self._extract_iife_call(expr)
             if not call:
                 return
 
@@ -73,32 +90,13 @@ class AntiTamperRemover(Transform):
             ):
                 return
 
-            # Generate code and check against patterns
             try:
                 src = generate(callee)
             except Exception:
                 return
 
-            # Check self-defending
-            for pattern in self._SELF_DEFENDING_PATTERNS:
-                if pattern.search(src):
-                    nodes_to_remove.append(node)
-                    return
-
-            # Check debug protection
-            if any(p.search(src) for p in self._DEBUG_PATTERNS):
-                # Only remove if it looks like a debug trap (has debugger + loop/interval)
-                if re.search(r'\bdebugger\b', src) and (
-                    re.search(r'\bwhile\b|\bfor\b|\bsetInterval\b', src)
-                ):
-                    nodes_to_remove.append(node)
-                    return
-
-            # Check console disabling
-            for pattern in self._CONSOLE_PATTERNS:
-                if pattern.search(src):
-                    nodes_to_remove.append(node)
-                    return
+            if self._matches_anti_tamper_pattern(src):
+                nodes_to_remove.append(node)
 
         traverse(self.ast, {'enter': enter})
 

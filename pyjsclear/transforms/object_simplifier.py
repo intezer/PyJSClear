@@ -4,12 +4,14 @@ Detects: const o = {x: 1, y: "hello"}; ... o.x ... o.y ...
 Replaces: ... 1 ... "hello" ...
 """
 
-from .base import Transform
 from ..scope import build_scope_tree
-from ..utils.ast_helpers import deep_copy
-from ..utils.ast_helpers import is_literal
-from ..utils.ast_helpers import is_string_literal
-from ..utils.ast_helpers import replace_identifiers
+from ..utils.ast_helpers import (
+    deep_copy,
+    is_literal,
+    is_string_literal,
+    replace_identifiers,
+)
+from .base import Transform
 
 
 class ObjectSimplifier(Transform):
@@ -55,30 +57,7 @@ class ObjectSimplifier(Transform):
             if not prop_map:
                 continue
 
-            # Check no modifications to the object
-            modified = False
-            for ref_node, ref_parent, ref_key, ref_index in binding.references:
-                if (
-                    ref_parent
-                    and ref_parent.get('type') == 'MemberExpression'
-                    and ref_key == 'object'
-                ):
-                    # Check if this member expression is an assignment target
-                    from ..traverser import find_parent
-
-                    me = ref_parent
-                    me_parent_info = find_parent(self.ast, me)
-                    if me_parent_info:
-                        mp, mk, mi = me_parent_info
-                        if (
-                            mp
-                            and mp.get('type') == 'AssignmentExpression'
-                            and mk == 'left'
-                        ):
-                            modified = True
-                            break
-
-            if modified:
+            if self._has_property_assignment(binding):
                 continue
 
             # Replace property accesses
@@ -95,29 +74,58 @@ class ObjectSimplifier(Transform):
 
                 val = prop_map[prop_name]
                 if is_literal(val):
-                    replacement = deep_copy(val)
-                    self._replace_node(me, replacement)
+                    self._replace_node(me, deep_copy(val))
                     self.set_changed()
-                elif val.get('type') in (
+                    continue
+
+                if val.get('type') not in (
                     'FunctionExpression',
                     'ArrowFunctionExpression',
                 ):
-                    # Check if the MemberExpression is called
-                    from ..traverser import find_parent
-
-                    me_parent_info = find_parent(self.ast, me)
-                    if me_parent_info:
-                        mp, mk, mi = me_parent_info
-                        if mp and mp.get('type') == 'CallExpression' and mk == 'callee':
-                            func = val
-                            args = mp.get('arguments', [])
-                            replacement = self._inline_func(func, args)
-                            if replacement:
-                                self._replace_node(mp, replacement)
-                                self.set_changed()
+                    continue
+                self._try_inline_function_call(me, val)
 
         for child in scope.children:
             self._process_scope(child)
+
+    def _has_property_assignment(self, binding):
+        """Check if any reference to the binding is a property assignment target."""
+        from ..traverser import find_parent
+
+        for ref_node, ref_parent, ref_key, ref_index in binding.references:
+            if not (
+                ref_parent
+                and ref_parent.get('type') == 'MemberExpression'
+                and ref_key == 'object'
+            ):
+                continue
+            me_parent_info = find_parent(self.ast, ref_parent)
+            if not me_parent_info:
+                continue
+            parent, key, _ = me_parent_info
+            if (
+                parent
+                and parent.get('type') == 'AssignmentExpression'
+                and key == 'left'
+            ):
+                return True
+        return False
+
+    def _try_inline_function_call(self, member_expression, function_value):
+        """Try to inline a function call at a MemberExpression site."""
+        from ..traverser import find_parent
+
+        me_parent_info = find_parent(self.ast, member_expression)
+        if not me_parent_info:
+            return
+        parent, key, _ = me_parent_info
+        if not (parent and parent.get('type') == 'CallExpression' and key == 'callee'):
+            return
+        replacement = self._inline_func(function_value, parent.get('arguments', []))
+        if not replacement:
+            return
+        self._replace_node(parent, replacement)
+        self.set_changed()
 
     def _is_proxy_object(self, props):
         """Check if all properties are literals or simple functions."""

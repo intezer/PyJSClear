@@ -8,9 +8,8 @@ Converts:
   return await x(), y  →  await x(); return y;
 """
 
+from ..utils.ast_helpers import make_block_statement, make_expression_statement
 from .base import Transform
-from ..utils.ast_helpers import make_block_statement
-from ..utils.ast_helpers import make_expression_statement
 
 
 def _negate(expr):

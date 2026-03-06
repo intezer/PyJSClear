@@ -1,8 +1,7 @@
 """Remove unreachable if/ternary branches based on literal tests."""
 
+from ..traverser import REMOVE, traverse
 from .base import Transform
-from ..traverser import REMOVE
-from ..traverser import traverse
 
 
 def _is_truthy_literal(node):

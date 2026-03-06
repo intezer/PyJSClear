@@ -3,19 +3,22 @@
 import math
 import re
 
-from .base import Transform
 from ..generator import generate
 from ..scope import build_scope_tree
-from ..traverser import simple_traverse
-from ..traverser import traverse
-from ..utils.ast_helpers import is_identifier
-from ..utils.ast_helpers import is_numeric_literal
-from ..utils.ast_helpers import is_string_literal
-from ..utils.ast_helpers import make_literal
-from ..utils.string_decoders import Base64StringDecoder
-from ..utils.string_decoders import BasicStringDecoder
-from ..utils.string_decoders import DecoderType
-from ..utils.string_decoders import Rc4StringDecoder
+from ..traverser import simple_traverse, traverse
+from ..utils.ast_helpers import (
+    is_identifier,
+    is_numeric_literal,
+    is_string_literal,
+    make_literal,
+)
+from ..utils.string_decoders import (
+    Base64StringDecoder,
+    BasicStringDecoder,
+    DecoderType,
+    Rc4StringDecoder,
+)
+from .base import Transform
 
 _BASE_64_REGEX = re.compile(
     r"""['"]abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\+/=['"]\.indexOf"""
@@ -213,23 +216,27 @@ class StringRevealer(Transform):
 
         return None, None, None
 
+    @staticmethod
+    def _string_array_from_expression(node):
+        """Return list of string values if node is an ArrayExpression of all string literals."""
+        if not node or node.get('type') != 'ArrayExpression':
+            return None
+        elements = node.get('elements', [])
+        if not elements or not all(is_string_literal(e) for e in elements):
+            return None
+        return [e['value'] for e in elements]
+
     def _extract_array_from_statement(self, stmt):
         """Extract string array from a variable declaration or assignment."""
         if stmt.get('type') == 'VariableDeclaration':
             for d in stmt.get('declarations', []):
-                init = d.get('init')
-                if init and init.get('type') == 'ArrayExpression':
-                    elements = init.get('elements', [])
-                    if elements and all(is_string_literal(e) for e in elements):
-                        return [e['value'] for e in elements]
+                result = self._string_array_from_expression(d.get('init'))
+                if result is not None:
+                    return result
         elif stmt.get('type') == 'ExpressionStatement':
             expr = stmt.get('expression')
             if expr and expr.get('type') == 'AssignmentExpression':
-                right = expr.get('right')
-                if right and right.get('type') == 'ArrayExpression':
-                    elements = right.get('elements', [])
-                    if elements and all(is_string_literal(e) for e in elements):
-                        return [e['value'] for e in elements]
+                return self._string_array_from_expression(expr.get('right'))
         return None
 
     def _find_decoder_function(self, body, array_func_name):
@@ -573,18 +580,26 @@ class StringRevealer(Transform):
         )
 
         for stmt in stmts:
-            if stmt.get('type') == 'TryStatement':
-                block = stmt.get('block', {}).get('body', [])
-                if block:
-                    first = block[0]
-                    if first.get('type') == 'VariableDeclaration':
-                        decls = first.get('declarations', [])
-                        if decls:
-                            return decls[0].get('init')
-                    elif first.get('type') == 'ExpressionStatement':
-                        expr = first.get('expression')
-                        if expr and expr.get('type') == 'AssignmentExpression':
-                            return expr.get('right')
+            if stmt.get('type') != 'TryStatement':
+                continue
+            block = stmt.get('block', {}).get('body', [])
+            if not block:
+                continue
+            result = self._expression_from_try_block(block[0])
+            if result is not None:
+                return result
+        return None
+
+    @staticmethod
+    def _expression_from_try_block(first_statement):
+        """Extract the init/rhs expression from the first statement in a try block."""
+        if first_statement.get('type') == 'VariableDeclaration':
+            decls = first_statement.get('declarations', [])
+            return decls[0].get('init') if decls else None
+        if first_statement.get('type') == 'ExpressionStatement':
+            expr = first_statement.get('expression')
+            if expr and expr.get('type') == 'AssignmentExpression':
+                return expr.get('right')
         return None
 
     def _parse_rotation_op(self, expr, wrappers, decoder_aliases=None):
@@ -831,26 +846,28 @@ class StringRevealer(Transform):
 
         traverse(self.ast, {'enter': enter})
 
+    @staticmethod
+    def _find_array_expression_in_statement(stmt):
+        """Find the first ArrayExpression node in a variable declaration or assignment."""
+        if stmt.get('type') == 'VariableDeclaration':
+            for d in stmt.get('declarations', []):
+                init = d.get('init')
+                if init and init.get('type') == 'ArrayExpression':
+                    return init
+        elif stmt.get('type') == 'ExpressionStatement':
+            expr = stmt.get('expression')
+            if expr and expr.get('type') == 'AssignmentExpression':
+                right = expr.get('right')
+                if right and right.get('type') == 'ArrayExpression':
+                    return right
+        return None
+
     def _update_ast_array(self, func_node, rotated_array):
         """Update the AST's array function to contain the rotated string array."""
         func_body = func_node.get('body', {}).get('body', [])
         if not func_body:
             return
-        first = func_body[0]
-        # Find the ArrayExpression and update its elements
-        arr_expr = None
-        if first.get('type') == 'VariableDeclaration':
-            for d in first.get('declarations', []):
-                init = d.get('init')
-                if init and init.get('type') == 'ArrayExpression':
-                    arr_expr = init
-                    break
-        elif first.get('type') == 'ExpressionStatement':
-            expr = first.get('expression')
-            if expr and expr.get('type') == 'AssignmentExpression':
-                right = expr.get('right')
-                if right and right.get('type') == 'ArrayExpression':
-                    arr_expr = right
+        arr_expr = self._find_array_expression_in_statement(func_body[0])
         if arr_expr is not None:
             arr_expr['elements'] = [make_literal(s) for s in rotated_array]
 
@@ -923,16 +940,17 @@ class StringRevealer(Transform):
                 continue
             for d in stmt.get('declarations', []):
                 name_node = d.get('id')
+                if not is_identifier(name_node):
+                    continue
                 init = d.get('init')
-                if not (
-                    is_identifier(name_node)
-                    and init
-                    and init.get('type') == 'ArrayExpression'
-                ):
+                if not init or init.get('type') != 'ArrayExpression':
                     continue
                 elements = init.get('elements', [])
-                if len(elements) >= 3 and all(is_string_literal(e) for e in elements):
-                    return name_node['name'], [e['value'] for e in elements], i
+                if len(elements) < 3:
+                    continue
+                if not all(is_string_literal(e) for e in elements):
+                    continue
+                return name_node['name'], [e['value'] for e in elements], i
         return None, None, None
 
     def _find_simple_rotation(self, body, array_name):
@@ -976,29 +994,36 @@ class StringRevealer(Transform):
                 continue
             for d in stmt.get('declarations', []):
                 name_node = d.get('id')
-                init = d.get('init')
-                if not (
-                    is_identifier(name_node)
-                    and init
-                    and init.get('type') == 'FunctionExpression'
-                ):
+                if not is_identifier(name_node):
                     continue
-
-                # Check if function body references the array variable
+                init = d.get('init')
+                if not init or init.get('type') != 'FunctionExpression':
+                    continue
                 src = generate(init)
                 if array_name not in src:
                     continue
-
-                # Extract offset from a = a - OFFSET pattern
                 offset = self._extract_decoder_offset(init)
-
                 return name_node['name'], offset, i
-
         return None, None, None
 
     # ================================================================
     # Strategy 1: Direct string array declarations
     # ================================================================
+
+    def _try_replace_array_access(self, ref_parent, ref_key, string_array):
+        """Replace arr[N] member expression with the string literal if valid."""
+        if not ref_parent or ref_parent.get('type') != 'MemberExpression':
+            return
+        if ref_key != 'object' or not ref_parent.get('computed'):
+            return
+        prop = ref_parent.get('property')
+        if not is_numeric_literal(prop):
+            return
+        idx = int(prop['value'])
+        if not (0 <= idx < len(string_array)):
+            return
+        self._replace_node_in_ast(ref_parent, make_literal(string_array[idx]))
+        self.set_changed()
 
     def _process_direct_arrays(self, scope_tree):
         """Find direct array declarations and replace indexed accesses."""
@@ -1015,40 +1040,17 @@ class StringRevealer(Transform):
 
             string_array = [e['value'] for e in elements]
             for ref_node, ref_parent, ref_key, ref_index in binding.references[:]:
-                if (
-                    ref_parent
-                    and ref_parent.get('type') == 'MemberExpression'
-                    and ref_key == 'object'
-                    and ref_parent.get('computed')
-                ):
-                    prop = ref_parent.get('property')
-                    if is_numeric_literal(prop):
-                        idx = int(prop['value'])
-                        if 0 <= idx < len(string_array):
-                            literal = make_literal(string_array[idx])
-                            self._replace_node_in_ast(ref_parent, literal)
-                            self.set_changed()
+                self._try_replace_array_access(ref_parent, ref_key, string_array)
             for child in scope_tree.children:
                 self._process_direct_arrays_in_scope(child, name, string_array)
 
     def _process_direct_arrays_in_scope(self, scope, name, string_array):
         """Process direct array accesses in child scopes."""
         binding = scope.get_binding(name)
-        if binding:
-            for ref_node, ref_parent, ref_key, ref_index in binding.references[:]:
-                if (
-                    ref_parent
-                    and ref_parent.get('type') == 'MemberExpression'
-                    and ref_key == 'object'
-                    and ref_parent.get('computed')
-                ):
-                    prop = ref_parent.get('property')
-                    if is_numeric_literal(prop):
-                        idx = int(prop['value'])
-                        if 0 <= idx < len(string_array):
-                            literal = make_literal(string_array[idx])
-                            self._replace_node_in_ast(ref_parent, literal)
-                            self.set_changed()
+        if not binding:
+            return
+        for ref_node, ref_parent, ref_key, ref_index in binding.references[:]:
+            self._try_replace_array_access(ref_parent, ref_key, string_array)
 
     def _replace_node_in_ast(self, target, replacement):
         """Replace a node in the AST with a replacement."""

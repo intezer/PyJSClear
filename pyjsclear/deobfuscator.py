@@ -7,8 +7,7 @@ from .transforms.constant_prop import ConstantProp
 from .transforms.control_flow import ControlFlowRecoverer
 from .transforms.dead_branch import DeadBranchRemover
 from .transforms.expression_simplifier import ExpressionSimplifier
-from .transforms.hex_escapes import HexEscapes
-from .transforms.hex_escapes import decode_hex_escapes_source
+from .transforms.hex_escapes import HexEscapes, decode_hex_escapes_source
 from .transforms.logical_to_if import LogicalToIf
 from .transforms.object_packer import ObjectPacker
 from .transforms.object_simplifier import ObjectSimplifier

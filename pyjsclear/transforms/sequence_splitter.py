@@ -5,10 +5,9 @@ Also splits multi-declarator var statements: var a = 1, b = 2 → var a = 1; var
 Also normalizes loop/if bodies to block statements.
 """
 
-from .base import Transform
 from ..traverser import traverse
-from ..utils.ast_helpers import make_block_statement
-from ..utils.ast_helpers import make_expression_statement
+from ..utils.ast_helpers import make_block_statement, make_expression_statement
+from .base import Transform
 
 
 class SequenceSplitter(Transform):
@@ -82,21 +81,24 @@ class SequenceSplitter(Transform):
             """If node is a CallExpression with SequenceExpression callee, extract prefixes."""
             if not isinstance(node, dict):
                 return
-            # Handle await wrapping
             target = node
             if target.get('type') == 'AwaitExpression' and isinstance(
                 target.get('argument'), dict
             ):
                 target = target['argument']
+            if target.get('type') != 'CallExpression':
+                return
+            callee = target.get('callee')
             if (
-                target.get('type') == 'CallExpression'
-                and isinstance(target.get('callee'), dict)
-                and target['callee'].get('type') == 'SequenceExpression'
+                not isinstance(callee, dict)
+                or callee.get('type') != 'SequenceExpression'
             ):
-                exprs = target['callee'].get('expressions', [])
-                if len(exprs) > 1:
-                    prefixes.extend(exprs[:-1])
-                    target['callee'] = exprs[-1]
+                return
+            exprs = callee.get('expressions', [])
+            if len(exprs) <= 1:
+                return
+            prefixes.extend(exprs[:-1])
+            target['callee'] = exprs[-1]
 
         stype = stmt.get('type', '')
         if stype == 'ExpressionStatement':
@@ -167,41 +169,52 @@ class SequenceSplitter(Transform):
                     self.set_changed()
                     continue
 
-                # Split SequenceExpression in single declarator init:
-                # const x = (0, expr()) → 0; const x = expr();
+                # Split SequenceExpression in single declarator init
                 if len(decls) == 1:
-                    init = decls[0].get('init')
-                    if isinstance(init, dict):
-                        # Direct SequenceExpression in init
-                        if init.get('type') == 'SequenceExpression':
-                            exprs = init.get('expressions', [])
-                            if len(exprs) > 1:
-                                new_stmts = [
-                                    make_expression_statement(e) for e in exprs[:-1]
-                                ]
-                                decls[0]['init'] = exprs[-1]
-                                new_stmts.append(stmt)
-                                stmts[i : i + 1] = new_stmts
-                                i += len(new_stmts)
-                                self.set_changed()
-                                continue
-                        # AwaitExpression wrapping SequenceExpression:
-                        # var x = await (0, expr()) → 0; var x = await expr();
-                        if (
-                            init.get('type') == 'AwaitExpression'
-                            and isinstance(init.get('argument'), dict)
-                            and init['argument'].get('type') == 'SequenceExpression'
-                        ):
-                            exprs = init['argument'].get('expressions', [])
-                            if len(exprs) > 1:
-                                new_stmts = [
-                                    make_expression_statement(e) for e in exprs[:-1]
-                                ]
-                                init['argument'] = exprs[-1]
-                                new_stmts.append(stmt)
-                                stmts[i : i + 1] = new_stmts
-                                i += len(new_stmts)
-                                self.set_changed()
-                                continue
+                    split_result = self._try_split_single_declarator_init(
+                        stmt, decls[0]
+                    )
+                    if split_result:
+                        stmts[i : i + 1] = split_result
+                        i += len(split_result)
+                        self.set_changed()
+                        continue
 
             i += 1
+
+    @staticmethod
+    def _try_split_single_declarator_init(stmt, declarator):
+        """Split SequenceExpression from a single VariableDeclarator init.
+
+        Handles both direct sequences and sequences inside AwaitExpression.
+        Returns a list of replacement statements, or None.
+        """
+        init = declarator.get('init')
+        if not isinstance(init, dict):
+            return None
+
+        # Direct: const x = (a, b, expr()) → a; b; const x = expr();
+        if init.get('type') == 'SequenceExpression':
+            exprs = init.get('expressions', [])
+            if len(exprs) <= 1:
+                return None
+            prefix = [make_expression_statement(e) for e in exprs[:-1]]
+            declarator['init'] = exprs[-1]
+            prefix.append(stmt)
+            return prefix
+
+        # Await-wrapped: var x = await (a, b, expr()) → a; b; var x = await expr();
+        if (
+            init.get('type') == 'AwaitExpression'
+            and isinstance(init.get('argument'), dict)
+            and init['argument'].get('type') == 'SequenceExpression'
+        ):
+            exprs = init['argument'].get('expressions', [])
+            if len(exprs) <= 1:
+                return None
+            prefix = [make_expression_statement(e) for e in exprs[:-1]]
+            init['argument'] = exprs[-1]
+            prefix.append(stmt)
+            return prefix
+
+        return None

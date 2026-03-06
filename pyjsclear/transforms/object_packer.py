@@ -4,8 +4,8 @@ Detects: var o = {}; o.x = 1; o.y = 2;
 Replaces: var o = {x: 1, y: 2};
 """
 
-from .base import Transform
 from ..utils.ast_helpers import is_identifier
+from .base import Transform
 
 
 class ObjectPacker(Transform):
@@ -28,6 +28,25 @@ class ObjectPacker(Transform):
             elif isinstance(child, dict) and 'type' in child:
                 self._process_bodies(child)
 
+    @staticmethod
+    def _find_empty_object_declaration(stmt):
+        """Find an empty object literal in a VariableDeclaration.
+
+        Returns (name, declarator, object_expression) or None.
+        """
+        if stmt.get('type') != 'VariableDeclaration':
+            return None
+        for d in stmt.get('declarations', []):
+            init = d.get('init')
+            if (
+                init
+                and init.get('type') == 'ObjectExpression'
+                and len(init.get('properties', [])) == 0
+                and d.get('id', {}).get('type') == 'Identifier'
+            ):
+                return d['id']['name'], d, init
+        return None
+
     def _try_pack_body(self, body):
         """Find empty object declarations followed by property assignments and pack them."""
         i = 0
@@ -37,28 +56,12 @@ class ObjectPacker(Transform):
                 i += 1
                 continue
 
-            # Find: var obj = {} or let obj = {} or const obj = {}
-            obj_name = None
-            obj_decl = None
-            obj_expr = None
-
-            if stmt.get('type') == 'VariableDeclaration':
-                for d in stmt.get('declarations', []):
-                    init = d.get('init')
-                    if (
-                        init
-                        and init.get('type') == 'ObjectExpression'
-                        and len(init.get('properties', [])) == 0
-                        and d.get('id', {}).get('type') == 'Identifier'
-                    ):
-                        obj_name = d['id']['name']
-                        obj_decl = d
-                        obj_expr = init
-                        break
-
-            if obj_name is None:
+            found = self._find_empty_object_declaration(stmt)
+            if not found:
                 i += 1
                 continue
+
+            obj_name, obj_decl, obj_expr = found
 
             # Collect consecutive property assignments
             assignments = []
@@ -128,10 +131,8 @@ class ObjectPacker(Transform):
             if child is None:
                 continue
             if isinstance(child, list):
-                for item in child:
-                    if self._references_name(item, name):
-                        return True
-            elif isinstance(child, dict):
-                if self._references_name(child, name):
+                if any(self._references_name(item, name) for item in child):
                     return True
+            elif isinstance(child, dict) and self._references_name(child, name):
+                return True
         return False

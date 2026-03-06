@@ -53,27 +53,29 @@ def get_literal_value(node):
 
 def make_literal(value, raw=None):
     """Create a Literal AST node."""
-    if raw is None:
-        if isinstance(value, str):
-            raw = repr(value).replace("'", '"')
-            # Ensure double-quote wrapping
-            if not raw.startswith('"'):
-                raw = '"' + raw[1:-1].replace('"', '\\"') + '"'
-        elif isinstance(value, bool):
-            raw = 'true' if value else 'false'
-        elif isinstance(value, (int, float)):
-            if (
-                isinstance(value, float)
-                and value == int(value)
-                and not (value == 0 and str(value).startswith('-'))
-            ):
-                raw = str(int(value))
-            else:
-                raw = str(value)
-        elif value is None:
-            raw = 'null'
+    if raw is not None:
+        return {'type': 'Literal', 'value': value, 'raw': raw}
+
+    if isinstance(value, str):
+        raw = repr(value).replace("'", '"')
+        # Ensure double-quote wrapping
+        if not raw.startswith('"'):
+            raw = '"' + raw[1:-1].replace('"', '\\"') + '"'
+    elif isinstance(value, bool):
+        raw = 'true' if value else 'false'
+    elif isinstance(value, (int, float)):
+        if (
+            isinstance(value, float)
+            and value == int(value)
+            and not (value == 0 and str(value).startswith('-'))
+        ):
+            raw = str(int(value))
         else:
             raw = str(value)
+    elif value is None:
+        raw = 'null'
+    else:
+        raw = str(value)
     return {'type': 'Literal', 'value': value, 'raw': raw}
 
 
@@ -205,16 +207,13 @@ def get_child_keys(node):
     if keys is not None:
         return keys
     # Fallback: return all keys that look like they might contain nodes
-    result = []
-    for k, v in node.items():
-        if k in _SKIP_KEYS:
-            continue
-        # 'expression' is a bool on ArrowFunctionExpression but a node on ExpressionStatement
-        if k == 'expression' and ntype != 'ExpressionStatement':
-            continue
-        if isinstance(v, (dict, list)):
-            result.append(k)
-    return result
+    return [
+        k
+        for k, v in node.items()
+        if k not in _SKIP_KEYS
+        and not (k == 'expression' and ntype != 'ExpressionStatement')
+        and isinstance(v, (dict, list))
+    ]
 
 
 def replace_identifiers(node, param_map):

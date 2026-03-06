@@ -1,11 +1,23 @@
 """Constant propagation — replace references to constant variables with their literal values."""
 
-from .base import Transform
 from ..scope import build_scope_tree
-from ..traverser import SKIP
-from ..traverser import traverse
-from ..utils.ast_helpers import deep_copy
-from ..utils.ast_helpers import is_literal
+from ..traverser import SKIP, traverse
+from ..utils.ast_helpers import deep_copy, is_literal
+from .base import Transform
+
+
+def _should_skip_reference(ref_parent, ref_key):
+    """Return True if this reference should not be replaced with its literal value."""
+    if not ref_parent:
+        return True
+    ptype = ref_parent.get('type')
+    if ptype == 'AssignmentExpression' and ref_key == 'left':
+        return True
+    if ptype == 'UpdateExpression':
+        return True
+    if ptype == 'VariableDeclarator' and ref_key == 'id':
+        return True
+    return False
 
 
 class ConstantProp(Transform):
@@ -16,50 +28,37 @@ class ConstantProp(Transform):
     def execute(self):
         scope_tree, node_scope = build_scope_tree(self.ast)
 
-        # Find constant bindings with literal values
-        replacements = {}  # name -> literal_node
-        to_remove = []  # (parent_body_list, index) of declarations to remove
-
-        def _find_constants(scope):
-            for name, binding in scope.bindings.items():
-                if not binding.is_constant:
-                    continue
-                # Check if it has a literal init value
-                node = binding.node
-                init_val = None
-                if isinstance(node, dict) and node.get('type') == 'VariableDeclarator':
-                    init_val = node.get('init')
-                if init_val and is_literal(init_val):
-                    # Don't propagate if name shadows a global or has too many refs
-                    replacements[id(binding)] = (binding, init_val)
-
-            for child in scope.children:
-                _find_constants(child)
-
-        _find_constants(scope_tree)
-
+        replacements = dict(self._iter_constant_bindings(scope_tree))
         if not replacements:
             return False
 
-        # Replace references
+        bindings_replaced = self._replace_references(replacements)
+        self._remove_fully_propagated(replacements, bindings_replaced)
+        return self.has_changed()
+
+    def _iter_constant_bindings(self, scope):
+        """Yield (binding_id, (binding, literal)) for constant bindings with literal values."""
+        for name, binding in scope.bindings.items():
+            if not binding.is_constant:
+                continue
+            node = binding.node
+            if not isinstance(node, dict) or node.get('type') != 'VariableDeclarator':
+                continue
+            init_val = node.get('init')
+            if not init_val or not is_literal(init_val):
+                continue
+            yield id(binding), (binding, init_val)
+
+        for child in scope.children:
+            yield from self._iter_constant_bindings(child)
+
+    def _replace_references(self, replacements):
+        """Replace all qualifying references with their literal values."""
         bindings_replaced = set()
         for bind_id, (binding, literal) in replacements.items():
             for ref_node, ref_parent, ref_key, ref_index in binding.references:
-                if (
-                    ref_parent
-                    and ref_parent.get('type') == 'AssignmentExpression'
-                    and ref_key == 'left'
-                ):
-                    continue  # Don't replace assignment targets
-                if ref_parent and ref_parent.get('type') == 'UpdateExpression':
+                if _should_skip_reference(ref_parent, ref_key):
                     continue
-                if (
-                    ref_parent
-                    and ref_parent.get('type') == 'VariableDeclarator'
-                    and ref_key == 'id'
-                ):
-                    continue
-                # Replace
                 new_node = deep_copy(literal)
                 if ref_index is not None:
                     ref_parent[ref_key][ref_index] = new_node
@@ -67,22 +66,20 @@ class ConstantProp(Transform):
                     ref_parent[ref_key] = new_node
                 self.set_changed()
                 bindings_replaced.add(bind_id)
+        return bindings_replaced
 
-        # Remove declarations that were fully propagated
+    def _remove_fully_propagated(self, replacements, bindings_replaced):
+        """Remove declarations whose bindings were fully propagated."""
         for bind_id in bindings_replaced:
             binding = replacements[bind_id][0]
             if binding.assignments:
-                continue  # has reassignments, don't remove
-            # Remove the declaration
+                continue
             decl_node = binding.node
-            if (
-                isinstance(decl_node, dict)
-                and decl_node.get('type') == 'VariableDeclarator'
-            ):
-                # Find the VariableDeclaration parent and remove this declarator
-                self._remove_declarator(decl_node)
-
-        return self.has_changed()
+            if not isinstance(decl_node, dict):
+                continue
+            if decl_node.get('type') != 'VariableDeclarator':
+                continue
+            self._remove_declarator(decl_node)
 
     def _remove_declarator(self, declarator_node):
         """Remove a VariableDeclarator from its parent VariableDeclaration."""

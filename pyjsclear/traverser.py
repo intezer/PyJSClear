@@ -1,7 +1,6 @@
 """ESTree AST traversal with visitor pattern."""
 
-from .utils.ast_helpers import _CHILD_KEYS
-from .utils.ast_helpers import get_child_keys
+from .utils.ast_helpers import _CHILD_KEYS, get_child_keys
 
 # Sentinel to signal node removal
 REMOVE = object()
@@ -46,12 +45,13 @@ def traverse(node, visitor):
             if result is _REMOVE:
                 return _REMOVE
             if result is _SKIP:
-                if exit_fn:
-                    exit_result = exit_fn(node, parent, key, index)
-                    if exit_result is _REMOVE:
-                        return _REMOVE
-                    if _isinstance(exit_result, _dict) and 'type' in exit_result:
-                        return exit_result
+                if not exit_fn:
+                    return node
+                exit_result = exit_fn(node, parent, key, index)
+                if exit_result is _REMOVE:
+                    return _REMOVE
+                if _isinstance(exit_result, _dict) and 'type' in exit_result:
+                    return exit_result
                 return node
             if _isinstance(result, _dict) and 'type' in result:
                 node = result
@@ -145,38 +145,40 @@ def collect_nodes(ast, node_type):
     return result
 
 
+class _FoundParent(Exception):
+    """Raised to short-circuit find_parent search."""
+
+    __slots__ = ('value',)
+
+    def __init__(self, value):
+        self.value = value
+
+
 def find_parent(ast, target_node):
     """Find the parent of a node in the AST. Returns (parent, key, index) or None."""
-    result = [None]
 
-    def _visit(n, parent, key, index):
-        if n is target_node:
-            result[0] = (parent, key, index)
+    def _visit(node):
+        if not isinstance(node, dict) or 'type' not in node:
             return
-        if not isinstance(n, dict) or 'type' not in n:
-            return
-        for ckey in get_child_keys(n):
-            child = n.get(ckey)
+        for ckey in get_child_keys(node):
+            child = node.get(ckey)
             if child is None:
                 continue
             if isinstance(child, list):
                 for i, item in enumerate(child):
                     if item is target_node:
-                        result[0] = (n, ckey, i)
-                        return
-                    _visit(item, n, ckey, i)
-                    if result[0]:
-                        return
+                        raise _FoundParent((node, ckey, i))
+                    _visit(item)
             elif isinstance(child, dict):
                 if child is target_node:
-                    result[0] = (n, ckey, None)
-                    return
-                _visit(child, n, ckey, None)
-                if result[0]:
-                    return
+                    raise _FoundParent((node, ckey, None))
+                _visit(child)
 
-    _visit(ast, None, None, None)
-    return result[0]
+    try:
+        _visit(ast)
+    except _FoundParent as found:
+        return found.value
+    return None
 
 
 def replace_in_parent(parent, key, index, new_node):
