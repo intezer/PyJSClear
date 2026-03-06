@@ -19,7 +19,7 @@ def _fast_to_dict(obj):
     d = obj if isinstance(obj, dict) else obj.__dict__
     result = {}
     for k, v in d.items():
-        if v is None or k.startswith('_'):
+        if k.startswith('_'):
             continue
         if k == 'optional' and v is False:
             continue

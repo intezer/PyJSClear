@@ -179,13 +179,10 @@ def _gen_arrow(node, indent):
     # Always wrap params in parens (Babel style)
     param_str = '(' + ', '.join(generate(p, indent) for p in params) + ')'
     body = node.get('body', {})
-    if body.get('type') == 'BlockStatement':
-        body_str = generate(body, indent)
-    else:
-        body_str = generate(body, indent)
-        # Wrap object literal in parens
-        if body.get('type') == 'ObjectExpression':
-            body_str = '(' + body_str + ')'
+    body_str = generate(body, indent)
+    # Wrap object literal in parens to avoid ambiguity with block
+    if body.get('type') == 'ObjectExpression':
+        body_str = '(' + body_str + ')'
     return f'{async_prefix}{param_str} => {body_str}'
 
 

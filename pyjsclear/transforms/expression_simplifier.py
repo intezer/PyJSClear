@@ -6,6 +6,10 @@ from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier, is_literal, make_literal
 from .base import Transform
 
+# Sentinel to distinguish JS null (Literal value=None) from JS undefined
+# (Identifier name='undefined'). Python None represents undefined.
+_JS_NULL = object()
+
 _RESOLVABLE_UNARY = {'-', '+', '!', '~', 'typeof', 'void'}
 _RESOLVABLE_BINARY = {
     '==',
@@ -172,6 +176,9 @@ class ExpressionSimplifier(Transform):
             # Exclude regex literals
             if node.get('regex'):
                 return None, False
+            # Literal with value None is JS null, not undefined
+            if val is None:
+                return _JS_NULL, True
             return val, True
         if ntype == 'UnaryExpression' and node.get('operator') == '-':
             arg = node.get('argument')
@@ -187,29 +194,22 @@ class ExpressionSimplifier(Transform):
 
     def _apply_unary(self, op, val):
         if op == '-':
-            return -val
+            n = self._js_to_number(val)
+            return -n
         if op == '+':
-            if isinstance(val, (int, float)):
-                return +val
-            if isinstance(val, str):
-                try:
-                    return float(val)
-                except ValueError:
-                    return None  # NaN - can't simplify
-            if isinstance(val, list):
-                return 0
-            if val is None:
-                return float('nan')  # +undefined → NaN
-            return 0
+            return self._js_to_number(val)
         if op == '!':
             # JS truthiness
             return not self._js_truthy(val)
         if op == '~':
-            return ~int(val) if isinstance(val, (int, float)) else ~0
+            n = self._js_to_number(val)
+            if isinstance(n, float) and math.isnan(n):
+                return -1  # ~NaN → -1
+            return ~int(n)
         if op == 'typeof':
             return self._js_typeof(val)
         if op == 'void':
-            return None  # undefined
+            return None  # JS undefined
 
     def _apply_binary(self, op, left, right):
         # Coerce types similar to JS
@@ -252,12 +252,34 @@ class ExpressionSimplifier(Transform):
             r = int(self._js_to_number(right)) & 31
             return l >> r
         if op == '==':
+            # JS == treats null and undefined as equal to each other
+            if (left is None or left is _JS_NULL) and (
+                right is None or right is _JS_NULL
+            ):
+                return True
+            if left is _JS_NULL or right is _JS_NULL:
+                return False
             return left == right
         if op == '!=':
+            if (left is None or left is _JS_NULL) and (
+                right is None or right is _JS_NULL
+            ):
+                return False
+            if left is _JS_NULL or right is _JS_NULL:
+                return True
             return left != right
         if op == '===':
+            # null === undefined is False
+            if left is _JS_NULL:
+                return right is _JS_NULL
+            if right is _JS_NULL:
+                return False
             return left == right and type(left) == type(right)
         if op == '!==':
+            if left is _JS_NULL:
+                return right is not _JS_NULL
+            if right is _JS_NULL:
+                return True
             return not (left == right and type(left) == type(right))
         if op == '<':
             return self._js_compare(left, right) < 0
@@ -270,7 +292,7 @@ class ExpressionSimplifier(Transform):
         raise ValueError(f'Unknown operator: {op}')
 
     def _js_truthy(self, val):
-        if val is None:
+        if val is None or val is _JS_NULL:
             return False
         if isinstance(val, bool):
             return val
@@ -285,6 +307,8 @@ class ExpressionSimplifier(Transform):
         return bool(val)
 
     def _js_typeof(self, val):
+        if val is _JS_NULL:
+            return 'object'  # typeof null === 'object' in JS
         if val is None:
             return 'undefined'
         if isinstance(val, bool):
@@ -298,8 +322,10 @@ class ExpressionSimplifier(Transform):
         return 'undefined'
 
     def _js_to_number(self, val):
+        if val is _JS_NULL:
+            return 0  # Number(null) → 0
         if val is None:
-            return 0
+            return float('nan')  # Number(undefined) → NaN
         if isinstance(val, bool):
             return 1 if val else 0
         if isinstance(val, (int, float)):
@@ -318,6 +344,8 @@ class ExpressionSimplifier(Transform):
         return 0
 
     def _js_to_string(self, val):
+        if val is _JS_NULL:
+            return 'null'
         if val is None:
             return 'undefined'
         if isinstance(val, bool):
@@ -335,8 +363,20 @@ class ExpressionSimplifier(Transform):
         return str(val)
 
     def _js_compare(self, left, right):
+        # JS compares strings lexicographically, not numerically
+        if isinstance(left, str) and isinstance(right, str):
+            if left < right:
+                return -1
+            if left > right:
+                return 1
+            return 0
         l = self._js_to_number(left)
         r = self._js_to_number(right)
+        # NaN comparisons always return false in JS
+        if isinstance(l, float) and math.isnan(l):
+            return float('nan')
+        if isinstance(r, float) and math.isnan(r):
+            return float('nan')
         if l < r:
             return -1
         if l > r:
@@ -344,6 +384,8 @@ class ExpressionSimplifier(Transform):
         return 0
 
     def _value_to_node(self, val):
+        if val is _JS_NULL:
+            return make_literal(None)  # null literal
         if val is None:
             return {'type': 'Identifier', 'name': 'undefined'}
         if isinstance(val, bool):

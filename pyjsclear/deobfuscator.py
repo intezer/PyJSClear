@@ -51,7 +51,6 @@ class Deobfuscator:
     def execute(self):
         """Run all transforms and return cleaned source."""
         code = self.original_code
-        hex_changed = False
 
         # Try to parse; if it fails, apply source-level hex decoding as fallback
         try:
@@ -59,11 +58,9 @@ class Deobfuscator:
         except SyntaxError:
             # Source-level hex decode for unparseable files (e.g. ES modules)
             decoded = decode_hex_escapes_source(code)
-            hex_changed = decoded != code
-            if hex_changed:
-                code = decoded
-            # Can't do AST transforms without parsing
-            return code if hex_changed else self.original_code
+            if decoded != code:
+                return decoded
+            return self.original_code
 
         # Multi-pass transform loop
         any_transform_changed = False
@@ -82,18 +79,10 @@ class Deobfuscator:
             if not modified:
                 break
 
-        # If nothing changed, return original code to avoid reformatting
-        if not any_transform_changed and not hex_changed:
+        if not any_transform_changed:
             return self.original_code
 
-        # Generate output
         try:
-            output = generate(ast)
+            return generate(ast)
         except Exception:
-            # If only hex decoding changed the source, return the decoded
-            # version directly rather than falling back to the original.
-            if hex_changed:
-                return code
             return self.original_code
-
-        return output

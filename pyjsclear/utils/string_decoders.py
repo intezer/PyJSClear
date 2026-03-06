@@ -81,9 +81,7 @@ class Base64StringDecoder(StringDecoder):
         return DecoderType.BASE_64
 
     def get_string(self, index, *args):
-        cache_key = (
-            str(index) + self.string_array[0] if self.string_array else str(index)
-        )
+        cache_key = index
         if cache_key in self._cache:
             return self._cache[cache_key]
         idx = index + self.index_offset
