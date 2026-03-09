@@ -613,6 +613,70 @@ def _gen_rest_element(node, indent):
     return '...' + generate(node['argument'], indent)
 
 
+def _gen_import_specifier(spec, indent):
+    """Generate a single import specifier."""
+    spec_type = spec.get('type', '')
+    if spec_type == 'ImportDefaultSpecifier':
+        return generate(spec['local'], indent)
+    if spec_type == 'ImportNamespaceSpecifier':
+        return '* as ' + generate(spec['local'], indent)
+    # ImportSpecifier
+    imported = generate(spec['imported'], indent)
+    local = generate(spec['local'], indent)
+    if imported == local:
+        return imported
+    return f'{imported} as {local}'
+
+
+def _gen_import_declaration(node, indent):
+    source = generate(node['source'], indent)
+    specifiers = node.get('specifiers', [])
+    if not specifiers:
+        return f'import {source}'
+    default_specs = [s for s in specifiers if s.get('type') == 'ImportDefaultSpecifier']
+    namespace_specs = [s for s in specifiers if s.get('type') == 'ImportNamespaceSpecifier']
+    named_specs = [s for s in specifiers if s.get('type') == 'ImportSpecifier']
+    parts = []
+    if default_specs:
+        parts.append(_gen_import_specifier(default_specs[0], indent))
+    if namespace_specs:
+        parts.append(_gen_import_specifier(namespace_specs[0], indent))
+    if named_specs:
+        names = ', '.join(_gen_import_specifier(s, indent) for s in named_specs)
+        parts.append('{' + names + '}')
+    return f'import {", ".join(parts)} from {source}'
+
+
+def _gen_export_specifier(spec, indent):
+    exported = generate(spec['exported'], indent)
+    local = generate(spec['local'], indent)
+    if exported == local:
+        return exported
+    return f'{local} as {exported}'
+
+
+def _gen_export_named(node, indent):
+    declaration = node.get('declaration')
+    if declaration:
+        return f'export {generate(declaration, indent)}'
+    specifiers = node.get('specifiers', [])
+    names = ', '.join(_gen_export_specifier(s, indent) for s in specifiers)
+    source = node.get('source')
+    if source:
+        return f'export {{{names}}} from {generate(source, indent)}'
+    return f'export {{{names}}}'
+
+
+def _gen_export_default(node, indent):
+    declaration = node.get('declaration', {})
+    return f'export default {generate(declaration, indent)}'
+
+
+def _gen_export_all(node, indent):
+    source = generate(node['source'], indent)
+    return f'export * from {source}'
+
+
 def _expr_precedence(node):
     """Get the precedence level of an expression node."""
     if not isinstance(node, dict):
@@ -701,4 +765,8 @@ _GENERATORS = {
     'ArrayPattern': _gen_array_pattern,
     'ObjectPattern': _gen_object_pattern,
     'RestElement': _gen_rest_element,
+    'ImportDeclaration': _gen_import_declaration,
+    'ExportNamedDeclaration': _gen_export_named,
+    'ExportDefaultDeclaration': _gen_export_default,
+    'ExportAllDeclaration': _gen_export_all,
 }

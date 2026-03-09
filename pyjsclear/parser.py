@@ -37,5 +37,10 @@ def parse(code):
     """
     try:
         return _fast_to_dict(esprima.parseScript(code))
+    except esprima.Error:
+        try:
+            return _fast_to_dict(esprima.parseModule(code))
+        except Exception as e:
+            raise SyntaxError(f'Failed to parse JavaScript: {e}') from e
     except Exception as e:
         raise SyntaxError(f'Failed to parse JavaScript: {e}') from e
