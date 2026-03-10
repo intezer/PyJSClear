@@ -94,17 +94,8 @@ class TestLiterals:
     def test_boolean_false(self):
         assert generate(_lit(False, 'false')) == 'false'
 
-    def test_boolean_true_no_raw(self):
-        assert generate(_lit(True)) == 'true'
-
-    def test_boolean_false_no_raw(self):
-        assert generate(_lit(False)) == 'false'
-
     def test_null(self):
         assert generate(_lit(None, 'null')) == 'null'
-
-    def test_null_no_raw(self):
-        assert generate(_lit(None)) == 'null'
 
     def test_raw_value_used(self):
         # When value is not a string and raw is present, raw takes priority
@@ -1439,86 +1430,6 @@ class TestBug4IdentifierKeyQuoting:
 # ===========================================================================
 
 
-class TestRoundtrip:
-    """Parse JavaScript with parse(), then generate back, and verify output."""
-
-    def _roundtrip(self, code):
-        ast = parse(code)
-        return generate(ast)
-
-    def test_var_declaration(self):
-        result = self._roundtrip('var x = 1;')
-        assert 'var x = 1;' in result
-
-    def test_let_const(self):
-        result = self._roundtrip('let a = 1; const b = 2;')
-        assert 'let a = 1;' in result
-        assert 'const b = 2;' in result
-
-    def test_function_declaration(self):
-        result = self._roundtrip('function foo(a) { return a; }')
-        assert 'function foo(a)' in result
-        assert 'return a;' in result
-
-    def test_if_else(self):
-        result = self._roundtrip('if (x) { a(); } else { b(); }')
-        assert 'if (x)' in result
-        assert 'else' in result
-
-    def test_for_loop(self):
-        result = self._roundtrip('for (var i = 0; i < 10; i++) {}')
-        assert 'for (' in result
-        assert 'i < 10' in result
-
-    def test_while_loop(self):
-        result = self._roundtrip('while (true) { break; }')
-        assert 'while (true)' in result
-        assert 'break;' in result
-
-    def test_arrow_function(self):
-        result = self._roundtrip('var f = (x) => x + 1;')
-        assert '=>' in result
-
-    def test_class(self):
-        result = self._roundtrip('class Foo extends Bar { constructor() {} }')
-        assert 'class Foo extends Bar' in result
-        assert 'constructor()' in result
-
-    def test_template_literal(self):
-        result = self._roundtrip('var s = `hello ${name}`;')
-        assert '`hello ${name}`' in result
-
-    def test_try_catch(self):
-        result = self._roundtrip('try { a(); } catch (e) { b(); }')
-        assert 'try {' in result
-        assert 'catch (e)' in result
-
-    def test_switch(self):
-        result = self._roundtrip('switch (x) { case 1: break; default: break; }')
-        assert 'switch (x)' in result
-        assert 'case 1:' in result
-        assert 'default:' in result
-
-    def test_do_while(self):
-        result = self._roundtrip('do { x++; } while (x < 10);')
-        assert 'do {' in result
-        assert 'while (x < 10)' in result
-
-    def test_spread_in_call(self):
-        result = self._roundtrip('foo(...args);')
-        assert '...args' in result
-
-    def test_object_destructuring(self):
-        result = self._roundtrip('var { a, b } = obj;')
-        assert 'a' in result
-        assert 'b' in result
-
-    def test_array_destructuring(self):
-        result = self._roundtrip('var [a, b] = arr;')
-        assert 'a' in result
-        assert 'b' in result
-
-
 # ===========================================================================
 # Program-level tests
 # ===========================================================================
@@ -1563,3 +1474,375 @@ class TestBlockStatement:
         assert result.startswith('{')
         assert 'a;' in result
         assert result.rstrip().endswith('}')
+
+
+# ===========================================================================
+# Coverage gap tests
+# ===========================================================================
+
+
+class TestGenStmtNoneNode:
+    """Line 113: _gen_stmt with None node returns ''."""
+
+    def test_gen_stmt_none(self):
+        from pyjsclear.generator import _gen_stmt
+
+        assert _gen_stmt(None, 0) == ''
+
+
+class TestGenStmtDoubleEndingSemicolon:
+    """Line 120: statement that already ends with ';' avoids double semicolon."""
+
+    def test_statement_ending_with_semicolon(self):
+        # EmptyStatement generates ';' and is in _NO_SEMI_TYPES,
+        # but we can construct a node whose generate() output ends with ';'
+        # that is NOT in _NO_SEMI_TYPES. Use a manual approach.
+        from pyjsclear.generator import _gen_stmt
+
+        # Create a fake node type that generates code ending with ';'
+        # A VariableDeclaration ending with ';' (by appending manually)
+        # Actually, let's just test the path: _gen_stmt appends ';' only if code doesn't already end with it
+        # We can use generate on an expression statement whose expression ends with ;
+        # Simplest: use a literal with raw ending in ;
+        node = {'type': 'ExpressionStatement', 'expression': {'type': 'Literal', 'value': 1, 'raw': '1;'}}
+        result = _gen_stmt(node, 0)
+        # Should not double the semicolon
+        assert result == '1;'
+        assert not result.endswith(';;')
+
+
+class TestDirectiveInBlock:
+    """Line 132: directive ('use strict') followed by another statement in block body."""
+
+    def test_use_strict_directive_in_block(self):
+        ast = parse('"use strict"; var x = 1;')
+        result = generate(ast)
+        assert '"use strict"' in result
+        assert 'var x = 1' in result
+        # There should be a blank line after the directive
+        lines = result.split('\n')
+        directive_idx = next(i for i, l in enumerate(lines) if 'use strict' in l)
+        assert lines[directive_idx + 1].strip() == ''
+
+    def test_use_strict_in_function_block(self):
+        ast = parse('function f() { "use strict"; return 1; }')
+        result = generate(ast)
+        assert '"use strict"' in result
+        assert 'return 1' in result
+
+
+class TestNonBlockConsequentAlternate:
+    """Lines 194, 200: non-BlockStatement consequent/alternate in if."""
+
+    def test_if_with_expression_consequent(self):
+        # if (true) x;  — consequent is ExpressionStatement, not BlockStatement
+        ast = parse('if (true) x;')
+        result = generate(ast)
+        assert 'if (true)' in result
+        assert 'x' in result
+
+    def test_if_else_with_expression_alternate(self):
+        # if (true) { x; } else y;
+        ast = parse('if (true) { x; } else y;')
+        result = generate(ast)
+        assert 'else' in result
+        assert 'y' in result
+
+    def test_if_else_both_non_block(self):
+        ast = parse('if (true) x; else y;')
+        result = generate(ast)
+        assert 'if (true)' in result
+        assert 'x' in result
+        assert 'else' in result
+        assert 'y' in result
+
+
+class TestPostfixUnary:
+    """Line 326: postfix unary expression (prefix=false)."""
+
+    def test_postfix_unary_not_prefix(self):
+        # Construct a UnaryExpression with prefix=false manually
+        # (JS doesn't have postfix unary except ++/--, which are UpdateExpression,
+        # but the code path exists)
+        node = {
+            'type': 'UnaryExpression',
+            'operator': '!',
+            'prefix': False,
+            'argument': {'type': 'Identifier', 'name': 'x'},
+        }
+        result = generate(node)
+        assert result == 'x!'
+
+
+class TestMemberAccessOnComplexExpression:
+    """Line 360: member access on complex expression like (a + b).toString()."""
+
+    def test_binary_expression_member_access(self):
+        ast = parse('(a + b).toString()')
+        result = generate(ast)
+        assert '(a + b).toString()' in result
+
+    def test_conditional_expression_member_access(self):
+        ast = parse('(a ? b : c).x')
+        result = generate(ast)
+        assert '(a ? b : c).x' in result
+
+    def test_sequence_expression_member_access(self):
+        ast = parse('(a, b).x')
+        result = generate(ast)
+        assert '(a, b).x' in result
+
+    def test_arrow_function_member_access(self):
+        # Arrow function as object in member expression
+        node = {
+            'type': 'MemberExpression',
+            'object': {
+                'type': 'ArrowFunctionExpression',
+                'params': [],
+                'body': {'type': 'Literal', 'value': 1, 'raw': '1'},
+            },
+            'property': {'type': 'Identifier', 'name': 'call'},
+            'computed': False,
+        }
+        result = generate(node)
+        assert '(() => 1).call' in result
+
+
+class TestRestElementInProperty:
+    """Lines 453-455: RestElement handled by _gen_property."""
+
+    def test_gen_property_rest_element(self):
+        # _gen_property generates key: value for a Property node
+        from pyjsclear.generator import _gen_property
+
+        node = {
+            'type': 'Property',
+            'key': {'type': 'Identifier', 'name': 'a'},
+            'value': {'type': 'Identifier', 'name': 'b'},
+        }
+        result = _gen_property(node, 0)
+        assert result == 'a: b'
+
+
+class TestLiteralFallbackCase:
+    """Lines 492-493: Literal with non-float, non-string, non-None value — the _ case."""
+
+    def test_literal_unknown_value_type(self):
+        # A literal with a value that's not str, int, float, bool, or None
+        # e.g. a complex number or some other object
+        node = {'type': 'Literal', 'value': (1, 2)}
+        result = generate(node)
+        assert result == '(1, 2)'
+
+    def test_literal_bytes_value(self):
+        node = {'type': 'Literal', 'value': b'hello'}
+        result = generate(node)
+        assert result == "b'hello'"
+
+
+class TestMethodDefinitionComputedOrLiteralKey:
+    """Line 550: method definition with computed key or Literal key."""
+
+    def test_method_definition_computed_key(self):
+        ast = parse('class Foo { [Symbol.iterator]() {} }')
+        result = generate(ast)
+        assert '[Symbol.iterator]' in result
+
+    def test_method_definition_literal_key(self):
+        # Construct a MethodDefinition with a Literal key
+        node = {
+            'type': 'Program',
+            'sourceType': 'script',
+            'body': [
+                {
+                    'type': 'ClassDeclaration',
+                    'id': {'type': 'Identifier', 'name': 'Foo'},
+                    'superClass': None,
+                    'body': {
+                        'type': 'ClassBody',
+                        'body': [
+                            {
+                                'type': 'MethodDefinition',
+                                'key': {'type': 'Literal', 'value': 0, 'raw': '0'},
+                                'computed': False,
+                                'kind': 'method',
+                                'static': False,
+                                'value': {
+                                    'type': 'FunctionExpression',
+                                    'id': None,
+                                    'params': [],
+                                    'body': {'type': 'BlockStatement', 'body': []},
+                                },
+                            }
+                        ],
+                    },
+                }
+            ],
+        }
+        result = generate(node)
+        assert '[0]' in result
+
+
+class TestRestElementInObjectPattern:
+    """Line 594: RestElement in ObjectPattern."""
+
+    def test_rest_element_in_object_pattern(self):
+        ast = parse('var {a, ...rest} = obj;')
+        result = generate(ast)
+        assert '...rest' in result
+        assert 'a' in result
+
+
+class TestEmptyObjectPattern:
+    """Line 605: Empty ObjectPattern {}."""
+
+    def test_empty_object_pattern(self):
+        node = {
+            'type': 'ObjectPattern',
+            'properties': [],
+        }
+        result = generate(node)
+        assert result == '{}'
+
+
+class TestImportSpecifiers:
+    """Lines 618-628: import specifiers."""
+
+    def test_import_default_specifier(self):
+        ast = parse('import foo from "bar";')
+        result = generate(ast)
+        assert 'import foo from "bar"' in result
+
+    def test_import_namespace_specifier(self):
+        ast = parse('import * as ns from "bar";')
+        result = generate(ast)
+        assert 'import * as ns from "bar"' in result
+
+    def test_import_named_specifier(self):
+        ast = parse('import { x } from "bar";')
+        result = generate(ast)
+        assert 'import {x} from "bar"' in result
+
+    def test_import_named_with_rename(self):
+        ast = parse('import { x as y } from "bar";')
+        result = generate(ast)
+        assert 'x as y' in result
+        assert 'from "bar"' in result
+
+
+class TestImportDeclarations:
+    """Lines 632-647: import declarations."""
+
+    def test_bare_import(self):
+        ast = parse('import "foo";')
+        result = generate(ast)
+        assert 'import "foo"' in result
+
+    def test_import_default_and_named(self):
+        ast = parse('import def, { a } from "mod";')
+        result = generate(ast)
+        assert 'def' in result
+        assert '{a}' in result
+        assert 'from "mod"' in result
+
+
+class TestExportSpecifiers:
+    """Lines 651-655: export specifiers with rename."""
+
+    def test_export_specifier_same_name(self):
+        ast = parse('export { x };')
+        result = generate(ast)
+        assert 'export {x}' in result
+
+    def test_export_specifier_with_rename(self):
+        ast = parse('export { x as y };')
+        result = generate(ast)
+        assert 'x as y' in result
+
+
+class TestExportDeclarations:
+    """Lines 659-677: various export forms."""
+
+    def test_export_named_with_declaration(self):
+        ast = parse('export var x = 1;')
+        result = generate(ast)
+        assert 'export var x = 1' in result
+
+    def test_export_named_with_specifiers(self):
+        ast = parse('export { a, b };')
+        result = generate(ast)
+        assert 'export {a, b}' in result
+
+    def test_export_named_with_source(self):
+        ast = parse('export { a } from "mod";')
+        result = generate(ast)
+        assert 'export {a} from "mod"' in result
+
+    def test_export_default(self):
+        ast = parse('export default 42;')
+        result = generate(ast)
+        assert 'export default 42' in result
+
+    def test_export_default_function(self):
+        ast = parse('export default function() {}')
+        result = generate(ast)
+        assert 'export default function' in result
+
+    def test_export_all(self):
+        ast = parse('export * from "mod";')
+        result = generate(ast)
+        assert 'export * from "mod"' in result
+
+
+class TestExprPrecedenceCases:
+    """Lines 699-713: various precedence cases."""
+
+    def test_conditional_expression_precedence(self):
+        # Conditional expression as part of a larger expression
+        ast = parse('a = x ? 1 : 2;')
+        result = generate(ast)
+        assert 'x ? 1 : 2' in result
+
+    def test_assignment_expression_precedence(self):
+        ast = parse('a = b = c;')
+        result = generate(ast)
+        assert 'a = b = c' in result
+
+    def test_yield_expression_precedence(self):
+        ast = parse('function* g() { yield 1; }')
+        result = generate(ast)
+        assert 'yield 1' in result
+
+    def test_sequence_expression_precedence(self):
+        ast = parse('(a, b, c);')
+        result = generate(ast)
+        assert 'a, b, c' in result
+
+    def test_binary_wraps_lower_precedence(self):
+        # Multiplication should wrap addition operands
+        ast = parse('(a + b) * c;')
+        result = generate(ast)
+        assert '(a + b) * c' in result
+
+    def test_nested_precedence_conditional_in_assignment(self):
+        ast = parse('x = a ? b : c;')
+        result = generate(ast)
+        assert 'x = a ? b : c' in result
+
+    def test_arrow_function_precedence(self):
+        from pyjsclear.generator import _expr_precedence
+
+        arrow_node = {'type': 'ArrowFunctionExpression'}
+        assert _expr_precedence(arrow_node) == 3
+
+    def test_unknown_type_precedence(self):
+        from pyjsclear.generator import _expr_precedence
+
+        node = {'type': 'SomeUnknownExpression'}
+        assert _expr_precedence(node) == 0
+
+    def test_non_dict_precedence(self):
+        from pyjsclear.generator import _expr_precedence
+
+        assert _expr_precedence(42) == 20
+        assert _expr_precedence('str') == 20

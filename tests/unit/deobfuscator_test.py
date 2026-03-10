@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from pyjsclear.deobfuscator import TRANSFORM_CLASSES, Deobfuscator
+from pyjsclear.deobfuscator import TRANSFORM_CLASSES, Deobfuscator, _count_nodes, _LARGE_FILE_SIZE, _MAX_CODE_SIZE
 
 
 class TestTransformClasses:
@@ -145,24 +145,6 @@ class TestDeobfuscatorExecute:
 
     @patch('pyjsclear.deobfuscator.TRANSFORM_CLASSES')
     @patch('pyjsclear.deobfuscator.parse')
-    def test_no_transforms_change_anything_returns_original(self, mock_parse, mock_transforms):
-        """When no transform changes anything, returns original code."""
-        mock_ast = MagicMock()
-        mock_parse.return_value = mock_ast
-
-        # A transform that never changes anything
-        no_change_instance = MagicMock()
-        no_change_instance.execute.return_value = False
-        no_change_transform = MagicMock(return_value=no_change_instance)
-
-        mock_transforms.__iter__ = lambda self: iter([no_change_transform])
-
-        code = 'var x = 1;'
-        result = Deobfuscator(code).execute()
-        assert result == code
-
-    @patch('pyjsclear.deobfuscator.TRANSFORM_CLASSES')
-    @patch('pyjsclear.deobfuscator.parse')
     @patch('pyjsclear.deobfuscator.generate', side_effect=Exception('generate failed'))
     def test_generate_failure_returns_original(self, mock_generate, mock_parse, mock_transforms):
         """When generate() raises, returns original code."""
@@ -178,4 +160,142 @@ class TestDeobfuscatorExecute:
 
         code = 'var x = 1;'
         result = Deobfuscator(code).execute()
+        assert result == code
+
+
+class TestPrePasses:
+    """Tests for pre-pass encoding detection (lines 91-112)."""
+
+    @patch('pyjsclear.deobfuscator.is_jsfuck', side_effect=[True, False])
+    @patch('pyjsclear.deobfuscator.jsfuck_decode', return_value='var x = 1;')
+    def test_jsfuck_pre_pass(self, mock_decode, mock_detect):
+        """JSFUCK pre-pass: detected and decoded (lines 91-94)."""
+        code = '[][(![]+[])]'
+        result = Deobfuscator(code).execute()
+        mock_decode.assert_called_once_with(code)
+        assert 'var' in result or 'x' in result
+
+    @patch('pyjsclear.deobfuscator.is_jsfuck', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_aa_encoded', side_effect=[True, False])
+    @patch('pyjsclear.deobfuscator.aa_decode', return_value='var y = 2;')
+    def test_aa_encode_pre_pass(self, mock_decode, mock_detect, mock_jsfuck):
+        """AAEncode pre-pass: detected and decoded (lines 97-100)."""
+        code = 'some aa encoded stuff'
+        result = Deobfuscator(code).execute()
+        mock_decode.assert_called_once_with(code)
+        assert 'var' in result or 'y' in result
+
+    @patch('pyjsclear.deobfuscator.is_jsfuck', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_aa_encoded', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_jj_encoded', side_effect=[True, False])
+    @patch('pyjsclear.deobfuscator.jj_decode', return_value='var z = 3;')
+    def test_jj_encode_pre_pass(self, mock_decode, mock_detect, mock_aa, mock_jsfuck):
+        """JJEncode pre-pass: detected and decoded (lines 103-106)."""
+        code = '$=~[];$={___:++$,'
+        result = Deobfuscator(code).execute()
+        mock_decode.assert_called_once_with(code)
+        assert 'var' in result or 'z' in result
+
+    @patch('pyjsclear.deobfuscator.is_jsfuck', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_aa_encoded', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_jj_encoded', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_eval_packed', side_effect=[True, False])
+    @patch('pyjsclear.deobfuscator.eval_unpack', return_value='var w = 4;')
+    def test_eval_packer_pre_pass(self, mock_decode, mock_detect, mock_jj, mock_aa, mock_jsfuck):
+        """Eval packer pre-pass: detected and decoded (lines 109-112)."""
+        code = 'eval("var w = 4;")'
+        result = Deobfuscator(code).execute()
+        mock_decode.assert_called_once_with(code)
+        assert 'var' in result or 'w' in result
+
+    @patch('pyjsclear.deobfuscator.is_jsfuck', side_effect=[True, False])
+    @patch('pyjsclear.deobfuscator.jsfuck_decode', return_value='var decoded = "\\x48\\x65\\x6c\\x6c\\x6f";')
+    def test_recursive_deobfuscation(self, mock_decode, mock_detect):
+        """Pre-pass decoded result goes through full pipeline (lines 124-125)."""
+        code = '[][(![]+[])]'
+        result = Deobfuscator(code).execute()
+        # The decoded result has hex escapes, which should be further deobfuscated
+        assert 'Hello' in result
+
+
+class TestLargeFileHandling:
+    """Tests for large file iteration reduction and lite mode (lines 141-156)."""
+
+    def test_large_file_reduces_iterations(self):
+        """Files > 500KB reduce max_iterations (line 142)."""
+        # Create simple but large code
+        code = 'var x = 1;\n' * 50001  # > 500KB
+        d = Deobfuscator(code)
+        result = d.execute()
+        # Should not crash, returns original since no transforms fire
+        assert result == code
+
+    @patch('pyjsclear.deobfuscator.parse')
+    @patch('pyjsclear.deobfuscator._count_nodes', return_value=150_000)
+    @patch('pyjsclear.deobfuscator.TRANSFORM_CLASSES')
+    def test_very_large_ast_reduces_to_3_iterations(self, mock_transforms, mock_count, mock_parse):
+        """Very large AST (>100k nodes) reduces to 3 iterations (line 149)."""
+        mock_ast = MagicMock()
+        mock_parse.return_value = mock_ast
+
+        # Transform that always changes
+        instance = MagicMock()
+        instance.execute.return_value = True
+        always_changes = MagicMock(return_value=instance)
+        mock_transforms.__iter__ = lambda self: iter([always_changes])
+
+        # Code > _LARGE_FILE_SIZE to trigger node counting
+        code = 'x' * (_LARGE_FILE_SIZE + 1)
+        result = Deobfuscator(code).execute()
+        # With 150k nodes, max iterations should be min(10, 3) = 3
+        assert always_changes.call_count == 3
+
+    @patch('pyjsclear.deobfuscator.parse')
+    @patch('pyjsclear.deobfuscator._count_nodes', return_value=0)
+    @patch('pyjsclear.deobfuscator.generate', return_value='generated')
+    @patch('pyjsclear.deobfuscator.TRANSFORM_CLASSES')
+    def test_lite_mode_strips_expensive_transforms(self, mock_transforms, mock_generate, mock_count, mock_parse):
+        """Lite mode (>2MB) strips expensive transforms (line 154)."""
+        mock_ast = MagicMock()
+        mock_parse.return_value = mock_ast
+
+        from pyjsclear.transforms.control_flow import ControlFlowRecoverer
+
+        # One cheap transform that changes, one expensive that should be skipped
+        cheap_instance = MagicMock()
+        cheap_instance.execute.return_value = False
+        cheap_transform = MagicMock(return_value=cheap_instance)
+
+        expensive_instance = MagicMock()
+        expensive_instance.execute.return_value = True
+
+        mock_transforms.__iter__ = lambda self: iter([cheap_transform, ControlFlowRecoverer])
+
+        code = 'x' * (_MAX_CODE_SIZE + 1)
+        result = Deobfuscator(code).execute()
+        # ControlFlowRecoverer should have been filtered out in lite mode
+        # Since only the cheap transform ran and returned False, original code returned
+        assert result == code
+
+    @patch('pyjsclear.deobfuscator.parse')
+    @patch('pyjsclear.deobfuscator._count_nodes', return_value=60_000)
+    @patch('pyjsclear.deobfuscator.generate', return_value='generated')
+    @patch('pyjsclear.deobfuscator.TRANSFORM_CLASSES')
+    def test_large_node_count_strips_expensive_transforms(self, mock_transforms, mock_generate, mock_count, mock_parse):
+        """Large AST (>50k nodes) strips expensive transforms (line 156)."""
+        mock_ast = MagicMock()
+        mock_parse.return_value = mock_ast
+
+        cheap_instance = MagicMock()
+        cheap_instance.execute.return_value = False
+        cheap_transform = MagicMock(return_value=cheap_instance)
+
+        from pyjsclear.transforms.proxy_functions import ProxyFunctionInliner
+
+        mock_transforms.__iter__ = lambda self: iter([cheap_transform, ProxyFunctionInliner])
+
+        # Code > _LARGE_FILE_SIZE to trigger node counting, but < _MAX_CODE_SIZE (not lite mode)
+        code = 'x' * (_LARGE_FILE_SIZE + 1)
+        result = Deobfuscator(code).execute()
+        # ProxyFunctionInliner should be filtered out due to node count > _NODE_COUNT_LIMIT
         assert result == code

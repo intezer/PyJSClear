@@ -1,6 +1,9 @@
 """Tests for JSFUCK decoder."""
 
-from pyjsclear.transforms.jsfuck_decode import is_jsfuck
+import subprocess
+from unittest.mock import MagicMock, patch
+
+from pyjsclear.transforms.jsfuck_decode import is_jsfuck, jsfuck_decode
 
 
 class TestJSFuckDetection:
@@ -23,3 +26,46 @@ class TestJSFuckDetection:
         code = preamble + jsfuck
         # Has significant non-JSFUCK content, but ratio might still be high
         assert isinstance(is_jsfuck(code), bool)
+
+
+class TestJSFuckDecode:
+    @patch('pyjsclear.transforms.jsfuck_decode.shutil.which', return_value=None)
+    def test_no_node_returns_none(self, mock_which):
+        """When Node.js not found, returns None (lines 38-40)."""
+        result = jsfuck_decode('[][(![]+[])]')
+        assert result is None
+
+    @patch('pyjsclear.transforms.jsfuck_decode.shutil.which', return_value='/usr/bin/node')
+    @patch('pyjsclear.transforms.jsfuck_decode.subprocess.run')
+    def test_successful_decode(self, mock_run, mock_which):
+        """Successful decode returns stdout (lines 42-89)."""
+        mock_result = MagicMock()
+        mock_result.stdout = 'alert(1)\n'
+        mock_run.return_value = mock_result
+        result = jsfuck_decode('[][(![]+[])]')
+        assert result == 'alert(1)'
+        mock_run.assert_called_once()
+
+    @patch('pyjsclear.transforms.jsfuck_decode.shutil.which', return_value='/usr/bin/node')
+    @patch('pyjsclear.transforms.jsfuck_decode.subprocess.run')
+    def test_empty_output_returns_none(self, mock_run, mock_which):
+        """Empty output returns None (lines 88-89)."""
+        mock_result = MagicMock()
+        mock_result.stdout = '  \n  '
+        mock_run.return_value = mock_result
+        result = jsfuck_decode('[][(![]+[])]')
+        assert result is None
+
+    @patch('pyjsclear.transforms.jsfuck_decode.shutil.which', return_value='/usr/bin/node')
+    @patch('pyjsclear.transforms.jsfuck_decode.subprocess.run', side_effect=subprocess.TimeoutExpired('node', 10))
+    def test_timeout_returns_none(self, mock_run, mock_which):
+        """Timeout returns None (lines 92-93)."""
+        result = jsfuck_decode('[][(![]+[])]')
+        assert result is None
+
+    @patch('pyjsclear.transforms.jsfuck_decode.shutil.which', return_value='/usr/bin/node')
+    @patch('pyjsclear.transforms.jsfuck_decode.subprocess.run', side_effect=OSError('error'))
+    def test_os_error_returns_none(self, mock_run, mock_which):
+        """OSError returns None."""
+        result = jsfuck_decode('[][(![]+[])]')
+        assert result is None

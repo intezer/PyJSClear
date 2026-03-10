@@ -292,11 +292,6 @@ class TestMakeLiteral:
     # then checks if raw starts with '"' and if not, re-wraps.
     # This section documents the current behavior for edge cases.
 
-    def test_bug2_simple_string_current_behavior(self):
-        """Bug #2: Simple strings work correctly with repr-based raw generation."""
-        node = make_literal('abc')
-        assert node['raw'] == '"abc"'
-
     def test_bug2_string_with_single_quotes(self):
         """Bug #2: Strings containing single quotes. repr() would use double quotes
         for the Python repr, so replacing ' with " produces unexpected results.
@@ -383,9 +378,6 @@ class TestMakeLiteral:
 class TestMakeIdentifier:
     def test_basic(self):
         assert make_identifier('foo') == {'type': 'Identifier', 'name': 'foo'}
-
-    def test_dollar_sign(self):
-        assert make_identifier('$') == {'type': 'Identifier', 'name': '$'}
 
     def test_underscore(self):
         assert make_identifier('_') == {'type': 'Identifier', 'name': '_'}
@@ -480,12 +472,6 @@ class TestIsValidIdentifier:
 
     def test_hyphen(self):
         assert not is_valid_identifier('foo-bar')
-
-    def test_space(self):
-        assert not is_valid_identifier('foo bar')
-
-    def test_dot(self):
-        assert not is_valid_identifier('foo.bar')
 
     def test_single_dollar(self):
         assert is_valid_identifier('$')

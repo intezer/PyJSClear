@@ -82,3 +82,93 @@ class TestNestedBodies:
         # The packed object should contain both values
         assert ': 1' in result
         assert ': 2' in result
+
+
+class TestCoverageGaps:
+    """Tests targeting uncovered lines in object_packer.py."""
+
+    def test_non_dict_node_in_process_bodies(self):
+        """Line 22: Non-dict node passed to _process_bodies (skipped)."""
+        # Simple code with literals; _process_bodies will encounter non-dict values
+        code, changed = roundtrip('var x = 1;', ObjectPacker)
+        assert changed is False
+
+    def test_non_dict_statement_in_body(self):
+        """Lines 57-58: Non-dict statement in body array is skipped."""
+        # Normal parsing won't produce non-dict statements, but this tests
+        # that the code doesn't crash on simple cases.
+        code, changed = roundtrip('var o = {}; o.x = 1;', ObjectPacker)
+        assert changed is True
+
+    def test_compound_assignment_stops_packing(self):
+        """Line 73: Assignment expression without '=' operator (e.g., +=) stops packing."""
+        code, changed = roundtrip('var o = {}; o.x = 1; o.y += 2;', ObjectPacker)
+        assert changed is True
+        result = normalize(code)
+        assert ': 1' in result
+        assert 'o.y += 2' in result
+
+    def test_left_not_member_expression(self):
+        """Line 79: Left side of assignment is not MemberExpression."""
+        code, changed = roundtrip('var o = {}; o.x = 1; z = 2;', ObjectPacker)
+        assert changed is True
+        result = normalize(code)
+        assert ': 1' in result
+        assert 'z = 2' in result
+
+    def test_object_name_mismatch(self):
+        """Line 82: Object reference name doesn't match the target object."""
+        code, changed = roundtrip('var o = {}; o.x = 1; p.y = 2;', ObjectPacker)
+        assert changed is True
+        result = normalize(code)
+        assert ': 1' in result
+        assert 'p.y = 2' in result
+
+    def test_property_node_is_none(self):
+        """Line 87: Property node is None stops packing."""
+        from pyjsclear.parser import parse
+        from pyjsclear.generator import generate
+
+        ast = parse('var o = {}; o.x = 1;')
+        # Manually set the property of the MemberExpression to None
+        body = ast['body']
+        assignment_stmt = body[1]
+        left = assignment_stmt['expression']['left']
+        left['property'] = None
+        t = ObjectPacker(ast)
+        changed = t.execute()
+        # Should not pack because property is None
+        assert changed is False
+
+    def test_references_name_list_child(self):
+        """Lines 129-130: _references_name finds reference in list child (e.g. array)."""
+        code, changed = roundtrip('var o = {}; o.x = 1; o.y = [o];', ObjectPacker)
+        assert changed is True
+        result = normalize(code)
+        assert ': 1' in result
+        assert 'o.y = [o]' in result
+
+    def test_references_name_no_type(self):
+        """Line 120: _references_name with node missing 'type' returns False."""
+        packer = ObjectPacker({'type': 'Program', 'body': []})
+        # A dict without 'type' should return False
+        assert packer._references_name({}, 'o') is False
+        assert packer._references_name('not_a_dict', 'o') is False
+        assert packer._references_name(None, 'o') is False
+
+    def test_references_name_identifier_match(self):
+        """Line 122-123: _references_name with Identifier matching name."""
+        packer = ObjectPacker({'type': 'Program', 'body': []})
+        assert packer._references_name({'type': 'Identifier', 'name': 'o'}, 'o') is True
+        assert packer._references_name({'type': 'Identifier', 'name': 'x'}, 'o') is False
+
+    def test_non_dict_in_body_direct_ast(self):
+        """Line 22/57: non-dict in body triggers skip in _process_bodies and _try_pack_body."""
+        from pyjsclear.parser import parse
+
+        ast = parse('var o = {}; o.x = 1;')
+        ast['body'].append(42)
+        t = ObjectPacker(ast)
+        changed = t.execute()
+        assert changed
+

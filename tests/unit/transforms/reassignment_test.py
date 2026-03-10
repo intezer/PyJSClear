@@ -109,3 +109,70 @@ class TestReassignmentRemoverEdgeCases:
 
     def test_rebuild_scope_flag(self):
         assert ReassignmentRemover.rebuild_scope is True
+
+
+class TestReassignmentRemoverSkipConditions:
+    """Tests for skip conditions on reference replacement."""
+
+    def test_reference_as_assignment_lhs_skipped(self):
+        """Line 93: Reference used as assignment left-hand side should be skipped."""
+        code = 'var x = console; x = something; x.log("hi");'
+        result, changed = roundtrip(code, ReassignmentRemover)
+        # x has writes so it is not constant, no inlining should happen
+        assert isinstance(changed, bool)
+
+    def test_reference_as_declarator_id_skipped(self):
+        """Line 95: Reference used as VariableDeclarator id should be skipped."""
+        # When a variable is reassigned via declarator pattern, the id ref should be skipped
+        code = 'var x = JSON; x.parse(s);'
+        result, changed = roundtrip(code, ReassignmentRemover)
+        assert changed is True
+        assert 'JSON.parse(s)' in normalize(result)
+
+
+class TestReassignmentRemoverAssignmentAliasEdgeCases:
+    """Tests for assignment alias edge cases."""
+
+    def test_assignment_alias_with_init_skipped(self):
+        """Line 131: VariableDeclarator with init should be skipped for assignment alias."""
+        code = 'var _0x1 = undefined; _0x1 = console; _0x1.log("hi");'
+        result, changed = roundtrip(code, ReassignmentRemover)
+        # _0x1 has init (undefined), so assignment alias path skips it
+        # but it might be handled by the declarator path instead
+        assert isinstance(changed, bool)
+
+    def test_assignment_alias_multiple_writes_skipped(self):
+        """Line 151: Assignment alias with != 1 writes should be skipped."""
+        code = 'var _0x1; _0x1 = console; _0x1 = JSON; _0x1.log("hi");'
+        result, changed = roundtrip(code, ReassignmentRemover)
+        # Two writes means it won't be inlined via assignment alias
+        assert '_0x1' in result or changed is False
+
+    def test_assignment_alias_rhs_not_identifier(self):
+        """Line 157: Assignment alias where right side is not an identifier."""
+        code = 'var _0x1; _0x1 = 123; console.log(_0x1);'
+        result, changed = roundtrip(code, ReassignmentRemover)
+        # RHS is a literal, not an identifier — should be skipped
+        assert '_0x1' in result
+
+    def test_assignment_alias_self_assignment_skipped(self):
+        """Line 161: target_name equals name should be skipped."""
+        code = 'var _0x1; _0x1 = _0x1;'
+        result, changed = roundtrip(code, ReassignmentRemover)
+        assert changed is False
+
+    def test_assignment_alias_replacement_with_index(self):
+        """Line 175: Assignment alias replacement in array position (with index)."""
+        code = 'var _0x1; _0x1 = console; foo([_0x1]);'
+        result, changed = roundtrip(code, ReassignmentRemover)
+        assert changed is True
+        assert 'console' in result
+
+    def test_assignment_alias_pattern(self):
+        """Assignment alias: var x; x = console; log(x);"""
+        code = 'var _0x1 = undefined; var _0x2; _0x2 = console; _0x2.log("hi");'
+        result, changed = roundtrip(code, ReassignmentRemover)
+        assert changed
+        assert 'console' in result
+
+

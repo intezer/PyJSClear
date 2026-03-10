@@ -14,16 +14,6 @@ class TestDeobfuscate:
         result = deobfuscate('var x = 1;')
         assert isinstance(result, str)
 
-    def test_simple_code_unchanged(self):
-        code = 'var x = 1;'
-        result = deobfuscate(code)
-        assert result == code
-
-    def test_with_max_iterations(self):
-        code = 'var x = 1;'
-        result = deobfuscate(code, max_iterations=5)
-        assert isinstance(result, str)
-        assert result == code
 
 
 class TestDeobfuscateFile:

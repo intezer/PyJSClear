@@ -1,7 +1,6 @@
 """Tests for AAEncode decoder."""
 
-from pyjsclear.transforms.aa_decode import aa_decode
-from pyjsclear.transforms.aa_decode import is_aa_encoded
+from pyjsclear.transforms.aa_decode import _AA_DETECT_RE, _UNICODE_MARKER, aa_decode, is_aa_encoded
 
 
 # A minimal AAEncode sample encoding "alert(1)"
@@ -74,3 +73,32 @@ class TestAADecode:
         result = aa_decode(AA_SAMPLE)
         # At minimum, it should return a string (even if imperfect)
         assert result is None or isinstance(result, str)
+
+    def test_unicode_marker_path(self):
+        """Test the unicode character marker path (lines 71-74).
+
+        Build a minimal AAEncoded string with the unicode marker to exercise
+        that code path.
+        """
+        # We need the detection pattern to match, plus escape-split parts with _UNICODE_MARKER
+        # Build a fake AAEncoded string that the decoder can parse
+        detect = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]'
+        # Create a part that starts with the unicode marker followed by a hex number
+        # chr(0x41) = 'A', so hex_str = '41'
+        escape_split = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+'
+        part_with_unicode = _UNICODE_MARKER + '41'
+        code = detect + escape_split + part_with_unicode
+        result = aa_decode(code)
+        # Should decode the unicode marker part to chr(0x41) = 'A'
+        assert result is not None
+        assert 'A' in result
+
+    def test_value_error_returns_none(self):
+        """ValueError in decoding returns None (lines 82-83)."""
+        # Build a fake AAEncoded string with invalid octal that triggers ValueError
+        detect = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]'
+        escape_split = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+'
+        invalid_part = 'not_a_number'
+        code = detect + escape_split + invalid_part
+        result = aa_decode(code)
+        assert result is None

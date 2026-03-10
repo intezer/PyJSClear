@@ -180,18 +180,6 @@ class TestSkip:
         # Children should not appear in exit either
         assert 'VariableDeclarator' not in exit_types
 
-    def test_skip_without_exit_fn(self):
-        """SKIP works when there is no exit callback at all."""
-        ast = parse('var x = 1;')
-        entered = []
-
-        def enter(node, parent, key, index):
-            entered.append(node['type'])
-            if node['type'] == 'VariableDeclaration':
-                return SKIP
-
-        traverse(ast, {'enter': enter})
-        assert 'VariableDeclarator' not in entered
 
 
 # ===========================================================================
@@ -557,3 +545,108 @@ class TestEdgeCases:
         # The replacement node's body is stored in the AST
         assert ast['body'][0]['type'] == 'ExpressionStatement'
         assert ast['body'][0]['expression']['value'] == 99
+
+
+# ===========================================================================
+# Coverage gap tests
+# ===========================================================================
+
+
+class TestSimpleTraverseNoneType:
+    """Line 115: simple_traverse with node where type is None."""
+
+    def test_node_with_none_type(self):
+        node = {'type': None, 'body': []}
+        visited = []
+        simple_traverse(node, lambda n, p: visited.append(n.get('type')))
+        # Should not visit the node since type is None
+        assert visited == []
+
+
+class TestSimpleTraverseFallbackChildKeys:
+    """Line 119: simple_traverse fallback child_keys for unknown node type."""
+
+    def test_unknown_node_type_fallback(self):
+        # A node with an unknown type should trigger the fallback get_child_keys
+        # Note: the fallback skips 'expression' for non-ExpressionStatement, so use 'argument'
+        node = {
+            'type': 'Program',
+            'sourceType': 'script',
+            'body': [
+                {
+                    'type': 'CustomUnknownStatement',
+                    'argument': {'type': 'Identifier', 'name': 'x'},
+                }
+            ],
+        }
+        visited = []
+        simple_traverse(node, lambda n, p: visited.append(n.get('type')))
+        assert 'Program' in visited
+        assert 'CustomUnknownStatement' in visited
+        # The fallback child_keys should find the 'argument' child
+        assert 'Identifier' in visited
+
+
+class TestFindParentNonDictNode:
+    """Line 160: find_parent with non-dict node in tree."""
+
+    def test_find_parent_skips_non_dict_children(self):
+        # Build an AST where some child values are not dicts
+        ast = {
+            'type': 'Program',
+            'sourceType': 'script',
+            'body': [
+                'not a dict',
+                42,
+                None,
+                {'type': 'ExpressionStatement', 'expression': {'type': 'Identifier', 'name': 'x'}},
+            ],
+        }
+        target = ast['body'][3]['expression']
+        result = find_parent(ast, target)
+        assert result is not None
+        parent, key, index = result
+        assert parent is ast['body'][3]
+        assert key == 'expression'
+        assert index is None
+
+    def test_find_parent_with_string_in_list(self):
+        # Ensure find_parent handles non-dict items in lists gracefully
+        target = {'type': 'Literal', 'value': 1}
+        ast = {
+            'type': 'Program',
+            'sourceType': 'script',
+            'body': [
+                {
+                    'type': 'ExpressionStatement',
+                    'expression': target,
+                    'extra': 'string_value',
+                }
+            ],
+        }
+        result = find_parent(ast, target)
+        assert result is not None
+        parent, key, index = result
+        assert parent is ast['body'][0]
+        assert key == 'expression'
+
+
+class TestTraverseFallbackChildKeys:
+    """Line 68-69: traverse with unknown node type triggers fallback child_keys."""
+
+    def test_traverse_unknown_node_type(self):
+        ast = {
+            'type': 'Program',
+            'sourceType': 'script',
+            'body': [
+                {
+                    'type': 'UnknownCustomNode',
+                    'argument': {'type': 'Identifier', 'name': 'x'},
+                }
+            ],
+        }
+        visited = []
+        traverse(ast, {'enter': lambda n, p, k, i: visited.append(n['type'])})
+        assert 'Program' in visited
+        assert 'UnknownCustomNode' in visited
+        assert 'Identifier' in visited

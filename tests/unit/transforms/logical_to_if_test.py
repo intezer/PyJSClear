@@ -111,3 +111,117 @@ class TestNestedInFunctionBody:
         result, changed = roundtrip(code, LogicalToIf)
         assert changed is True
         assert normalize(result) == normalize('function f() { if (a) { b(); } if (!c) { d(); } }')
+
+
+class TestCoverageGaps:
+    """Tests targeting uncovered lines in logical_to_if.py."""
+
+    def test_non_dict_child_in_transform_bodies(self):
+        """Line 36: _transform_bodies with non-dict child (skipped)."""
+        # A simple literal expression; the AST will contain non-dict children
+        # (e.g., string values) which should be safely skipped.
+        code = 'var x = 1;'
+        result, changed = roundtrip(code, LogicalToIf)
+        assert changed is False
+
+    def test_non_dict_expression_in_expression_statement(self):
+        """Line 76: ExpressionStatement with non-dict expression."""
+        # This is hard to trigger from valid JS since esprima always gives dicts,
+        # but we can test the boundary by verifying normal code doesn't crash.
+        code = ';'  # Empty statement — not ExpressionStatement
+        result, changed = roundtrip(code, LogicalToIf)
+        assert changed is False
+
+    def test_return_non_sequence_non_logical(self):
+        """Line 98: Return statement with a plain expression (not sequence, not logical)."""
+        code = 'function f() { return 42; }'
+        result, changed = roundtrip(code, LogicalToIf)
+        assert changed is False
+        assert '42' in result
+
+    def test_return_non_dict_argument(self):
+        """Line 88: Return with null argument (return;)."""
+        code = 'function f() { return; }'
+        result, changed = roundtrip(code, LogicalToIf)
+        assert changed is False
+
+    def test_return_single_element_sequence(self):
+        """Line 104: Return with single-element sequence (len <= 1) returns None."""
+        # Manually constructing is tricky; a single-element SequenceExpression
+        # is unusual. We test via the AST directly.
+        from pyjsclear.parser import parse
+        from pyjsclear.generator import generate
+
+        ast = parse('function f() { return a; }')
+        # Manually make the return argument a SequenceExpression with 1 element
+        ret_stmt = ast['body'][0]['body']['body'][0]
+        ret_stmt['argument'] = {
+            'type': 'SequenceExpression',
+            'expressions': [{'type': 'Identifier', 'name': 'a'}],
+        }
+        t = LogicalToIf(ast)
+        changed = t.execute()
+        assert changed is False
+
+    def test_return_sequence_with_logical_items(self):
+        """Lines 108-111: Return sequence containing LogicalExpression items."""
+        code = 'function f() { return a && b(), c; }'
+        result, changed = roundtrip(code, LogicalToIf)
+        assert changed is True
+        # The logical expression a && b() inside the sequence should be converted to if
+        assert 'if' in result
+        assert 'return c' in normalize(result)
+
+    def test_return_logical_right_not_sequence(self):
+        """Line 120: Return logical where right side is not a SequenceExpression."""
+        code = 'function f() { return a || b; }'
+        result, changed = roundtrip(code, LogicalToIf)
+        assert changed is False
+
+    def test_return_logical_right_sequence_single_element(self):
+        """Line 123: Return logical where right side is sequence with <=1 elements."""
+        from pyjsclear.parser import parse
+        from pyjsclear.generator import generate
+
+        ast = parse('function f() { return a || b; }')
+        ret_stmt = ast['body'][0]['body']['body'][0]
+        ret_stmt['argument'] = {
+            'type': 'LogicalExpression',
+            'operator': '||',
+            'left': {'type': 'Identifier', 'name': 'a'},
+            'right': {
+                'type': 'SequenceExpression',
+                'expressions': [{'type': 'Identifier', 'name': 'b'}],
+            },
+        }
+        t = LogicalToIf(ast)
+        changed = t.execute()
+        assert changed is False
+
+    def test_nullish_coalescing_not_converted(self):
+        """Lines 147-148: _logical_to_if with unknown operator (e.g. '??') returns None."""
+        from pyjsclear.parser import parse
+        from pyjsclear.generator import generate
+
+        ast = parse('a ?? b();')
+        # Esprima may not parse ?? as LogicalExpression, so force it
+        expr_stmt = ast['body'][0]
+        expr_stmt['expression'] = {
+            'type': 'LogicalExpression',
+            'operator': '??',
+            'left': {'type': 'Identifier', 'name': 'a'},
+            'right': {'type': 'CallExpression', 'callee': {'type': 'Identifier', 'name': 'b'}, 'arguments': []},
+        }
+        t = LogicalToIf(ast)
+        changed = t.execute()
+        assert changed is False
+
+    def test_expression_stmt_non_dict_expression(self):
+        """Line 75: ExpressionStatement with non-dict expression returns None."""
+        from pyjsclear.parser import parse
+
+        ast = parse('a();')
+        ast['body'][0]['expression'] = 42
+        t = LogicalToIf(ast)
+        changed = t.execute()
+        assert not changed
