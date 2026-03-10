@@ -1,0 +1,5 @@
+recursive-include pyjsclear *.py
+include LICENSE
+include README.md
+include NOTICE
+include THIRD_PARTY_LICENSES.md

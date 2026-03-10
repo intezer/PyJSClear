@@ -4,15 +4,41 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyjsclear"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Pure Python JavaScript deobfuscator"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
 dependencies = ["esprima2>=5.0.1"]
+keywords = ["javascript", "deobfuscator", "deobfuscation", "security", "malware-analysis", "ast"]
+authors = [
+    {name = "Intezer Labs", email = "info@intezer.com"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/intezer/PyJSClear"
+Repository = "https://github.com/intezer/PyJSClear"
+Issues = "https://github.com/intezer/PyJSClear/issues"
 
 [project.scripts]
 pyjsclear = "pyjsclear.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["pyjsclear*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "pyjsclear.__version__"}
 
 [tool.black]
 line-length = 120
