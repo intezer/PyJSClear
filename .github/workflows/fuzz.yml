@@ -2,7 +2,7 @@ name: Fuzz Testing
 
 on:
   push:
-    branches: [develop]
+    branches: [main]
 
 jobs:
   fuzz:
