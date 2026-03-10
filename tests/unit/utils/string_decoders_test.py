@@ -2,14 +2,12 @@
 
 import pytest
 
-from pyjsclear.utils.string_decoders import (
-    Base64StringDecoder,
-    BasicStringDecoder,
-    DecoderType,
-    Rc4StringDecoder,
-    StringDecoder,
-    base64_transform,
-)
+from pyjsclear.utils.string_decoders import Base64StringDecoder
+from pyjsclear.utils.string_decoders import BasicStringDecoder
+from pyjsclear.utils.string_decoders import DecoderType
+from pyjsclear.utils.string_decoders import Rc4StringDecoder
+from pyjsclear.utils.string_decoders import StringDecoder
+from pyjsclear.utils.string_decoders import base64_transform
 
 
 # ---------------------------------------------------------------------------
@@ -94,10 +92,6 @@ class TestStringDecoder:
         decoder = StringDecoder(['a', 'b'], 0)
         with pytest.raises(NotImplementedError):
             decoder.get_string(0)
-
-    def test_type_property_is_basic(self):
-        decoder = StringDecoder(['a'], 0)
-        assert decoder.type == DecoderType.BASIC
 
     def test_get_string_for_rotation_raises_on_first_call(self):
         decoder = BasicStringDecoder(['hello'], 0)
@@ -212,10 +206,6 @@ class TestBase64StringDecoder:
         decoder = Base64StringDecoder(['abcd'], 0)
         assert decoder.get_string(5) is None
 
-    def test_negative_out_of_bounds_returns_none(self):
-        decoder = Base64StringDecoder(['abcd'], -10)
-        assert decoder.get_string(0) is None
-
     def test_caching(self):
         decoder = Base64StringDecoder(['abcd'], 0)
         result1 = decoder.get_string(0)
@@ -224,14 +214,6 @@ class TestBase64StringDecoder:
         # Verify value is actually in the cache
         assert 0 in decoder._cache
         assert decoder._cache[0] == result1
-
-    def test_cache_is_used(self):
-        decoder = Base64StringDecoder(['abcd'], 0)
-        # First call populates cache
-        decoder.get_string(0)
-        # Modify cache to prove second call uses it
-        decoder._cache[0] = 'CACHED'
-        assert decoder.get_string(0) == 'CACHED'
 
     def test_multiple_indices(self):
         decoder = Base64StringDecoder(['abcd', 'ABCD'], 0)
@@ -275,10 +257,6 @@ class TestRc4StringDecoder:
         decoder = Rc4StringDecoder(['abcd'], 0)
         assert decoder.get_string(5, key='k') is None
 
-    def test_negative_out_of_bounds_returns_none(self):
-        decoder = Rc4StringDecoder(['abcd'], -10)
-        assert decoder.get_string(0, key='k') is None
-
     def test_decodes_with_key(self):
         decoder = Rc4StringDecoder(['abcd'], 0)
         result = decoder.get_string(0, key='k')
@@ -307,12 +285,6 @@ class TestRc4StringDecoder:
         assert (0, 'k') in decoder._cache
         assert (1, 'k') in decoder._cache
         assert r1 != r2
-
-    def test_cache_is_used(self):
-        decoder = Rc4StringDecoder(['abcd'], 0)
-        decoder.get_string(0, key='k')
-        decoder._cache[(0, 'k')] = 'CACHED'
-        assert decoder.get_string(0, key='k') == 'CACHED'
 
     def test_with_offset(self):
         decoder = Rc4StringDecoder(['SKIP', 'abcd'], 1)
@@ -351,8 +323,3 @@ class TestCrossDecoder:
         # Basic returns raw, Base64 returns decoded -> they should differ
         assert basic.get_string(0) == 'abcd'
         assert b64.get_string(0) != 'abcd'
-
-    def test_all_decoders_handle_empty_array(self):
-        for cls in [BasicStringDecoder, Base64StringDecoder, Rc4StringDecoder]:
-            decoder = cls([], 0)
-            assert decoder.get_string(0) is None

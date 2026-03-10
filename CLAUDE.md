@@ -75,6 +75,30 @@ pytest tests/test_regression.py         # end-to-end regression (47k files)
 
 Test helpers in `conftest.py`: `roundtrip(code, TransformClass)`, `parse_expr(expr)`, `normalize(code)`.
 
+### Fuzz Testing
+
+8 fuzz targets in `tests/fuzz/` covering the full pipeline, parser, generator, transforms, expression simplifier, string decoders, scope analysis, and AST traversal. OSS-Fuzz compatible (atheris/libFuzzer).
+
+```bash
+# Run all targets for 10s each (standalone, no extra deps)
+tests/fuzz/run_local.sh all 10
+
+# Run a single target for 60s
+tests/fuzz/run_local.sh fuzz_deobfuscate 60
+
+# With atheris (requires clang + libFuzzer):
+CLANG_BIN=$(which clang) pip install atheris
+tests/fuzz/run_local.sh fuzz_deobfuscate 300
+```
+
+Fuzz helpers in `tests/fuzz/conftest_fuzz.py`: `bytes_to_js(data)`, `bytes_to_ast_dict(data)`, `run_fuzzer(target_fn)`. Targets use atheris when available, otherwise a standalone random-based fuzzer.
+
+## CI/CD
+
+- **Tests**: `.github/workflows/tests.yml` — pytest on push/PR to `main` (Python 3.11–3.13)
+- **Fuzz**: `.github/workflows/fuzz.yml` — 8 fuzz targets on push/PR to `develop` (60s each, standalone fuzzer)
+- **Publish**: `.github/workflows/publish.yml` — build + publish to PyPI on GitHub Release (requires `PYPI_TOKEN` secret)
+
 ## Safety Guarantees
 
 - Never crashes on valid JS (parse failure → fallback hex decode → return original)

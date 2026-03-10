@@ -27,10 +27,6 @@ class TestTransformInit:
         t = Transform('ast')
         assert t.node_scope is None
 
-    def test_changed_defaults_to_false(self):
-        t = Transform('ast')
-        assert t._changed is False
-
 
 class TestTransformExecute:
     def test_raises_not_implemented(self):

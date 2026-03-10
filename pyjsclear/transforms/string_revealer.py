@@ -261,8 +261,14 @@ class StringRevealer(Transform):
 
         # Step 5: Find and execute rotation
         rotation_result = self._find_and_execute_rotation(
-            body, array_func_name, string_array, primary_decoder, all_wrappers,
-            all_decoder_aliases, alias_decoder_map=alias_decoder_map, all_decoders=decoders,
+            body,
+            array_func_name,
+            string_array,
+            primary_decoder,
+            all_wrappers,
+            all_decoder_aliases,
+            alias_decoder_map=alias_decoder_map,
+            all_decoders=decoders,
         )
 
         # Update the AST array to reflect rotation so future passes
@@ -303,7 +309,6 @@ class StringRevealer(Transform):
             indices_to_remove.update(decoder_indices)
             indices_to_remove.add(array_func_idx)
         self._remove_body_indices(body, *indices_to_remove)
-
 
     def _find_string_array_function(self, body):
         """Find the string array function declaration.
@@ -631,8 +636,14 @@ class StringRevealer(Transform):
 
             if expr.get('type') == 'CallExpression':
                 if self._try_execute_rotation_call(
-                    expr, array_func_name, string_array, decoder, wrappers, decoder_aliases,
-                    alias_decoder_map=alias_decoder_map, all_decoders=all_decoders,
+                    expr,
+                    array_func_name,
+                    string_array,
+                    decoder,
+                    wrappers,
+                    decoder_aliases,
+                    alias_decoder_map=alias_decoder_map,
+                    all_decoders=all_decoders,
                 ):
                     return (i, None)
 
@@ -641,16 +652,29 @@ class StringRevealer(Transform):
                     if sub.get('type') != 'CallExpression':
                         continue
                     if self._try_execute_rotation_call(
-                        sub, array_func_name, string_array, decoder, wrappers, decoder_aliases,
-                        alias_decoder_map=alias_decoder_map, all_decoders=all_decoders,
+                        sub,
+                        array_func_name,
+                        string_array,
+                        decoder,
+                        wrappers,
+                        decoder_aliases,
+                        alias_decoder_map=alias_decoder_map,
+                        all_decoders=all_decoders,
                     ):
                         return (i, sub)
 
         return None
 
     def _try_execute_rotation_call(
-        self, call_expr, array_func_name, string_array, decoder, wrappers, decoder_aliases,
-        alias_decoder_map=None, all_decoders=None,
+        self,
+        call_expr,
+        array_func_name,
+        string_array,
+        decoder,
+        wrappers,
+        decoder_aliases,
+        alias_decoder_map=None,
+        all_decoders=None,
     ):
         """Try to parse and execute a single rotation call expression. Returns True on success."""
         callee = call_expr.get('callee')
@@ -680,7 +704,11 @@ class StringRevealer(Transform):
             return False
 
         self._execute_rotation(
-            string_array, operation, wrappers, decoder, stop_value,
+            string_array,
+            operation,
+            wrappers,
+            decoder,
+            stop_value,
             alias_decoder_map=alias_decoder_map,
         )
         return True
@@ -1125,10 +1153,7 @@ class StringRevealer(Transform):
             if expr.get('type') == 'CallExpression':
                 candidates.append(expr)
             elif expr.get('type') == 'SequenceExpression':
-                candidates.extend(
-                    sub for sub in expr.get('expressions', [])
-                    if sub.get('type') == 'CallExpression'
-                )
+                candidates.extend(sub for sub in expr.get('expressions', []) if sub.get('type') == 'CallExpression')
 
             for call_expr in candidates:
                 callee = call_expr.get('callee')

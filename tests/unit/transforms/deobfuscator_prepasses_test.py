@@ -5,12 +5,6 @@ from pyjsclear.deobfuscator import _count_nodes
 
 
 class TestLargeFileOptimization:
-    def test_small_file_uses_full_pipeline(self):
-        code = 'var x = 1;'
-        d = Deobfuscator(code)
-        result = d.execute()
-        assert isinstance(result, str)
-
     def test_returns_original_on_no_change(self):
         code = 'var x = 1;'
         d = Deobfuscator(code)

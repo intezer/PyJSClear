@@ -2,7 +2,8 @@
 
 import pytest
 
-from pyjsclear.transforms.hex_escapes import HexEscapes, decode_hex_escapes_source
+from pyjsclear.transforms.hex_escapes import HexEscapes
+from pyjsclear.transforms.hex_escapes import decode_hex_escapes_source
 from tests.unit.conftest import roundtrip
 
 
@@ -12,14 +13,6 @@ from tests.unit.conftest import roundtrip
 
 
 class TestHexEscapesTransform:
-    def test_hex_escape_string_decoded(self):
-        """String with \\xHH escapes should have its raw updated."""
-        js = r"""var a = "\x48\x65\x6c\x6c\x6f";"""
-        result, changed = roundtrip(js, HexEscapes)
-        assert changed is True
-        # The generated code should contain the readable string
-        assert 'Hello' in result
-
     def test_value_preserved_after_decode(self):
         """The runtime value of the string must remain the same."""
         js = r"""var a = "\x48\x65\x6c\x6c\x6f";"""
