@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyjsclear"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Pure Python JavaScript deobfuscator"
 readme = "README.md"
 license = "Apache-2.0"
@@ -13,6 +13,9 @@ dependencies = ["esprima2>=5.0.1"]
 
 [project.scripts]
 pyjsclear = "pyjsclear.__main__:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "pyjsclear.__version__"}
 
 [tool.black]
 line-length = 120
