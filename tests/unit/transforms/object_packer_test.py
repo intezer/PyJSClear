@@ -1,7 +1,8 @@
 import pytest
 
 from pyjsclear.transforms.object_packer import ObjectPacker
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 class TestBasicPacking:
@@ -126,8 +127,8 @@ class TestCoverageGaps:
 
     def test_property_node_is_none(self):
         """Line 87: Property node is None stops packing."""
-        from pyjsclear.parser import parse
         from pyjsclear.generator import generate
+        from pyjsclear.parser import parse
 
         ast = parse('var o = {}; o.x = 1;')
         # Manually set the property of the MemberExpression to None
@@ -171,4 +172,3 @@ class TestCoverageGaps:
         t = ObjectPacker(ast)
         changed = t.execute()
         assert changed
-

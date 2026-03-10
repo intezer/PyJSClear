@@ -3,7 +3,8 @@
 import pytest
 
 from pyjsclear.transforms.expression_simplifier import ExpressionSimplifier
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 def rt(js_code):
@@ -317,7 +318,6 @@ class TestMoreUnaryOperators:
         code, changed = rt('typeof [];')
         assert changed is True
         assert '"object"' in code
-
 
 
 class TestExponentiation:

@@ -1,6 +1,9 @@
 """Tests for AAEncode decoder."""
 
-from pyjsclear.transforms.aa_decode import _AA_DETECT_RE, _UNICODE_MARKER, aa_decode, is_aa_encoded
+from pyjsclear.transforms.aa_decode import _AA_DETECT_RE
+from pyjsclear.transforms.aa_decode import _UNICODE_MARKER
+from pyjsclear.transforms.aa_decode import aa_decode
+from pyjsclear.transforms.aa_decode import is_aa_encoded
 
 
 # A minimal AAEncode sample encoding "alert(1)"

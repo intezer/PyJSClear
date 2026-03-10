@@ -3,7 +3,8 @@
 import pytest
 
 from pyjsclear.transforms.control_flow import ControlFlowRecoverer
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 def rt(js_code):
@@ -546,10 +547,12 @@ class TestExpressionPatternCounterInit:
 
     def test_expression_pattern_no_split(self):
         """Assignment that is not a split call should not match."""
-        ast = _program([
-            _expr_stmt(_assignment('x', _literal(42))),
-            _while_true([_break_stmt()]),
-        ])
+        ast = _program(
+            [
+                _expr_stmt(_assignment('x', _literal(42))),
+                _while_true([_break_stmt()]),
+            ]
+        )
         t = ControlFlowRecoverer(ast)
         changed = t.execute()
         assert changed is False
@@ -718,7 +721,12 @@ class TestWhileTruthyPatterns:
     def test_is_truthy_not_array_is_false(self):
         """![] is falsy (line 324)."""
         t = ControlFlowRecoverer(_program([]))
-        node = {'type': 'UnaryExpression', 'operator': '!', 'argument': {'type': 'ArrayExpression', 'elements': []}, 'prefix': True}
+        node = {
+            'type': 'UnaryExpression',
+            'operator': '!',
+            'argument': {'type': 'ArrayExpression', 'elements': []},
+            'prefix': True,
+        }
         assert t._is_truthy(node) is False
 
     def test_is_truthy_literal_non_bool(self):

@@ -3,7 +3,8 @@
 import pytest
 
 from pyjsclear.transforms.reassignment import ReassignmentRemover
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 class TestReassignmentRemoverDeclaratorInline:
@@ -174,5 +175,3 @@ class TestReassignmentRemoverAssignmentAliasEdgeCases:
         result, changed = roundtrip(code, ReassignmentRemover)
         assert changed
         assert 'console' in result
-
-

@@ -2,14 +2,12 @@
 
 import pytest
 
-from pyjsclear.utils.string_decoders import (
-    Base64StringDecoder,
-    BasicStringDecoder,
-    DecoderType,
-    Rc4StringDecoder,
-    StringDecoder,
-    base64_transform,
-)
+from pyjsclear.utils.string_decoders import Base64StringDecoder
+from pyjsclear.utils.string_decoders import BasicStringDecoder
+from pyjsclear.utils.string_decoders import DecoderType
+from pyjsclear.utils.string_decoders import Rc4StringDecoder
+from pyjsclear.utils.string_decoders import StringDecoder
+from pyjsclear.utils.string_decoders import base64_transform
 
 
 # ---------------------------------------------------------------------------

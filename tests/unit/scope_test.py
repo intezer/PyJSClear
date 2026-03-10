@@ -3,7 +3,10 @@
 import pytest
 
 from pyjsclear.parser import parse
-from pyjsclear.scope import Binding, Scope, build_scope_tree, _nearest_function_scope
+from pyjsclear.scope import Binding
+from pyjsclear.scope import Scope
+from pyjsclear.scope import _nearest_function_scope
+from pyjsclear.scope import build_scope_tree
 
 
 # ---------------------------------------------------------------------------
@@ -45,7 +48,6 @@ class TestBindingIsConstant:
         binding = scope.add_binding('x', {}, 'var')
         binding.assignments.append({'type': 'AssignmentExpression'})
         assert binding.is_constant is False
-
 
 
 # ---------------------------------------------------------------------------
@@ -397,14 +399,16 @@ class TestForStatement:
 
 class TestNestedFunctions:
     def test_nested_function_scopes(self):
-        ast = parse("""
+        ast = parse(
+            """
             function outer() {
                 var a = 1;
                 function inner() {
                     var b = 2;
                 }
             }
-        """)
+        """
+        )
         root_scope, _ = build_scope_tree(ast)
         assert root_scope.get_own_binding('outer') is not None
         outer_scope = root_scope.children[0]
@@ -418,12 +422,14 @@ class TestNestedFunctions:
         assert inner_scope.get_binding('a') is not None
 
     def test_shadowed_variables_in_nested_functions(self):
-        ast = parse("""
+        ast = parse(
+            """
             var x = 1;
             function f() {
                 var x = 2;
             }
-        """)
+        """
+        )
         root_scope, _ = build_scope_tree(ast)
         root_x = root_scope.get_own_binding('x')
         f_scope = root_scope.children[0]
@@ -563,10 +569,12 @@ class TestFallbackGetChildKeys:
         # Craft an AST with a custom node type that's not in _CHILD_KEYS
         ast = parse('var x = 1;')
         # Inject a custom child node with an unknown type
-        ast['body'].append({
-            'type': 'CustomUnknownNode',
-            'argument': {'type': 'Identifier', 'name': 'z'},
-        })
+        ast['body'].append(
+            {
+                'type': 'CustomUnknownNode',
+                'argument': {'type': 'Identifier', 'name': 'z'},
+            }
+        )
         # Should not crash - fallback get_child_keys kicks in
         root_scope, _ = build_scope_tree(ast)
         assert root_scope is not None
@@ -687,4 +695,3 @@ class TestMissingBindingInCollectReferences:
         root_scope, _ = build_scope_tree(ast)
         # 'x' is not declared, so no binding should exist
         assert root_scope.get_own_binding('x') is None
-

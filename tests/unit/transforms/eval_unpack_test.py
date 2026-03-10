@@ -1,7 +1,8 @@
 """Tests for eval/packer unpacker."""
 
 import subprocess
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from pyjsclear.transforms.eval_unpack import _dean_edwards_unpack
 from pyjsclear.transforms.eval_unpack import _try_node_eval
@@ -85,11 +86,7 @@ class TestDeanEdwardsException:
     def test_exception_in_dean_edwards_falls_through(self):
         """Exception in Dean Edwards unpacking continues to next pattern (lines 92-94)."""
         # Craft code that matches _PACKER_RE but will cause an error in _dean_edwards_unpack
-        code = (
-            "eval(function(p,a,c,k,e,d){"
-            "return p"
-            "}('0', 0, 0, ''.split('|'), 0, {}))"
-        )
+        code = "eval(function(p,a,c,k,e,d){" "return p" "}('0', 0, 0, ''.split('|'), 0, {}))"
         # This should not raise; it should return None or fall through
         result = eval_unpack(code)
         # Either returns None or falls through to _try_node_eval

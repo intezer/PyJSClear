@@ -2,7 +2,8 @@
 
 import sys
 from io import StringIO
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open
+from unittest.mock import patch
 
 import pytest
 
@@ -89,7 +90,6 @@ class TestMaxIterationsFlag:
             main()
 
         mock_deobf.assert_called_once_with('var x = 1;', max_iterations=10)
-
 
 
 class TestMissingInputArgument:

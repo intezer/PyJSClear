@@ -1,7 +1,8 @@
 import pytest
 
 from pyjsclear.transforms.logical_to_if import LogicalToIf
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 class TestLogicalAndToIf:
@@ -149,8 +150,8 @@ class TestCoverageGaps:
         """Line 104: Return with single-element sequence (len <= 1) returns None."""
         # Manually constructing is tricky; a single-element SequenceExpression
         # is unusual. We test via the AST directly.
-        from pyjsclear.parser import parse
         from pyjsclear.generator import generate
+        from pyjsclear.parser import parse
 
         ast = parse('function f() { return a; }')
         # Manually make the return argument a SequenceExpression with 1 element
@@ -180,8 +181,8 @@ class TestCoverageGaps:
 
     def test_return_logical_right_sequence_single_element(self):
         """Line 123: Return logical where right side is sequence with <=1 elements."""
-        from pyjsclear.parser import parse
         from pyjsclear.generator import generate
+        from pyjsclear.parser import parse
 
         ast = parse('function f() { return a || b; }')
         ret_stmt = ast['body'][0]['body']['body'][0]
@@ -200,8 +201,8 @@ class TestCoverageGaps:
 
     def test_nullish_coalescing_not_converted(self):
         """Lines 147-148: _logical_to_if with unknown operator (e.g. '??') returns None."""
-        from pyjsclear.parser import parse
         from pyjsclear.generator import generate
+        from pyjsclear.parser import parse
 
         ast = parse('a ?? b();')
         # Esprima may not parse ?? as LogicalExpression, so force it

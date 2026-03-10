@@ -2,7 +2,8 @@
 
 import pytest
 
-from pyjsclear.transforms.hex_escapes import HexEscapes, decode_hex_escapes_source
+from pyjsclear.transforms.hex_escapes import HexEscapes
+from pyjsclear.transforms.hex_escapes import decode_hex_escapes_source
 from tests.unit.conftest import roundtrip
 
 

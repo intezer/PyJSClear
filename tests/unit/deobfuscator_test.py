@@ -1,10 +1,15 @@
 """Unit tests for the Deobfuscator orchestrator."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
 
-from pyjsclear.deobfuscator import TRANSFORM_CLASSES, Deobfuscator, _count_nodes, _LARGE_FILE_SIZE, _MAX_CODE_SIZE
+from pyjsclear.deobfuscator import _LARGE_FILE_SIZE
+from pyjsclear.deobfuscator import _MAX_CODE_SIZE
+from pyjsclear.deobfuscator import TRANSFORM_CLASSES
+from pyjsclear.deobfuscator import Deobfuscator
+from pyjsclear.deobfuscator import _count_nodes
 
 
 class TestTransformClasses:

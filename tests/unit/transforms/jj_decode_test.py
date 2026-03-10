@@ -1,9 +1,13 @@
 """Tests for JJEncode decoder."""
 
 import subprocess
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
-from pyjsclear.transforms.jj_decode import _run_with_function_intercept, is_jj_encoded, jj_decode, jj_decode_via_eval
+from pyjsclear.transforms.jj_decode import _run_with_function_intercept
+from pyjsclear.transforms.jj_decode import is_jj_encoded
+from pyjsclear.transforms.jj_decode import jj_decode
+from pyjsclear.transforms.jj_decode import jj_decode_via_eval
 
 
 JJ_SAMPLE_LINE = '$=~[];$={___:++$,'

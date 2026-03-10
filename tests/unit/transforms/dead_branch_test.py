@@ -2,8 +2,11 @@
 
 import pytest
 
-from pyjsclear.transforms.dead_branch import DeadBranchRemover, _is_truthy_literal
-from tests.unit.conftest import normalize, parse_expr, roundtrip
+from pyjsclear.transforms.dead_branch import DeadBranchRemover
+from pyjsclear.transforms.dead_branch import _is_truthy_literal
+from tests.unit.conftest import normalize
+from tests.unit.conftest import parse_expr
+from tests.unit.conftest import roundtrip
 
 
 # ---------------------------------------------------------------------------

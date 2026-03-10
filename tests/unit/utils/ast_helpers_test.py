@@ -5,27 +5,25 @@ import math
 
 import pytest
 
-from pyjsclear.utils.ast_helpers import (
-    _CHILD_KEYS,
-    deep_copy,
-    get_child_keys,
-    get_literal_value,
-    is_boolean_literal,
-    is_identifier,
-    is_literal,
-    is_null_literal,
-    is_numeric_literal,
-    is_string_literal,
-    is_undefined,
-    is_valid_identifier,
-    make_block_statement,
-    make_expression_statement,
-    make_identifier,
-    make_literal,
-    make_var_declaration,
-    nodes_equal,
-    replace_identifiers,
-)
+from pyjsclear.utils.ast_helpers import _CHILD_KEYS
+from pyjsclear.utils.ast_helpers import deep_copy
+from pyjsclear.utils.ast_helpers import get_child_keys
+from pyjsclear.utils.ast_helpers import get_literal_value
+from pyjsclear.utils.ast_helpers import is_boolean_literal
+from pyjsclear.utils.ast_helpers import is_identifier
+from pyjsclear.utils.ast_helpers import is_literal
+from pyjsclear.utils.ast_helpers import is_null_literal
+from pyjsclear.utils.ast_helpers import is_numeric_literal
+from pyjsclear.utils.ast_helpers import is_string_literal
+from pyjsclear.utils.ast_helpers import is_undefined
+from pyjsclear.utils.ast_helpers import is_valid_identifier
+from pyjsclear.utils.ast_helpers import make_block_statement
+from pyjsclear.utils.ast_helpers import make_expression_statement
+from pyjsclear.utils.ast_helpers import make_identifier
+from pyjsclear.utils.ast_helpers import make_literal
+from pyjsclear.utils.ast_helpers import make_var_declaration
+from pyjsclear.utils.ast_helpers import nodes_equal
+from pyjsclear.utils.ast_helpers import replace_identifiers
 
 
 # ---------------------------------------------------------------------------

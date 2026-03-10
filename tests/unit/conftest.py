@@ -1,7 +1,7 @@
 """Shared test helpers for pyjsclear unit tests."""
 
-from pyjsclear.parser import parse
 from pyjsclear.generator import generate
+from pyjsclear.parser import parse
 
 
 def roundtrip(js_code, transform_class):

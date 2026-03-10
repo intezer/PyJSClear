@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pyjsclear
 
+
 SAMPLES_DIR = Path(__file__).parent / 'resources' / 'regression_samples'
 
 RE_0X = re.compile(r'\b_0x[0-9a-fA-F]{2,}\b')
@@ -299,8 +300,7 @@ class TestSequenceExpressionRotation:
         in_0x = _count_0x(code)
         out_0x = _count_0x(result)
         assert out_0x < in_0x * 0.35, (
-            f'Expected >= 65% _0x reduction, got {in_0x} -> {out_0x} '
-            f'({100*(in_0x-out_0x)/in_0x:.0f}%)'
+            f'Expected >= 65% _0x reduction, got {in_0x} -> {out_0x} ' f'({100*(in_0x-out_0x)/in_0x:.0f}%)'
         )
         # All string decoder calls should be resolved
         assert 'palindrome' in result
@@ -344,9 +344,7 @@ class TestStringArrayShuffleExpressions:
         code, result = _deobfuscate('strings_array_shuffle_numbers_to_expressions.js')
         # The object literal {_0x217c1c: 0x1b1} should be resolved
         # and the decoder call with that value should succeed
-        assert '_0x3531db' not in result or '_0x217c1c' not in result, (
-            'Object literal reference should be resolved'
-        )
+        assert '_0x3531db' not in result or '_0x217c1c' not in result, 'Object literal reference should be resolved'
 
 
 # ================================================================

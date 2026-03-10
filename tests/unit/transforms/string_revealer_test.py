@@ -3,17 +3,17 @@ import math
 import pytest
 
 from pyjsclear.parser import parse
-from pyjsclear.transforms.string_revealer import (
-    StringRevealer,
-    WrapperInfo,
-    _apply_arith,
-    _collect_object_literals,
-    _eval_numeric,
-    _js_parse_int,
-    _resolve_arg_value,
-    _resolve_string_arg,
-)
-from tests.unit.conftest import normalize, parse_expr, roundtrip
+from pyjsclear.transforms.string_revealer import StringRevealer
+from pyjsclear.transforms.string_revealer import WrapperInfo
+from pyjsclear.transforms.string_revealer import _apply_arith
+from pyjsclear.transforms.string_revealer import _collect_object_literals
+from pyjsclear.transforms.string_revealer import _eval_numeric
+from pyjsclear.transforms.string_revealer import _js_parse_int
+from pyjsclear.transforms.string_revealer import _resolve_arg_value
+from pyjsclear.transforms.string_revealer import _resolve_string_arg
+from tests.unit.conftest import normalize
+from tests.unit.conftest import parse_expr
+from tests.unit.conftest import roundtrip
 
 
 # ================================================================
@@ -314,7 +314,7 @@ class TestCollectObjectLiterals:
         ast = parse('var obj = {a: 0x1b1, b: 42};')
         result = _collect_object_literals(ast)
         assert ('obj', 'a') in result
-        assert result[('obj', 'a')] == 0x1b1
+        assert result[('obj', 'a')] == 0x1B1
         assert result[('obj', 'b')] == 42
 
     def test_string_properties(self):
@@ -326,7 +326,7 @@ class TestCollectObjectLiterals:
     def test_mixed_properties(self):
         ast = parse('var obj = {a: 0x1b1, b: "hello"};')
         result = _collect_object_literals(ast)
-        assert result[('obj', 'a')] == 0x1b1
+        assert result[('obj', 'a')] == 0x1B1
         assert result[('obj', 'b')] == 'hello'
 
     def test_string_key_properties(self):
@@ -365,7 +365,7 @@ class TestResolveArgValue:
 
     def test_string_hex_literal(self):
         arg = parse_expr('"0x1a"')
-        assert _resolve_arg_value(arg, {}) == 0x1a
+        assert _resolve_arg_value(arg, {}) == 0x1A
 
     def test_string_decimal_literal(self):
         arg = parse_expr('"10"')
@@ -969,7 +969,8 @@ class TestCollectRotationLocals:
     """Tests for _collect_rotation_locals static method."""
 
     def test_collects_object_from_iife(self):
-        ast = parse("""
+        ast = parse(
+            """
         (function(arr, stop) {
             var J = {A: 0xb9, S: 0xa7, D: 'M8Y&'};
             while (true) {
@@ -979,21 +980,24 @@ class TestCollectRotationLocals:
                 arr.push(arr.shift());
             }
         })(x, 100);
-        """)
+        """
+        )
         # The IIFE is the callee of the CallExpression
         call_expr = ast['body'][0]['expression']
         iife_func = call_expr['callee']
         result = StringRevealer._collect_rotation_locals(iife_func)
         assert 'J' in result
-        assert result['J']['A'] == 0xb9
-        assert result['J']['S'] == 0xa7
+        assert result['J']['A'] == 0xB9
+        assert result['J']['S'] == 0xA7
         assert result['J']['D'] == 'M8Y&'
 
     def test_empty_iife_returns_empty(self):
-        ast = parse("""
+        ast = parse(
+            """
         (function() {
         })();
-        """)
+        """
+        )
         call_expr = ast['body'][0]['expression']
         iife_func = call_expr['callee']
         result = StringRevealer._collect_rotation_locals(iife_func)
@@ -2731,7 +2735,8 @@ class TestCollectRotationLocalsEdgeCases:
 
     def test_rotation_locals_with_string_key(self):
         """Object literal with string keys in rotation IIFE."""
-        ast = parse("""
+        ast = parse(
+            """
         (function(arr, stop) {
             var J = {"A": 0xb9, "B": 'key'};
             while (true) {
@@ -2741,17 +2746,19 @@ class TestCollectRotationLocalsEdgeCases:
                 arr.push(arr.shift());
             }
         })(x, 100);
-        """)
+        """
+        )
         call_expr = ast['body'][0]['expression']
         iife_func = call_expr['callee']
         result = StringRevealer._collect_rotation_locals(iife_func)
         assert 'J' in result
-        assert result['J']['A'] == 0xb9
+        assert result['J']['A'] == 0xB9
         assert result['J']['B'] == 'key'
 
     def test_rotation_locals_non_object_var_ignored(self):
         """Non-object variable declarations in IIFE are ignored."""
-        ast = parse("""
+        ast = parse(
+            """
         (function(arr, stop) {
             var x = 42;
             while (true) {
@@ -2760,7 +2767,8 @@ class TestCollectRotationLocalsEdgeCases:
                 } catch (e) {}
             }
         })(x, 100);
-        """)
+        """
+        )
         call_expr = ast['body'][0]['expression']
         iife_func = call_expr['callee']
         result = StringRevealer._collect_rotation_locals(iife_func)
@@ -2768,11 +2776,13 @@ class TestCollectRotationLocalsEdgeCases:
 
     def test_rotation_locals_non_identifier_name_ignored(self):
         """Var declaration with non-identifier pattern is ignored."""
-        ast = parse("""
+        ast = parse(
+            """
         (function(arr, stop) {
             var J = {A: 1};
         })(x, 100);
-        """)
+        """
+        )
         call_expr = ast['body'][0]['expression']
         iife_func = call_expr['callee']
         result = StringRevealer._collect_rotation_locals(iife_func)
@@ -2781,11 +2791,13 @@ class TestCollectRotationLocalsEdgeCases:
 
     def test_rotation_locals_empty_object(self):
         """Empty object literal in IIFE is not added (no properties)."""
-        ast = parse("""
+        ast = parse(
+            """
         (function(arr, stop) {
             var J = {};
         })(x, 100);
-        """)
+        """
+        )
         call_expr = ast['body'][0]['expression']
         iife_func = call_expr['callee']
         result = StringRevealer._collect_rotation_locals(iife_func)
@@ -2967,7 +2979,7 @@ class TestRotationInternalsDirect:
         t, ast = self._make_revealer('var x = 1;')
         t._rotation_locals = {}
         node = parse_expr('"0x1b"')
-        assert t._resolve_rotation_arg(node) == 0x1b
+        assert t._resolve_rotation_arg(node) == 0x1B
 
     def test_resolve_rotation_arg_string_decimal(self):
         """_resolve_rotation_arg resolves decimal string literal."""
@@ -3136,10 +3148,15 @@ class TestRotationInternalsDirect:
         # But since Base64 won't give us clean ints, use BasicStringDecoder for the actual test
         # and just verify that _cache.clear() is called on Base64StringDecoder
         from pyjsclear.utils.string_decoders import BasicStringDecoder
+
         primary = BasicStringDecoder(string_array, 0)
         op = {'op': 'call', 'wrapper_name': 'w', 'args': [0]}
         result = t._execute_rotation(
-            string_array, op, {'w': wrapper}, primary, 42,
+            string_array,
+            op,
+            {'w': wrapper},
+            primary,
+            42,
             alias_decoder_map={'alias': decoder},
         )
         assert result is True
@@ -3149,7 +3166,8 @@ class TestRotationInternalsDirect:
 
     def test_execute_rotation_with_alias_decoder_map(self):
         """_execute_rotation uses alias_decoder_map for clearing caches."""
-        from pyjsclear.utils.string_decoders import Base64StringDecoder, BasicStringDecoder
+        from pyjsclear.utils.string_decoders import Base64StringDecoder
+        from pyjsclear.utils.string_decoders import BasicStringDecoder
 
         t, ast = self._make_revealer('var x = 1;')
         string_array = ['hello', '42', 'world', 'foo', 'bar']
@@ -3159,9 +3177,7 @@ class TestRotationInternalsDirect:
         alias_map = {'alias': alias_decoder}
         wrapper = WrapperInfo('w', param_index=0, wrapper_offset=0, func_node={})
         op = {'op': 'call', 'wrapper_name': 'w', 'args': [0]}
-        result = t._execute_rotation(
-            string_array, op, {'w': wrapper}, primary, 42, alias_decoder_map=alias_map
-        )
+        result = t._execute_rotation(string_array, op, {'w': wrapper}, primary, 42, alias_decoder_map=alias_map)
         assert result is True
         assert string_array[0] == '42'
         # Cache should have been cleared during rotation
@@ -3273,12 +3289,14 @@ class TestExtractDecoderOffsetDirect:
         """Assignment where left is not an identifier is ignored."""
         t, ast = TestRotationInternalsDirect._make_revealer(None, 'var x = 1;')
         # Parse a function with arr[0] = arr[0] - 5 (member expression on left)
-        func_ast = parse("""
+        func_ast = parse(
+            """
         function f(idx) {
             arr[0] = arr[0] - 5;
             return arr[idx];
         }
-        """)
+        """
+        )
         func_node = func_ast['body'][0]
         offset = t._extract_decoder_offset(func_node)
         assert offset == 0  # Default when no matching pattern found
@@ -3286,12 +3304,14 @@ class TestExtractDecoderOffsetDirect:
     def test_offset_non_binary_right_side(self):
         """Assignment where right side is not BinaryExpression is ignored."""
         t, ast = TestRotationInternalsDirect._make_revealer(None, 'var x = 1;')
-        func_ast = parse("""
+        func_ast = parse(
+            """
         function f(idx) {
             idx = 5;
             return arr[idx];
         }
-        """)
+        """
+        )
         func_node = func_ast['body'][0]
         offset = t._extract_decoder_offset(func_node)
         assert offset == 0
@@ -3299,12 +3319,14 @@ class TestExtractDecoderOffsetDirect:
     def test_offset_binary_left_not_matching_param(self):
         """Assignment where binary left doesn't match the assigned variable."""
         t, ast = TestRotationInternalsDirect._make_revealer(None, 'var x = 1;')
-        func_ast = parse("""
+        func_ast = parse(
+            """
         function f(idx) {
             idx = other - 5;
             return arr[idx];
         }
-        """)
+        """
+        )
         func_node = func_ast['body'][0]
         offset = t._extract_decoder_offset(func_node)
         assert offset == 0
@@ -3312,12 +3334,14 @@ class TestExtractDecoderOffsetDirect:
     def test_offset_unsupported_operator(self):
         """Assignment with unsupported operator (*) is ignored."""
         t, ast = TestRotationInternalsDirect._make_revealer(None, 'var x = 1;')
-        func_ast = parse("""
+        func_ast = parse(
+            """
         function f(idx) {
             idx = idx * 2;
             return arr[idx];
         }
-        """)
+        """
+        )
         func_node = func_ast['body'][0]
         offset = t._extract_decoder_offset(func_node)
         assert offset == 0
@@ -3368,11 +3392,14 @@ class TestFindStringArrayFunction:
 
     def test_function_with_short_body(self):
         """Function with only 1 statement in body is skipped."""
-        t, ast = TestRotationInternalsDirect._make_revealer(None, """
+        t, ast = TestRotationInternalsDirect._make_revealer(
+            None,
+            """
         function _0xArr() {
             return ['hello', 'world'];
         }
-        """)
+        """,
+        )
         body = ast['body']
         name, arr, idx = t._find_string_array_function(body)
         assert name is None
@@ -3436,20 +3463,24 @@ class TestCollectObjectLiteralsPropertyType:
         # Manually construct an AST with a malformed property
         ast = {
             'type': 'Program',
-            'body': [{
-                'type': 'VariableDeclaration',
-                'declarations': [{
-                    'type': 'VariableDeclarator',
-                    'id': {'type': 'Identifier', 'name': 'obj'},
-                    'init': {
-                        'type': 'ObjectExpression',
-                        'properties': [
-                            {'type': 'Property', 'key': None, 'value': {'type': 'Literal', 'value': 42}},
-                            {'type': 'Property', 'key': {'type': 'Identifier', 'name': 'a'}, 'value': None},
-                        ],
-                    },
-                }],
-            }],
+            'body': [
+                {
+                    'type': 'VariableDeclaration',
+                    'declarations': [
+                        {
+                            'type': 'VariableDeclarator',
+                            'id': {'type': 'Identifier', 'name': 'obj'},
+                            'init': {
+                                'type': 'ObjectExpression',
+                                'properties': [
+                                    {'type': 'Property', 'key': None, 'value': {'type': 'Literal', 'value': 42}},
+                                    {'type': 'Property', 'key': {'type': 'Identifier', 'name': 'a'}, 'value': None},
+                                ],
+                            },
+                        }
+                    ],
+                }
+            ],
         }
         result = _collect_object_literals(ast)
         assert len(result) == 0
@@ -3627,13 +3658,16 @@ class TestUpdateAstArrayEdge:
 
     def test_update_ast_array_with_assignment_init(self):
         """_update_ast_array when first statement is assignment (not var decl)."""
-        t, ast = TestRotationInternalsDirect._make_revealer(None, """
+        t, ast = TestRotationInternalsDirect._make_revealer(
+            None,
+            """
         function _0xArr() {
             a = ['hello', 'world'];
             _0xArr = function() { return a; };
             return _0xArr();
         }
-        """)
+        """,
+        )
         func_node = ast['body'][0]
         rotated = ['world', 'hello']
         t._update_ast_array(func_node, rotated)
@@ -3647,10 +3681,13 @@ class TestUpdateAstArrayEdge:
 
     def test_update_ast_array_empty_body(self):
         """_update_ast_array with empty function body does nothing."""
-        t, ast = TestRotationInternalsDirect._make_revealer(None, """
+        t, ast = TestRotationInternalsDirect._make_revealer(
+            None,
+            """
         function _0xArr() {
         }
-        """)
+        """,
+        )
         func_node = ast['body'][0]
         # Should not crash
         t._update_ast_array(func_node, ['a', 'b'])
@@ -3820,7 +3857,9 @@ class TestFindAndExecuteRotationEdge:
         """When no rotation IIFE exists, returns None."""
         from pyjsclear.utils.string_decoders import BasicStringDecoder
 
-        t, ast = TestRotationInternalsDirect._make_revealer(None, """
+        t, ast = TestRotationInternalsDirect._make_revealer(
+            None,
+            """
         function _0xArr() {
             var a = ['hello', 'world', 'foo', 'bar', 'baz'];
             _0xArr = function() { return a; };
@@ -3832,7 +3871,8 @@ class TestFindAndExecuteRotationEdge:
             return arr[idx];
         }
         console.log(_0xDec(0));
-        """)
+        """,
+        )
         body = ast['body']
         decoder = BasicStringDecoder(['hello', 'world', 'foo', 'bar', 'baz'], 0)
         result = t._find_and_execute_rotation(body, '_0xArr', ['hello'], decoder, {}, set())
@@ -3875,9 +3915,7 @@ class TestFindAndExecuteRotationEdge:
         string_array = ['500', 'hello', 'world', 'foo', 'bar', 'baz']
         decoder = BasicStringDecoder(string_array, 0)
         wrapper = WrapperInfo('_0xWrap', param_index=0, wrapper_offset=0, func_node={})
-        result = t._find_and_execute_rotation(
-            body, '_0xArr', string_array, decoder, {'_0xWrap': wrapper}, set()
-        )
+        result = t._find_and_execute_rotation(body, '_0xArr', string_array, decoder, {'_0xWrap': wrapper}, set())
         assert result is not None
         idx, sub_expr = result
         assert sub_expr is not None  # Was inside a SequenceExpression
@@ -3888,12 +3926,15 @@ class TestExtractRotationExpressionEdge:
 
     def test_no_loop_in_iife(self):
         """IIFE without a while/for loop returns None."""
-        t, ast = TestRotationInternalsDirect._make_revealer(None, """
+        t, ast = TestRotationInternalsDirect._make_revealer(
+            None,
+            """
         (function(a, b) {
             var x = 1;
             console.log(x);
         })(arr, 100);
-        """)
+        """,
+        )
         call_expr = ast['body'][0]['expression']
         iife_func = call_expr['callee']
         result = t._extract_rotation_expression(iife_func)
@@ -3901,14 +3942,17 @@ class TestExtractRotationExpressionEdge:
 
     def test_loop_without_try_statement(self):
         """Loop without a TryStatement returns None."""
-        t, ast = TestRotationInternalsDirect._make_revealer(None, """
+        t, ast = TestRotationInternalsDirect._make_revealer(
+            None,
+            """
         (function(a, b) {
             while (true) {
                 var x = 1;
                 break;
             }
         })(arr, 100);
-        """)
+        """,
+        )
         call_expr = ast['body'][0]['expression']
         iife_func = call_expr['callee']
         result = t._extract_rotation_expression(iife_func)
@@ -3916,7 +3960,9 @@ class TestExtractRotationExpressionEdge:
 
     def test_try_with_empty_block(self):
         """Try block with empty body returns None."""
-        t, ast = TestRotationInternalsDirect._make_revealer(None, """
+        t, ast = TestRotationInternalsDirect._make_revealer(
+            None,
+            """
         (function(a, b) {
             while (true) {
                 try {
@@ -3924,7 +3970,8 @@ class TestExtractRotationExpressionEdge:
                 break;
             }
         })(arr, 100);
-        """)
+        """,
+        )
         call_expr = ast['body'][0]['expression']
         iife_func = call_expr['callee']
         result = t._extract_rotation_expression(iife_func)

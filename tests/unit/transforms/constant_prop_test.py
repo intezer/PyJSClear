@@ -3,7 +3,8 @@
 import pytest
 
 from pyjsclear.transforms.constant_prop import ConstantProp
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 class TestConstantPropBasic:

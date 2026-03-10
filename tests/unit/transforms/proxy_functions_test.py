@@ -3,7 +3,8 @@
 import pytest
 
 from pyjsclear.transforms.proxy_functions import ProxyFunctionInliner
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 class TestProxyFunctionInlinerBasic:
@@ -141,8 +142,8 @@ class TestCoverageGaps:
 
     def test_body_is_none(self):
         """Line 113: Function body is None — not a proxy."""
-        from pyjsclear.parser import parse
         from pyjsclear.generator import generate
+        from pyjsclear.parser import parse
 
         ast = parse('function f() { return 1; } f();')
         # Manually remove the body
@@ -286,6 +287,11 @@ class TestCoverageGaps:
             'type': 'BinaryExpression',
             'operator': '+',
             'left': {'type': 'Identifier', 'name': 'a'},
-            'right': {'type': 'AssignmentExpression', 'operator': '=', 'left': {'type': 'Identifier', 'name': 'b'}, 'right': {'type': 'Literal', 'value': 1}},
+            'right': {
+                'type': 'AssignmentExpression',
+                'operator': '=',
+                'left': {'type': 'Identifier', 'name': 'b'},
+                'right': {'type': 'Literal', 'value': 1},
+            },
         }
         assert t._is_proxy_value(node) is False

@@ -3,7 +3,8 @@
 import pytest
 
 from pyjsclear.transforms.anti_tamper import AntiTamperRemover
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 class TestAntiTamperRemover:

@@ -1,7 +1,8 @@
 import pytest
 
 from pyjsclear.transforms.object_simplifier import ObjectSimplifier
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 class TestLiteralPropertyAccess:
@@ -181,8 +182,8 @@ class TestCoverageGaps:
 
     def test_is_proxy_object_non_property_type(self):
         """Lines 121, 124: _is_proxy_object with non-Property type or missing value."""
-        from pyjsclear.parser import parse
         from pyjsclear.generator import generate
+        from pyjsclear.parser import parse
 
         ast = parse('const o = {x: 1}; y(o.x);')
         t = ObjectSimplifier(ast)

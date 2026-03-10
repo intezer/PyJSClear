@@ -1,9 +1,11 @@
 """Tests for JSFUCK decoder."""
 
 import subprocess
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
-from pyjsclear.transforms.jsfuck_decode import is_jsfuck, jsfuck_decode
+from pyjsclear.transforms.jsfuck_decode import is_jsfuck
+from pyjsclear.transforms.jsfuck_decode import jsfuck_decode
 
 
 class TestJSFuckDetection:

@@ -1,7 +1,8 @@
 import pytest
 
 from pyjsclear.transforms.sequence_splitter import SequenceSplitter
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 class TestSequenceSplittingInExpressionStatements:
@@ -232,8 +233,8 @@ class TestSequenceSplitterDirectASTCoverage:
 
     def test_sequence_callee_with_single_expression(self):
         """Line 95-96: SequenceExpression callee with <=1 expression."""
-        from pyjsclear.parser import parse
         from pyjsclear.generator import generate
+        from pyjsclear.parser import parse
 
         ast = parse('fn("hello");')
         # Manually wrap callee in a SequenceExpression with 1 element
@@ -261,7 +262,9 @@ class TestSequenceSplitterDirectASTCoverage:
             'type': 'AwaitExpression',
             'argument': {
                 'type': 'SequenceExpression',
-                'expressions': [{'type': 'CallExpression', 'callee': {'type': 'Identifier', 'name': 'expr'}, 'arguments': []}],
+                'expressions': [
+                    {'type': 'CallExpression', 'callee': {'type': 'Identifier', 'name': 'expr'}, 'arguments': []}
+                ],
             },
         }
         t = SequenceSplitter(ast)

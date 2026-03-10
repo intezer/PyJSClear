@@ -1,9 +1,12 @@
 """Comprehensive unit tests for pyjsclear.parser."""
 
 import re
+
 import pytest
 
-from pyjsclear.parser import parse, _fast_to_dict, _ASYNC_MAP
+from pyjsclear.parser import _ASYNC_MAP
+from pyjsclear.parser import _fast_to_dict
+from pyjsclear.parser import parse
 
 
 # ---------------------------------------------------------------------------
@@ -528,4 +531,3 @@ class TestCompletelyUnparseable:
     def test_garbage_input(self):
         with pytest.raises(SyntaxError, match='Failed to parse JavaScript'):
             parse('}{}{}{')
-

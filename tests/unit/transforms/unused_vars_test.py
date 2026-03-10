@@ -3,7 +3,8 @@
 import pytest
 
 from pyjsclear.transforms.unused_vars import UnusedVariableRemover
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 class TestUnusedVariableRemover:

@@ -3,16 +3,14 @@
 import pytest
 
 from pyjsclear.parser import parse
-from pyjsclear.traverser import (
-    REMOVE,
-    SKIP,
-    collect_nodes,
-    find_parent,
-    remove_from_parent,
-    replace_in_parent,
-    simple_traverse,
-    traverse,
-)
+from pyjsclear.traverser import REMOVE
+from pyjsclear.traverser import SKIP
+from pyjsclear.traverser import collect_nodes
+from pyjsclear.traverser import find_parent
+from pyjsclear.traverser import remove_from_parent
+from pyjsclear.traverser import replace_in_parent
+from pyjsclear.traverser import simple_traverse
+from pyjsclear.traverser import traverse
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +177,6 @@ class TestSkip:
         assert 'VariableDeclaration' in exit_types
         # Children should not appear in exit either
         assert 'VariableDeclarator' not in exit_types
-
 
 
 # ===========================================================================
