@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="PyJSClear.png" alt="PyJSClear" width="200">
+  <img src="https://raw.githubusercontent.com/intezer/PyJSClear/main/PyJSClear.png" alt="PyJSClear" width="200">
 </p>
 
 # PyJSClear
@@ -14,11 +14,16 @@ into a single Python library with no Node.js dependency.
 ## Installation
 
 ```bash
-pip install -r requirements.txt   # install runtime dependencies
-pip install -e .                  # install PyJSClear
+pip install pyjsclear
+```
 
-# For development/testing
-pip install -r test-requirements.txt
+For development:
+
+```bash
+git clone https://github.com/intezer/PyJSClear.git
+cd PyJSClear
+pip install -e .
+pip install pytest
 ```
 
 ## Usage
@@ -133,7 +138,5 @@ This project is a derivative work based on
 [obfuscator-io-deobfuscator](https://github.com/ben-sb/obfuscator-io-deobfuscator)
 (Apache 2.0) and
 [javascript-deobfuscator](https://github.com/ben-sb/javascript-deobfuscator)
-(Apache 2.0), and uses [esprima2](https://github.com/s0md3v/esprima2)
-(BSD 2-Clause) for JavaScript parsing.
-See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and
+(Apache 2.0). See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and
 [NOTICE](NOTICE) for full attribution.
