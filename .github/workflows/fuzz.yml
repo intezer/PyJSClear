@@ -1,0 +1,48 @@
+name: Fuzz Testing
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop]
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - fuzz_deobfuscate
+          - fuzz_parser
+          - fuzz_generator
+          - fuzz_transforms
+          - fuzz_expression_simplifier
+          - fuzz_string_decoders
+          - fuzz_scope
+          - fuzz_traverser
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Install clang and libFuzzer
+        run: |
+          sudo apt-get update -qq
+          # Install whichever clang/libfuzzer version is available
+          LLVM_VERSION=$(apt-cache search '^libfuzzer-[0-9]+-dev$' | sort -t- -k2 -n | tail -1 | grep -oP '\d+')
+          echo "Installing LLVM version: $LLVM_VERSION"
+          sudo apt-get install -y -qq "clang-${LLVM_VERSION}" "libfuzzer-${LLVM_VERSION}-dev"
+          echo "CLANG_BIN=$(which clang-${LLVM_VERSION})" >> "$GITHUB_ENV"
+      - name: Install atheris
+        run: pip install atheris
+      - name: Run fuzz target (${{ matrix.target }})
+        run: |
+          chmod +x tests/fuzz/run_local.sh
+          tests/fuzz/run_local.sh ${{ matrix.target }} 60

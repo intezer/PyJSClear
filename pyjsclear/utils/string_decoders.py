@@ -106,7 +106,7 @@ class Rc4StringDecoder(StringDecoder):
         return DecoderType.RC4
 
     def get_string(self, index, key=None):
-        if key is None:
+        if not key:
             return None
         # Include key in cache to avoid collisions with different RC4 keys
         cache_key = (index, key)

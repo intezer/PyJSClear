@@ -1,0 +1,14 @@
+var a = 0 / 0;
+var b = 1 / 0;
+var c = "" + [];
+var d = [] + {};
+var e = {} + [];
+var f = !!"";
+var g = !!0;
+var h = !![];
+var i = +true;
+var j = +false;
+var k = +null;
+var l = +undefined;
+var m = "5" - 3;
+var n = "5" + 3;

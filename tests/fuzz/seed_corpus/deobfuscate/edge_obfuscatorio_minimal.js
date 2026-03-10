@@ -1,0 +1,13 @@
+var _0x1234 = ['aGVsbG8=', 'd29ybGQ='];
+(function(_0x5678, _0x9abc) {
+    var _0xdef0 = function(_0x1111) {
+        while (--_0x1111) {
+            _0x5678['push'](_0x5678['shift']());
+        }
+    };
+    _0xdef0(++_0x9abc);
+}(_0x1234, 0x1));
+var _0xget = function(_0x2222) {
+    return _0x1234[_0x2222];
+};
+console['log'](_0xget(0x0));
