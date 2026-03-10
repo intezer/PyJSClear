@@ -3,7 +3,8 @@
 import pytest
 
 from pyjsclear.transforms.control_flow import ControlFlowRecoverer
-from tests.unit.conftest import normalize, roundtrip
+from tests.unit.conftest import normalize
+from tests.unit.conftest import roundtrip
 
 
 def rt(js_code):
@@ -523,3 +524,238 @@ class TestIsTruthy:
         not_inner = {'type': 'UnaryExpression', 'operator': '!', 'argument': inner, 'prefix': True}
         double_not = {'type': 'UnaryExpression', 'operator': '!', 'argument': not_inner, 'prefix': True}
         assert self.t._is_truthy(double_not) is True
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap tests
+# ---------------------------------------------------------------------------
+
+
+class TestNonDictInBody:
+    """Lines 69-70: Non-dict statement in body list."""
+
+    def test_non_dict_in_body_skipped(self):
+        """Non-dict items in body should be skipped without crashing."""
+        ast = _program([None, 'not_a_dict', _expr_stmt(_call_expr(_identifier('a'), []))])
+        t = ControlFlowRecoverer(ast)
+        changed = t.execute()
+        assert changed is False
+
+
+class TestExpressionPatternCounterInit:
+    """Lines 106, 116, 119: expression pattern where assignment doesn't have split or counter init fails."""
+
+    def test_expression_pattern_no_split(self):
+        """Assignment that is not a split call should not match."""
+        ast = _program(
+            [
+                _expr_stmt(_assignment('x', _literal(42))),
+                _while_true([_break_stmt()]),
+            ]
+        )
+        t = ControlFlowRecoverer(ast)
+        changed = t.execute()
+        assert changed is False
+
+    def test_expression_pattern_missing_loop(self):
+        """Expression pattern where there is no loop after the counter init."""
+        assign_stmt = _expr_stmt(_assignment('_a', _split_call('1|0')))
+        counter_stmt = _expr_stmt(_assignment('_i', _literal(0)))
+        # No loop after counter, just ends
+        ast = _program([assign_stmt, counter_stmt])
+        t = ControlFlowRecoverer(ast)
+        changed = t.execute()
+        assert changed is False
+
+
+class TestFindCounterInit:
+    """Lines 175-183, 194: _find_counter_init with VariableDeclaration and ExpressionStatement."""
+
+    def setup_method(self):
+        self.t = ControlFlowRecoverer(_program([]))
+
+    def test_variable_declaration_counter(self):
+        stmt = _var_declaration([_var_declarator('_i', _literal(0))])
+        result = self.t._find_counter_init(stmt)
+        assert result == '_i'
+
+    def test_expression_statement_counter(self):
+        stmt = _expr_stmt(_assignment('_i', _literal(0)))
+        result = self.t._find_counter_init(stmt)
+        assert result == '_i'
+
+    def test_non_numeric_init_ignored(self):
+        stmt = _var_declaration([_var_declarator('_i', _literal('hello'))])
+        result = self.t._find_counter_init(stmt)
+        assert result is None
+
+    def test_non_dict_returns_none(self):
+        result = self.t._find_counter_init(None)
+        assert result is None
+
+        result = self.t._find_counter_init('not a dict')
+        assert result is None
+
+
+class TestForStatementPattern:
+    """Lines 236-237: ForStatement with init value extraction."""
+
+    def test_for_statement_recovery(self):
+        """For loop with switch dispatcher should be recovered."""
+        js = (
+            'var _a = "1|0".split("|");'
+            ' for (var _j = 0; ; ) {'
+            ' switch (_a[_j++]) { case "0": b(); continue; case "1": a(); continue; }'
+            ' break; }'
+        )
+        code, changed = rt(js)
+        assert changed is True
+        assert 'a()' in code
+        assert 'b()' in code
+        assert code.index('a()') < code.index('b()')
+
+
+class TestExtractForInitValue:
+    """Lines 253-261: _extract_for_init_value with AssignmentExpression init."""
+
+    def test_assignment_expression_init(self):
+        init = {
+            'type': 'AssignmentExpression',
+            'operator': '=',
+            'left': _identifier('_i'),
+            'right': _literal(0),
+        }
+        result = ControlFlowRecoverer._extract_for_init_value(init)
+        assert result == 0
+
+    def test_variable_declaration_init(self):
+        init = _var_declaration([_var_declarator('_i', _literal(2))])
+        result = ControlFlowRecoverer._extract_for_init_value(init)
+        assert result == 2
+
+    def test_no_init(self):
+        result = ControlFlowRecoverer._extract_for_init_value(None)
+        assert result == 0
+
+
+class TestReconstructStatementsEdgeCases:
+    """Lines 291, 295-296: _reconstruct_statements with return statement and missing state."""
+
+    def test_missing_state_stops_reconstruction(self):
+        """A missing state key should stop reconstruction."""
+        cases_map = {
+            '0': ([_expr_stmt(_call_expr(_identifier('a'), []))], []),
+        }
+        result = ControlFlowRecoverer._reconstruct_statements(cases_map, ['0', '1'], 0)
+        # Should only contain statements from case '0'
+        assert len(result) == 1
+
+
+class TestExtractSwitchFromLoopBody:
+    """Lines 302, 308-310: _extract_switch_from_loop_body edge cases."""
+
+    def setup_method(self):
+        self.t = ControlFlowRecoverer(_program([]))
+
+    def test_non_block_statement(self):
+        """Non-BlockStatement body returns None."""
+        result = self.t._extract_switch_from_loop_body(_expr_stmt(_call_expr(_identifier('a'), [])))
+        assert result is None
+
+    def test_switch_directly_as_body(self):
+        """SwitchStatement directly as loop body."""
+        switch = _switch_stmt(_identifier('x'), [])
+        result = self.t._extract_switch_from_loop_body(switch)
+        assert result is not None
+        assert result['type'] == 'SwitchStatement'
+
+    def test_non_dict_body(self):
+        result = self.t._extract_switch_from_loop_body(None)
+        assert result is None
+
+        result = self.t._extract_switch_from_loop_body('not a dict')
+        assert result is None
+
+
+class TestWhileTruthyPatterns:
+    """Tests for various truthy patterns in while loop tests."""
+
+    def test_while_not_zero(self):
+        """while(!0) pattern - truthy via !0."""
+        code = (
+            'var _a = "1|0".split("|"), _i = 0;'
+            ' while(!0) {'
+            ' switch(_a[_i++]) { case "0": b(); continue; case "1": a(); continue; }'
+            ' break; }'
+        )
+        result, changed = rt(code)
+        assert changed
+        assert 'a()' in result
+        assert 'b()' in result
+
+    def test_while_double_not_array(self):
+        """while(!![]) pattern - truthy via !![]."""
+        code = (
+            'var _a = "0|1".split("|"), _i = 0;'
+            ' while(!![]) {'
+            ' switch(_a[_i++]) { case "0": a(); continue; case "1": b(); continue; }'
+            ' break; }'
+        )
+        result, changed = rt(code)
+        assert changed
+        assert 'a()' in result
+        assert 'b()' in result
+
+    def test_case_with_return_in_roundtrip(self):
+        """Case with return statement preserved in roundtrip."""
+        code = (
+            'function f() {'
+            ' var _a = "0|1".split("|"), _i = 0;'
+            ' while(true) { switch(_a[_i++]) { case "0": a(); continue; case "1": return b(); } break; }'
+            ' }'
+        )
+        result, changed = rt(code)
+        assert changed
+        assert 'return' in result
+
+    def test_is_truthy_not_array_is_false(self):
+        """![] is falsy (line 324)."""
+        t = ControlFlowRecoverer(_program([]))
+        node = {
+            'type': 'UnaryExpression',
+            'operator': '!',
+            'argument': {'type': 'ArrayExpression', 'elements': []},
+            'prefix': True,
+        }
+        assert t._is_truthy(node) is False
+
+    def test_is_truthy_literal_non_bool(self):
+        """Literal with non-bool truthy value (line 317)."""
+        t = ControlFlowRecoverer(_program([]))
+        assert t._is_truthy(_literal(42)) is True
+        assert t._is_truthy(_literal('')) is False
+        assert t._is_truthy(_literal('hello')) is True
+
+    def test_visited_set_dedup(self):
+        """Lines 36-37: visited set prevents re-processing the same node."""
+        # A node that appears in multiple places (shared reference)
+        shared = _expr_stmt(_call_expr(_identifier('a'), []))
+        block = {'type': 'BlockStatement', 'body': [shared]}
+        ast = _program([block])
+        t = ControlFlowRecoverer(ast)
+        changed = t.execute()
+        assert changed is False
+
+
+class TestForInitAssignmentExpression:
+    """Lines 259-260: _extract_for_init_value with AssignmentExpression init."""
+
+    def test_for_assignment_init_nonzero(self):
+        init = {
+            'type': 'AssignmentExpression',
+            'operator': '=',
+            'left': _identifier('_i'),
+            'right': _literal(3),
+        }
+        result = ControlFlowRecoverer._extract_for_init_value(init)
+        assert result == 3

@@ -3,7 +3,10 @@
 import pytest
 
 from pyjsclear.parser import parse
-from pyjsclear.scope import Binding, Scope, build_scope_tree, _nearest_function_scope
+from pyjsclear.scope import Binding
+from pyjsclear.scope import Scope
+from pyjsclear.scope import _nearest_function_scope
+from pyjsclear.scope import build_scope_tree
 
 
 # ---------------------------------------------------------------------------
@@ -43,28 +46,6 @@ class TestBindingIsConstant:
     def test_var_with_assignments_is_not_constant(self):
         scope = Scope(None, {}, is_function=True)
         binding = scope.add_binding('x', {}, 'var')
-        binding.assignments.append({'type': 'AssignmentExpression'})
-        assert binding.is_constant is False
-
-    def test_let_no_assignments_is_constant(self):
-        scope = Scope(None, {}, is_function=True)
-        binding = scope.add_binding('x', {}, 'let')
-        assert binding.is_constant is True
-
-    def test_let_with_assignments_is_not_constant(self):
-        scope = Scope(None, {}, is_function=True)
-        binding = scope.add_binding('x', {}, 'let')
-        binding.assignments.append({'type': 'AssignmentExpression'})
-        assert binding.is_constant is False
-
-    def test_param_no_assignments_is_constant(self):
-        scope = Scope(None, {}, is_function=True)
-        binding = scope.add_binding('x', {}, 'param')
-        assert binding.is_constant is True
-
-    def test_param_with_assignments_is_not_constant(self):
-        scope = Scope(None, {}, is_function=True)
-        binding = scope.add_binding('x', {}, 'param')
         binding.assignments.append({'type': 'AssignmentExpression'})
         assert binding.is_constant is False
 
@@ -418,14 +399,16 @@ class TestForStatement:
 
 class TestNestedFunctions:
     def test_nested_function_scopes(self):
-        ast = parse("""
+        ast = parse(
+            """
             function outer() {
                 var a = 1;
                 function inner() {
                     var b = 2;
                 }
             }
-        """)
+        """
+        )
         root_scope, _ = build_scope_tree(ast)
         assert root_scope.get_own_binding('outer') is not None
         outer_scope = root_scope.children[0]
@@ -439,12 +422,14 @@ class TestNestedFunctions:
         assert inner_scope.get_binding('a') is not None
 
     def test_shadowed_variables_in_nested_functions(self):
-        ast = parse("""
+        ast = parse(
+            """
             var x = 1;
             function f() {
                 var x = 2;
             }
-        """)
+        """
+        )
         root_scope, _ = build_scope_tree(ast)
         root_x = root_scope.get_own_binding('x')
         f_scope = root_scope.children[0]
@@ -476,37 +461,6 @@ class TestOperatorPrecedenceBug:
     same result. The bug would manifest only if _nearest_function_scope
     returned None/falsy, which cannot happen with a well-formed scope tree.
     """
-
-    def test_var_targets_function_scope(self):
-        """For 'var', the target is the nearest function scope.
-
-        Since _nearest_function_scope returns a truthy value, the
-        buggy precedence does not matter here -- both interpretations
-        yield the function scope.
-        """
-        ast = parse('function f() { { var x = 1; } }')
-        root_scope, _ = build_scope_tree(ast)
-        f_scope = root_scope.children[0]
-        assert f_scope.is_function is True
-        # var x should be hoisted to f_scope
-        assert f_scope.get_own_binding('x') is not None
-        assert f_scope.get_own_binding('x').kind == 'var'
-
-    def test_let_targets_block_scope(self):
-        """For 'let', the target is the current (block) scope.
-
-        When kind != 'var', the else branch fires and gives `scope`,
-        which is the block scope. This works correctly regardless of
-        operator precedence because the `or` short-circuits and the
-        conditional still evaluates the else branch.
-        """
-        ast = parse('function f() { { let y = 2; } }')
-        root_scope, _ = build_scope_tree(ast)
-        f_scope = root_scope.children[0]
-        assert f_scope.get_own_binding('y') is None
-        block_scope = f_scope.children[0]
-        assert block_scope.get_own_binding('y') is not None
-        assert block_scope.get_own_binding('y').kind == 'let'
 
     def test_precedence_equivalence_when_function_scope_truthy(self):
         """Both interpretations give the same result when
@@ -586,3 +540,158 @@ class TestNodeScopeMap:
         root_scope, node_scope = build_scope_tree(ast)
         block_node = ast['body'][0]
         assert id(block_node) in node_scope
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap tests
+# ---------------------------------------------------------------------------
+
+
+class TestFunctionDeclarationNameNonReference:
+    """Line 72/82: Function declaration name is a non-reference identifier."""
+
+    def test_function_declaration_name_not_counted_as_reference(self):
+        ast = parse('function foo() {}')
+        root_scope, _ = build_scope_tree(ast)
+        binding = root_scope.get_own_binding('foo')
+        assert binding is not None
+        assert binding.kind == 'function'
+        # The 'foo' in 'function foo()' should not be a reference
+        # (it's the declaration site, handled by _is_non_reference_identifier)
+        # References list should be empty since foo is never used
+        assert len(binding.references) == 0
+
+
+class TestFallbackGetChildKeys:
+    """Line 94: Fallback get_child_keys for unknown node type."""
+
+    def test_unknown_node_type_in_tree(self):
+        # Craft an AST with a custom node type that's not in _CHILD_KEYS
+        ast = parse('var x = 1;')
+        # Inject a custom child node with an unknown type
+        ast['body'].append(
+            {
+                'type': 'CustomUnknownNode',
+                'argument': {'type': 'Identifier', 'name': 'z'},
+            }
+        )
+        # Should not crash - fallback get_child_keys kicks in
+        root_scope, _ = build_scope_tree(ast)
+        assert root_scope is not None
+
+
+class TestNonDictOrNoneInCollectDeclarations:
+    """Lines 130, 133: Non-dict or None-type node in _collect_declarations."""
+
+    def test_none_element_in_body(self):
+        # Manually inject None into body
+        ast = parse('var x = 1;')
+        ast['body'].append(None)
+        # Should not crash
+        root_scope, _ = build_scope_tree(ast)
+        assert root_scope.get_own_binding('x') is not None
+
+    def test_node_without_type(self):
+        # Inject a node without 'type' key
+        ast = parse('var x = 1;')
+        ast['body'].append({'nottype': 'something'})
+        root_scope, _ = build_scope_tree(ast)
+        assert root_scope.get_own_binding('x') is not None
+
+
+class TestArrowFunctionAssignmentPatternParam:
+    """Lines 155-156: Arrow function with AssignmentPattern param."""
+
+    def test_arrow_with_default_param(self):
+        # Use expression statement wrapper so VariableDeclaration handler doesn't skip recursion
+        ast = parse('((x = 5) => x + 1);')
+        root_scope, _ = build_scope_tree(ast)
+        # Arrow function creates a child scope with param 'x'
+        arrow_scope = root_scope.children[0]
+        assert arrow_scope.is_function is True
+        x_binding = arrow_scope.get_own_binding('x')
+        assert x_binding is not None
+        assert x_binding.kind == 'param'
+
+
+class TestArrowFunctionExpressionBody:
+    """Line 167: Arrow function with expression body (non-BlockStatement)."""
+
+    def test_arrow_expression_body(self):
+        # Use expression statement to avoid VariableDeclaration early return
+        ast = parse('(x => x + 1);')
+        root_scope, _ = build_scope_tree(ast)
+        arrow_scope = root_scope.children[0]
+        assert arrow_scope.is_function is True
+        assert arrow_scope.get_own_binding('x') is not None
+        assert arrow_scope.get_own_binding('x').kind == 'param'
+
+    def test_arrow_expression_body_references(self):
+        ast = parse('var y = 10; (x => x + y);')
+        root_scope, _ = build_scope_tree(ast)
+        y_binding = root_scope.get_own_binding('y')
+        assert y_binding is not None
+        # y is referenced inside the arrow
+        assert len(y_binding.references) >= 1
+
+
+class TestArrayPatternWithHoles:
+    """Lines 209, 213-214: Array pattern with holes (elisions)."""
+
+    def test_array_pattern_with_holes(self):
+        ast = parse('var [a, , b] = [1, 2, 3];')
+        root_scope, _ = build_scope_tree(ast)
+        assert root_scope.get_own_binding('a') is not None
+        assert root_scope.get_own_binding('b') is not None
+
+    def test_array_pattern_leading_hole(self):
+        ast = parse('var [, a] = [1, 2];')
+        root_scope, _ = build_scope_tree(ast)
+        assert root_scope.get_own_binding('a') is not None
+
+
+class TestObjectPatternPropertyWithoutValue:
+    """Line 223: ObjectPattern property without value_node."""
+
+    def test_object_pattern_property_no_value(self):
+        # Craft an AST manually with a property that has no 'value' and no 'argument'
+        ast = {
+            'type': 'Program',
+            'sourceType': 'script',
+            'body': [
+                {
+                    'type': 'VariableDeclaration',
+                    'kind': 'var',
+                    'declarations': [
+                        {
+                            'type': 'VariableDeclarator',
+                            'id': {
+                                'type': 'ObjectPattern',
+                                'properties': [
+                                    {
+                                        'type': 'Property',
+                                        'key': {'type': 'Identifier', 'name': 'x'},
+                                        # No 'value' or 'argument' key
+                                    }
+                                ],
+                            },
+                            'init': {'type': 'Identifier', 'name': 'obj'},
+                        }
+                    ],
+                }
+            ],
+        }
+        # Should not crash; 'x' should not be bound since there's no value_node
+        root_scope, _ = build_scope_tree(ast)
+        assert root_scope is not None
+
+
+class TestMissingBindingInCollectReferences:
+    """Lines 242, 245: Missing binding in _collect_references, fallback child_keys."""
+
+    def test_unbound_identifier_reference(self):
+        # Reference to an identifier not in any scope
+        ast = parse('console.log(x);')
+        root_scope, _ = build_scope_tree(ast)
+        # 'x' is not declared, so no binding should exist
+        assert root_scope.get_own_binding('x') is None

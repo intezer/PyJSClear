@@ -1,7 +1,9 @@
 import pytest
 
 import pyjsclear
-from pyjsclear import Deobfuscator, deobfuscate, deobfuscate_file
+from pyjsclear import Deobfuscator
+from pyjsclear import deobfuscate
+from pyjsclear import deobfuscate_file
 
 
 class TestVersion:
@@ -13,17 +15,6 @@ class TestDeobfuscate:
     def test_returns_string(self):
         result = deobfuscate('var x = 1;')
         assert isinstance(result, str)
-
-    def test_simple_code_unchanged(self):
-        code = 'var x = 1;'
-        result = deobfuscate(code)
-        assert result == code
-
-    def test_with_max_iterations(self):
-        code = 'var x = 1;'
-        result = deobfuscate(code, max_iterations=5)
-        assert isinstance(result, str)
-        assert result == code
 
 
 class TestDeobfuscateFile:

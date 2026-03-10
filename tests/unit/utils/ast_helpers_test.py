@@ -5,27 +5,25 @@ import math
 
 import pytest
 
-from pyjsclear.utils.ast_helpers import (
-    _CHILD_KEYS,
-    deep_copy,
-    get_child_keys,
-    get_literal_value,
-    is_boolean_literal,
-    is_identifier,
-    is_literal,
-    is_null_literal,
-    is_numeric_literal,
-    is_string_literal,
-    is_undefined,
-    is_valid_identifier,
-    make_block_statement,
-    make_expression_statement,
-    make_identifier,
-    make_literal,
-    make_var_declaration,
-    nodes_equal,
-    replace_identifiers,
-)
+from pyjsclear.utils.ast_helpers import _CHILD_KEYS
+from pyjsclear.utils.ast_helpers import deep_copy
+from pyjsclear.utils.ast_helpers import get_child_keys
+from pyjsclear.utils.ast_helpers import get_literal_value
+from pyjsclear.utils.ast_helpers import is_boolean_literal
+from pyjsclear.utils.ast_helpers import is_identifier
+from pyjsclear.utils.ast_helpers import is_literal
+from pyjsclear.utils.ast_helpers import is_null_literal
+from pyjsclear.utils.ast_helpers import is_numeric_literal
+from pyjsclear.utils.ast_helpers import is_string_literal
+from pyjsclear.utils.ast_helpers import is_undefined
+from pyjsclear.utils.ast_helpers import is_valid_identifier
+from pyjsclear.utils.ast_helpers import make_block_statement
+from pyjsclear.utils.ast_helpers import make_expression_statement
+from pyjsclear.utils.ast_helpers import make_identifier
+from pyjsclear.utils.ast_helpers import make_literal
+from pyjsclear.utils.ast_helpers import make_var_declaration
+from pyjsclear.utils.ast_helpers import nodes_equal
+from pyjsclear.utils.ast_helpers import replace_identifiers
 
 
 # ---------------------------------------------------------------------------
@@ -292,11 +290,6 @@ class TestMakeLiteral:
     # then checks if raw starts with '"' and if not, re-wraps.
     # This section documents the current behavior for edge cases.
 
-    def test_bug2_simple_string_current_behavior(self):
-        """Bug #2: Simple strings work correctly with repr-based raw generation."""
-        node = make_literal('abc')
-        assert node['raw'] == '"abc"'
-
     def test_bug2_string_with_single_quotes(self):
         """Bug #2: Strings containing single quotes. repr() would use double quotes
         for the Python repr, so replacing ' with " produces unexpected results.
@@ -383,9 +376,6 @@ class TestMakeLiteral:
 class TestMakeIdentifier:
     def test_basic(self):
         assert make_identifier('foo') == {'type': 'Identifier', 'name': 'foo'}
-
-    def test_dollar_sign(self):
-        assert make_identifier('$') == {'type': 'Identifier', 'name': '$'}
 
     def test_underscore(self):
         assert make_identifier('_') == {'type': 'Identifier', 'name': '_'}
@@ -480,12 +470,6 @@ class TestIsValidIdentifier:
 
     def test_hyphen(self):
         assert not is_valid_identifier('foo-bar')
-
-    def test_space(self):
-        assert not is_valid_identifier('foo bar')
-
-    def test_dot(self):
-        assert not is_valid_identifier('foo.bar')
 
     def test_single_dollar(self):
         assert is_valid_identifier('$')

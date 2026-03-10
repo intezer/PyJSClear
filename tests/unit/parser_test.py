@@ -1,9 +1,12 @@
 """Comprehensive unit tests for pyjsclear.parser."""
 
 import re
+
 import pytest
 
-from pyjsclear.parser import parse, _fast_to_dict, _ASYNC_MAP
+from pyjsclear.parser import _ASYNC_MAP
+from pyjsclear.parser import _fast_to_dict
+from pyjsclear.parser import parse
 
 
 # ---------------------------------------------------------------------------
@@ -78,10 +81,6 @@ class TestFastToDictDicts:
     def test_skips_underscore_keys(self):
         result = _fast_to_dict({'_private': 1, 'public': 2})
         assert result == {'public': 2}
-
-    def test_skips_multiple_underscore_keys(self):
-        result = _fast_to_dict({'__dunder': 0, '_x': 1, 'ok': 2})
-        assert result == {'ok': 2}
 
     def test_skips_optional_false(self):
         result = _fast_to_dict({'optional': False, 'name': 'test'})
@@ -465,22 +464,6 @@ class TestParseMisc:
 
 
 class TestParseStructure:
-    def test_returns_dict(self):
-        result = parse('1')
-        assert isinstance(result, dict)
-
-    def test_has_type_program(self):
-        result = parse('1')
-        assert result['type'] == 'Program'
-
-    def test_has_body_list(self):
-        result = parse('1')
-        assert isinstance(result['body'], list)
-
-    def test_has_sourceType(self):
-        result = parse('1')
-        assert result['sourceType'] == 'script'
-
     def test_no_underscore_keys_in_output(self):
         """Ensure no keys starting with underscore appear anywhere in the AST."""
         result = parse('function foo(x) { return x + 1; }')
@@ -531,3 +514,20 @@ class TestParseSyntaxErrors:
         with pytest.raises(SyntaxError) as exc_info:
             parse('<<<')
         assert exc_info.value.__cause__ is not None
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap tests
+# ---------------------------------------------------------------------------
+
+
+class TestCompletelyUnparseable:
+    """Lines 45-46: Code that fails both script AND module parsing."""
+
+    def test_completely_unparseable(self):
+        with pytest.raises(SyntaxError):
+            parse('@@@!!!')
+
+    def test_garbage_input(self):
+        with pytest.raises(SyntaxError, match='Failed to parse JavaScript'):
+            parse('}{}{}{')

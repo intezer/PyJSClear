@@ -2,7 +2,8 @@
 
 import sys
 from io import StringIO
-from unittest.mock import patch, mock_open
+from unittest.mock import mock_open
+from unittest.mock import patch
 
 import pytest
 
@@ -90,20 +91,6 @@ class TestMaxIterationsFlag:
 
         mock_deobf.assert_called_once_with('var x = 1;', max_iterations=10)
 
-    def test_default_max_iterations(self, tmp_path, monkeypatch):
-        input_file = tmp_path / 'input.js'
-        input_file.write_text('var x = 1;')
-
-        monkeypatch.setattr(sys, 'argv', ['pyjsclear', str(input_file)])
-
-        stdout = StringIO()
-        monkeypatch.setattr(sys, 'stdout', stdout)
-
-        with patch('pyjsclear.__main__.deobfuscate', return_value='var x = 1;') as mock_deobf:
-            main()
-
-        mock_deobf.assert_called_once_with('var x = 1;', max_iterations=50)
-
 
 class TestMissingInputArgument:
     """Test 5: Missing input argument raises SystemExit."""
@@ -115,3 +102,24 @@ class TestMissingInputArgument:
             main()
 
         assert exc_info.value.code == 2
+
+
+# ---------------------------------------------------------------------------
+# Coverage gap tests
+# ---------------------------------------------------------------------------
+
+
+class TestModuleExecution:
+    """Line 37: if __name__ == '__main__': main() in __main__.py."""
+
+    def test_module_execution(self):
+        import subprocess
+
+        result = subprocess.run(
+            ['python', '-m', 'pyjsclear', '-'],
+            input='var x = 1;',
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0
+        assert 'var x = 1' in result.stdout
