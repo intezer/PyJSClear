@@ -34,6 +34,9 @@ Issues = "https://github.com/intezer/PyJSClear/issues"
 [project.scripts]
 pyjsclear = "pyjsclear.__main__:main"
 
+[tool.setuptools.packages.find]
+include = ["pyjsclear*"]
+
 [tool.setuptools.dynamic]
 version = {attr = "pyjsclear.__version__"}
 
