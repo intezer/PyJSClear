@@ -7,8 +7,10 @@ from pyjsclear import deobfuscate_file
 
 
 class TestVersion:
-    def test_version_is_0_1_0(self):
-        assert pyjsclear.__version__ == '0.1.0'
+    def test_version_is_semver(self):
+        parts = pyjsclear.__version__.split('.')
+        assert len(parts) == 3
+        assert all(p.isdigit() for p in parts)
 
 
 class TestDeobfuscate:
