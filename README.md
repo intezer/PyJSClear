@@ -47,16 +47,16 @@ cleaned = deobfuscate_file("input.js")
 
 ```bash
 # File to stdout
-python -m pyjsclear input.js
+pyjsclear input.js
 
 # File to file
-python -m pyjsclear input.js -o output.js
+pyjsclear input.js -o output.js
 
 # Stdin to stdout
-cat input.js | python -m pyjsclear -
+cat input.js | pyjsclear -
 
 # With custom iteration limit
-python -m pyjsclear input.js --max-iterations 20
+pyjsclear input.js --max-iterations 20
 ```
 
 ## What it does
