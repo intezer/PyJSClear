@@ -87,6 +87,52 @@ class MemberChainResolver(Transform):
         if not class_constants:
             return False
 
+        # Phase 1b: Invalidate constants that are reassigned through alias chains.
+        # Pattern: A.B.C = expr where B → class_name via prop_to_class
+        # means (class_name, C) is NOT a true constant.
+        def invalidate_chain_assignments(node, parent):
+            if node.get('type') != 'AssignmentExpression':
+                return
+            left = node.get('left')
+            if not left or left.get('type') != 'MemberExpression':
+                return
+            inner = left.get('object')
+            if not inner or inner.get('type') != 'MemberExpression':
+                return
+            # Get C (outer property)
+            outer_prop = left.get('property')
+            if not outer_prop:
+                return
+            if left.get('computed'):
+                if not is_string_literal(outer_prop):
+                    return
+                c_name = outer_prop['value']
+            elif is_identifier(outer_prop):
+                c_name = outer_prop['name']
+            else:
+                return
+            # Get B (middle property)
+            inner_prop = inner.get('property')
+            if not inner_prop:
+                return
+            if inner.get('computed'):
+                if not is_string_literal(inner_prop):
+                    return
+                b_name = inner_prop['value']
+            elif is_identifier(inner_prop):
+                b_name = inner_prop['name']
+            else:
+                return
+            # If B resolves to a class, invalidate (class, C)
+            class_name = prop_to_class.get(b_name)
+            if class_name and (class_name, c_name) in class_constants:
+                del class_constants[(class_name, c_name)]
+
+        simple_traverse(self.ast, invalidate_chain_assignments)
+
+        if not class_constants:
+            return False
+
         # Phase 2: Replace A.B.C member chains where B resolves to a class
         # and (class, C) maps to a constant expression
         def resolve(node, parent, key, index):
