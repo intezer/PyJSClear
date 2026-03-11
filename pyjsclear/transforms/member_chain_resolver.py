@@ -15,10 +15,10 @@ Resolves _0x285ccd.i4B82NN.XXX → "literal" by:
 
 from ..traverser import simple_traverse
 from ..traverser import traverse
+from ..utils.ast_helpers import deep_copy
 from ..utils.ast_helpers import is_identifier
 from ..utils.ast_helpers import is_literal
 from ..utils.ast_helpers import is_string_literal
-from ..utils.ast_helpers import make_literal
 from .base import Transform
 
 
@@ -41,16 +41,30 @@ def _get_member_names(node):
     return None, None
 
 
+def _is_constant_expr(node):
+    """Check if a node is a constant expression safe to inline."""
+    if not isinstance(node, dict):
+        return False
+    t = node.get('type')
+    if t == 'Literal':
+        return True
+    if t == 'UnaryExpression' and node.get('operator') in ('-', '+', '!', '~'):
+        return _is_constant_expr(node.get('argument'))
+    if t == 'ArrayExpression':
+        return all(_is_constant_expr(el) for el in (node.get('elements') or []) if el)
+    return False
+
+
 class MemberChainResolver(Transform):
     """Resolve multi-level member chains (A.B.C) to literal values."""
 
     def execute(self):
-        # Maps: (class_name, prop_name) → literal_value
+        # Maps: (class_name, prop_name) → AST node (constant expression)
         class_constants = {}
         # Maps: prop_name → class_name (from X.prop = ClassIdentifier assignments)
         prop_to_class = {}
 
-        # Phase 1: Collect X.prop = literal and X.prop = Identifier assignments
+        # Phase 1: Collect X.prop = constant_expr and X.prop = Identifier assignments
         def collect(node, parent):
             if node.get('type') != 'AssignmentExpression':
                 return
@@ -62,8 +76,8 @@ class MemberChainResolver(Transform):
             if not obj_name:
                 return
 
-            if is_literal(right):
-                class_constants[(obj_name, prop_name)] = right['value']
+            if _is_constant_expr(right):
+                class_constants[(obj_name, prop_name)] = right
             elif is_identifier(right):
                 # X.prop = SomeClass — record prop_name → SomeClass
                 prop_to_class[prop_name] = right['name']
@@ -74,7 +88,7 @@ class MemberChainResolver(Transform):
             return False
 
         # Phase 2: Replace A.B.C member chains where B resolves to a class
-        # and (class, C) maps to a literal
+        # and (class, C) maps to a constant expression
         def resolve(node, parent, key, index):
             if node.get('type') != 'MemberExpression':
                 return
@@ -118,13 +132,13 @@ class MemberChainResolver(Transform):
             if not class_name:
                 return
 
-            # Resolve (class_name, C) → literal
-            literal_value = class_constants.get((class_name, c_name))
-            if literal_value is None:
+            # Resolve (class_name, C) → constant expression
+            const_node = class_constants.get((class_name, c_name))
+            if const_node is None:
                 return
 
             self.set_changed()
-            return make_literal(literal_value)
+            return deep_copy(const_node)
 
         traverse(self.ast, {'enter': resolve})
         return self.has_changed()
