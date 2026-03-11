@@ -6,12 +6,16 @@ Detects patterns like:
 """
 
 from ..scope import build_scope_tree
+from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import deep_copy
 from ..utils.ast_helpers import get_child_keys
 from ..utils.ast_helpers import is_identifier
 from ..utils.ast_helpers import replace_identifiers
 from .base import Transform
+
+# Max AST nodes in a proxy function body before we refuse to inline
+_MAX_PROXY_BODY_NODES = 12
 
 
 class ProxyFunctionInliner(Transform):
@@ -114,7 +118,9 @@ class ProxyFunctionInliner(Transform):
 
         # Arrow function with expression body
         if func_node.get('type') == 'ArrowFunctionExpression' and body.get('type') != 'BlockStatement':
-            return self._is_proxy_value(body)
+            if not self._is_proxy_value(body):
+                return False
+            return self._count_nodes(body) <= _MAX_PROXY_BODY_NODES
 
         # Block with single return
         if body.get('type') == 'BlockStatement':
@@ -127,9 +133,22 @@ class ProxyFunctionInliner(Transform):
             arg = stmt.get('argument')
             if arg is None:
                 return True  # returns undefined
-            return self._is_proxy_value(arg)
+            if not self._is_proxy_value(arg):
+                return False
+            return self._count_nodes(arg) <= _MAX_PROXY_BODY_NODES
 
         return False
+
+    @staticmethod
+    def _count_nodes(node):
+        """Count AST nodes in a subtree."""
+        count = [0]
+
+        def cb(n, parent):
+            count[0] += 1
+
+        simple_traverse(node, cb)
+        return count[0]
 
     _DISALLOWED_PROXY_TYPES = frozenset(
         {

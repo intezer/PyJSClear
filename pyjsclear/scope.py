@@ -178,6 +178,10 @@ def build_scope_tree(ast):
                     target_scope.add_binding(declaration_id['name'], declaration, kind)
                 # Handle destructuring patterns
                 _collect_pattern_names(declaration_id, target_scope, kind, declaration)
+                # Recurse into init to find nested function scopes
+                init = declaration.get('init')
+                if init:
+                    _collect_declarations(init, scope)
             return
 
         # Block scopes (for, if, etc. with block statements)
