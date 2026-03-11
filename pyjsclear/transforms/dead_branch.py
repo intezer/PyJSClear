@@ -31,6 +31,24 @@ def _is_truthy_literal(node):
             return True  # [] is truthy
         case 'ObjectExpression' if len(node.get('properties', [])) == 0:
             return True  # {} is truthy
+        case 'LogicalExpression':
+            left = _is_truthy_literal(node.get('left'))
+            right = _is_truthy_literal(node.get('right'))
+            op = node.get('operator')
+            if op == '&&':
+                # falsy && anything → falsy
+                if left is False:
+                    return False
+                # truthy && right → right (if right is known)
+                if left is True and right is not None:
+                    return right
+            elif op == '||':
+                # truthy || anything → truthy
+                if left is True:
+                    return True
+                # falsy || right → right (if right is known)
+                if left is False and right is not None:
+                    return right
     return None
 
 

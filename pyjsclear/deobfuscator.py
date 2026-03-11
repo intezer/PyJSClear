@@ -43,6 +43,7 @@ from .transforms.require_inliner import RequireInliner
 from .transforms.sequence_splitter import SequenceSplitter
 from .transforms.single_use_vars import SingleUseVarInliner
 from .transforms.string_revealer import StringRevealer
+from .transforms.unreachable_code import UnreachableCodeRemover
 from .transforms.unused_vars import UnusedVariableRemover
 from .transforms.variable_renamer import VariableRenamer
 from .transforms.xor_string_decode import XorStringDecoder
@@ -69,6 +70,7 @@ TRANSFORM_CLASSES = [
     ReassignmentRemover,
     SingleUseVarInliner,
     DeadBranchRemover,
+    UnreachableCodeRemover,
     DeadObjectPropRemover,
     ObjectPacker,
     ProxyFunctionInliner,
