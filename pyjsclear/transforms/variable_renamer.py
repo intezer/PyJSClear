@@ -11,7 +11,6 @@ globals are left untouched.
 import re
 
 from ..scope import build_scope_tree
-from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
 from .base import Transform
@@ -372,7 +371,8 @@ class VariableRenamer(Transform):
         # Rename bindings scope by scope
         gen = _name_generator(reserved)
         # Track loop var counter for i, j, k assignment
-        self._loop_counter = iter('ijklmn')
+        self._loop_letters = list('ijklmn')
+        self._loop_idx = 0
         self._rename_scope(scope_tree, gen, reserved)
 
         # Fix duplicate names in destructuring patterns (can come from broken obfuscated input)
@@ -406,7 +406,9 @@ class VariableRenamer(Transform):
         """Pick the best name for a binding using heuristics, with fallback."""
         # 1. Check if it's a loop counter → i, j, k
         if _infer_loop_var(binding):
-            for letter in self._loop_counter:
+            while self._loop_idx < len(self._loop_letters):
+                letter = self._loop_letters[self._loop_idx]
+                self._loop_idx += 1
                 candidate = _dedupe_name(letter, reserved)
                 if candidate not in reserved:
                     return candidate

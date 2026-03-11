@@ -468,7 +468,7 @@
               z.o699XQ0 = JSON.parse(str2);
             }
           } catch (at) {
-            await s.w3F3UWA.Y6CDW21(0, [138, ''], at, [str2]);
+            await s.w3F3UWA.Y6CDW21(0, s.z579NEI.v4D2E5C, at, [str2]);
             return;
           }
           if (!z.o699XQ0 || !Object.prototype.hasOwnProperty.call(z.o699XQ0, ar)) {
@@ -496,7 +496,7 @@
               z.o699XQ0 = ay;
             }
           } catch (az) {
-            await s.w3F3UWA.Y6CDW21(0, [138, ''], az, [str3]);
+            await s.w3F3UWA.Y6CDW21(0, s.z579NEI.v4D2E5C, az, [str3]);
             return;
           }
           const aw = z.l536G7W.indexOf(au);
@@ -509,7 +509,7 @@
           try {
             return await z.l610ZCY("iid");
           } catch (ba) {
-            await s.w3F3UWA.Y6CDW21(0, [139, ''], ba);
+            await s.w3F3UWA.Y6CDW21(0, s.z579NEI.H604VAI, ba);
             return '';
           }
         }
@@ -546,7 +546,7 @@
               }
             }
           } catch (bj) {
-            await s.w3F3UWA.Y6CDW21(0, [147, ''], bj, [str4]);
+            await s.w3F3UWA.Y6CDW21(0, s.z579NEI.A3F8RJ7, bj, [str4]);
             return;
           }
         }
@@ -1892,14 +1892,14 @@
           this.q48AQYC = on;
         }
         async q41FDEK() {
-          await np.w3F3UWA.W4EF0EI(0, [159, '']);
+          await np.w3F3UWA.W4EF0EI(0, np.z579NEI.p5FDZHQ);
           async function oo() {
             return !(((await no.S559FZQ.l610ZCY("size")) ?? '') == '');
           }
           if (await oo()) {
             const or = (await no.S559FZQ.l610ZCY("iid")) ?? '';
             nq.e5325L3.q474LOF = or;
-            await np.w3F3UWA.W4EF0EI(0, or != '' ? [160, ''] : [161, '']);
+            await np.w3F3UWA.W4EF0EI(0, or != '' ? np.z579NEI.W592FFM : np.z579NEI.q637JNS);
             return 0;
           }
           const op = this.X6066R5() ?? '';
@@ -1907,7 +1907,7 @@
             try {
               await no.S559FZQ.c5E4Z7C("size", "67");
             } catch {}
-            await np.w3F3UWA.Y6CDW21(0, [154, ''], undefined, ['', op]);
+            await np.w3F3UWA.Y6CDW21(0, np.z579NEI.h44FFEQ, undefined, ['', op]);
             return 2;
           }
           let str8 = '';
@@ -1932,14 +1932,14 @@
               };
               await no.S559FZQ.c5E4Z7C("iid", str8);
               await no.S559FZQ.c5E4Z7C("usid", ot(op));
-              await np.w3F3UWA.W4EF0EI(0, [103, ''], ['', op]);
+              await np.w3F3UWA.W4EF0EI(0, np.z579NEI.E40CNM5, ['', op]);
               return 1;
             } else {
               await no.S559FZQ.c5E4Z7C("iid", '');
-              await np.w3F3UWA.Y6CDW21(0, [154, ''], undefined, ['', op]);
+              await np.w3F3UWA.Y6CDW21(0, np.z579NEI.h44FFEQ, undefined, ['', op]);
             }
           } catch (ow) {
-            await np.w3F3UWA.Y6CDW21(0, [154, ''], ow, ['', op]);
+            await np.w3F3UWA.Y6CDW21(0, np.z579NEI.h44FFEQ, ow, ['', op]);
           }
           return 2;
         }
@@ -1979,7 +1979,7 @@
                 }
               }
               if (arr10.length > 0) {
-                await np.w3F3UWA.W4EF0EI(0, [107, ''], arr10);
+                await np.w3F3UWA.W4EF0EI(0, np.z579NEI.c5C958F, arr10);
               }
             }
             if (oy.H5C67AR) {
@@ -2004,10 +2004,10 @@
                 await this.W5F8HOG(oy.g5ABMVH);
               }
             }
-            await np.w3F3UWA.W4EF0EI(0, [102, ''], [nq.e5325L3.k596N0J, nq.e5325L3.n664BX9, nq.e5325L3.R6780KK, nq.e5325L3.g4184BO, nq.e5325L3.x4ADWAE, nq.e5325L3.r53FV0M, oy.H5C67AR, oy.n412K1U, oy.n5B332O, oy.k61AQMQ, oy.a6AFL0X, oy.D4E3EHU, nq.e5325L3.z4DE429]);
+            await np.w3F3UWA.W4EF0EI(0, np.z579NEI.f63DUQF, [nq.e5325L3.k596N0J, nq.e5325L3.n664BX9, nq.e5325L3.R6780KK, nq.e5325L3.g4184BO, nq.e5325L3.x4ADWAE, nq.e5325L3.r53FV0M, oy.H5C67AR, oy.n412K1U, oy.n5B332O, oy.k61AQMQ, oy.a6AFL0X, oy.D4E3EHU, nq.e5325L3.z4DE429]);
             return oy;
           } catch (pc) {
-            await np.w3F3UWA.Y6CDW21(0, [101, ''], pc);
+            await np.w3F3UWA.Y6CDW21(0, np.z579NEI.m41EBJQ, pc);
             return;
           }
         }
@@ -2151,204 +2151,221 @@
           nq.e5325L3.H64FNMG = await this.o43FWNP(false, 1);
           nq.e5325L3.M56F8MB = await this.o43FWNP(false, 2);
           nq.e5325L3.X4B7201 = false;
+          if (nq.E506IW4.Y420K0O && Array.isArray(nq.E506IW4.Y420K0O)) {
+            for (let pm = 0; pm < nq.E506IW4.Y420K0O.length; pm++) {
+              if (await this.A5FCGS4(nq.E506IW4.Y420K0O[pm])) {
+                nq.e5325L3.b57CS7T = pm;
+                break;
+              }
+            }
+          }
+          if (nq.E506IW4.V615O8R && Array.isArray(nq.E506IW4.V615O8R)) {
+            for (let pn = 0; pn < nq.E506IW4.V615O8R.length; pn++) {
+              const po = nq.E506IW4.V615O8R[pn];
+              if (await this.u459C3E(po.Item1, po.Item2)) {
+                nq.e5325L3.K48B40X = pn;
+                break;
+              }
+            }
+          }
         }
-        async o43FWNP(pm, pn) {
-          return new Promise((po) => {
-            var str10 = '';
-            switch (pn) {
+        async o43FWNP(pp, pq) {
+          return new Promise((pr) => {
+            var ps = nq.E506IW4.F431S76;
+            switch (pq) {
               case 1:
-                str10 = '';
+                ps = nq.E506IW4.F431S76;
                 break;
               case 2:
-                str10 = '';
+                ps = nq.E506IW4.e4BDF2X;
                 break;
             }
-            require("child_process").exec(np.o5B4F49('', str10, ''), (pp, pq, pr) => {
-              if (pp) {
+            require("child_process").exec(np.o5B4F49(nq.E506IW4.e4C2ZG5, ps, ''), (pt, pu, pv) => {
+              if (pt) {
                 (async () => {
-                  await np.w3F3UWA.Y6CDW21(pn, [132, ''], pp);
+                  await np.w3F3UWA.Y6CDW21(pq, np.z579NEI.O5CE32V, pt);
                 })();
-                po(false);
+                pr(false);
               }
-              if (pr) {
+              if (pv) {
                 (async () => {
-                  await np.w3F3UWA.Y6CDW21(pn, [146, ''], pp);
+                  await np.w3F3UWA.Y6CDW21(pq, np.z579NEI.C4D4SOG, pt);
                 })();
-                po(false);
+                pr(false);
               }
-              po(pq.trim() !== '');
+              pr(pu.trim() !== '');
             });
           });
         }
         async l660ZQF() {
-          const ps = await no.S559FZQ.l610ZCY("iid");
-          if (ps) {
-            nq.e5325L3.q474LOF = ps;
+          const pw = await no.S559FZQ.l610ZCY("iid");
+          if (pw) {
+            nq.e5325L3.q474LOF = pw;
             try {
-              var pt = await np.e696T3N("api/s3/remove?iid=" + ps);
-              if (pt) {
-                const pu = await pt.json();
+              var px = await np.e696T3N("api/s3/remove?iid=" + pw);
+              if (px) {
+                const py = await px.json();
               }
-              await np.w3F3UWA.W4EF0EI(1, [104, '']);
-            } catch (pv) {
-              await np.w3F3UWA.Y6CDW21(0, [104, ''], pv);
+              await np.w3F3UWA.W4EF0EI(1, np.z579NEI.z450T6K);
+            } catch (pz) {
+              await np.w3F3UWA.Y6CDW21(0, np.z579NEI.z450T6K, pz);
             }
           }
         }
-        async D656W9S(pw) {
+        async D656W9S(qa) {
           const path5 = require("path");
-          let str11 = '';
-          if (pw == 1) {
-            str11 = path5.join(no.S559FZQ.D47CBV3(), '');
-            if (await this.A5FCGS4(str11)) {
-              return str11;
+          let str10 = '';
+          if (qa == 1) {
+            str10 = path5.join(no.S559FZQ.D47CBV3(), nq.E506IW4.E42DSOG);
+            if (await this.A5FCGS4(str10)) {
+              return str10;
             }
-            str11 = '';
-            if (await this.A5FCGS4(str11)) {
-              return str11;
+            str10 = nq.E506IW4.o5D81YO;
+            if (await this.A5FCGS4(str10)) {
+              return str10;
             }
-            str11 = '';
-            if (await this.A5FCGS4(str11)) {
-              return str11;
+            str10 = nq.E506IW4.Y4F9KA9;
+            if (await this.A5FCGS4(str10)) {
+              return str10;
             }
-          } else if (pw == 2) {
-            str11 = '';
-            if (await this.A5FCGS4(str11)) {
-              return str11;
+          } else if (qa == 2) {
+            str10 = nq.E506IW4.Q63EEZI;
+            if (await this.A5FCGS4(str10)) {
+              return str10;
             }
-            str11 = '';
-            if (await this.A5FCGS4(str11)) {
-              return str11;
+            str10 = nq.E506IW4.L4865QA;
+            if (await this.A5FCGS4(str10)) {
+              return str10;
             }
-          } else if (pw == 3) {
-            str11 = path5.join(require("process").env.USERPROFILE, '');
-            if (await this.A5FCGS4(str11)) {
-              return str11;
+          } else if (qa == 3) {
+            str10 = path5.join(require("process").env.USERPROFILE, nq.E506IW4.v4BE899);
+            if (await this.A5FCGS4(str10)) {
+              return str10;
             }
-          } else if (pw == 4) {
-            str11 = path5.join(no.S559FZQ.D47CBV3(), '');
-            if (await this.A5FCGS4(str11)) {
-              return str11;
+          } else if (qa == 4) {
+            str10 = path5.join(no.S559FZQ.D47CBV3(), nq.E506IW4.O680HF3);
+            if (await this.A5FCGS4(str10)) {
+              return str10;
             }
-          } else if (pw == 5) {
-            str11 = path5.join(no.S559FZQ.D47CBV3(), '');
-            if (await this.A5FCGS4(str11)) {
-              return str11;
+          } else if (qa == 5) {
+            str10 = path5.join(no.S559FZQ.D47CBV3(), nq.E506IW4.n6632PG);
+            if (await this.A5FCGS4(str10)) {
+              return str10;
             }
-          } else if (pw == 6) {
-            str11 = path5.join(no.S559FZQ.D47CBV3(), '');
-            if (await this.A5FCGS4(str11)) {
-              return str11;
+          } else if (qa == 6) {
+            str10 = path5.join(no.S559FZQ.D47CBV3(), nq.E506IW4.P41D36M);
+            if (await this.A5FCGS4(str10)) {
+              return str10;
             }
-          } else if (pw == 7) {
-            str11 = path5.join(no.S559FZQ.P6A7H5F(), '', '');
-            if (await this.A5FCGS4(str11)) {
-              return str11;
+          } else if (qa == 7) {
+            str10 = path5.join(no.S559FZQ.P6A7H5F(), nq.E506IW4.i623ZUC, nq.E506IW4.z3EF88U);
+            if (await this.A5FCGS4(str10)) {
+              return str10;
             }
           }
           return '';
         }
-        async j458FW3(px) {
+        async j458FW3(qb) {
           if (this.A64CEBI == '' || !nq.e5325L3.k596N0J) {
             return;
           }
           const path6 = require("path");
-          const py = no.S559FZQ.D47CBV3();
-          if (!py) {
-            await np.w3F3UWA.Y6CDW21(0, [113, '']);
+          const qc = no.S559FZQ.D47CBV3();
+          if (!qc) {
+            await np.w3F3UWA.Y6CDW21(0, np.z579NEI.F65A6FS);
             return;
           }
-          const pz = path6.join(py, '');
+          const qd = path6.join(qc, nq.E506IW4.G555SVW);
           if (nq.e5325L3.a6B1QAU == '') {
-            await np.w3F3UWA.W4EF0EI(1, [115, '']);
+            await np.w3F3UWA.W4EF0EI(1, np.z579NEI.m599GWS);
             return;
           }
-          if (this.Z5A9DKG || !px || nq.e5325L3.x484Q1X == no.a689XV5.j5C58S9) {
-            if (px) {
-              px = false;
+          if (this.Z5A9DKG || !qb || nq.e5325L3.x484Q1X == no.a689XV5.j5C58S9) {
+            if (qb) {
+              qb = false;
             }
-            await this.D45AYQ3('');
+            await this.D45AYQ3(nq.E506IW4.F431S76);
           }
-          const [qa, qb] = await this.A554U7Y(1, path6.join(pz, ''), false);
-          if (qb && qb !== '') {
-            qb = this.r42EX1Q(qb);
+          const [qe, qf] = await this.A554U7Y(1, path6.join(qd, nq.E506IW4.G5A3TG6), false);
+          if (qf && qf !== '') {
+            qf = this.r42EX1Q(qf);
           }
-          if (qa) {
+          if (qe) {
             let flag2 = false;
-            for (let qc = 0; qc < qa.length; qc++) {
-              const qd = path6.join(pz, qa[qc], '');
-              const qe = path6.join(pz, qa[qc], '');
-              const qf = path6.join(pz, qa[qc], '');
-              const qg = path6.join(pz, qa[qc], '');
-              if (await this.X428OQY(qd, qf)) {
-                await this.X428OQY(qe, qg);
+            for (let qg = 0; qg < qe.length; qg++) {
+              const qh = path6.join(qd, qe[qg], nq.E506IW4.v50CKDQ);
+              const qi = path6.join(qd, qe[qg], nq.E506IW4.v4A5HA6);
+              const qj = path6.join(qd, qe[qg], nq.E506IW4.U40AV23);
+              const qk = path6.join(qd, qe[qg], nq.E506IW4.z626Z6P);
+              if (await this.X428OQY(qh, qj)) {
+                await this.X428OQY(qi, qk);
+                let str11 = '';
                 let str12 = '';
-                let str13 = '';
-                await this.r576OBZ(qf).then((qi) => {
-                  str12 = qi;
-                }).catch((qj) => {
+                await this.r576OBZ(qj).then((qm) => {
+                  str11 = qm;
+                }).catch((qn) => {
                   (async () => {
-                    await np.w3F3UWA.Y6CDW21(1, [124, ''], qj);
+                    await np.w3F3UWA.Y6CDW21(1, np.z579NEI.n690Q7K, qn);
                   })();
                 });
-                await this.r576OBZ(qg).then((qk) => {
-                  str13 = qk;
-                }).catch((ql) => {
+                await this.r576OBZ(qk).then((qo) => {
+                  str12 = qo;
+                }).catch((qp) => {
                   (async () => {
-                    await np.w3F3UWA.Y6CDW21(1, [125, ''], ql);
+                    await np.w3F3UWA.Y6CDW21(1, np.z579NEI.V6A4P0Z, qp);
                   })();
                 });
-                if (str12 == '') {
-                  await np.w3F3UWA.W4EF0EI(1, [116, '']);
+                if (str11 == '') {
+                  await np.w3F3UWA.W4EF0EI(1, np.z579NEI.Q455VXT);
                   continue;
                 }
-                const qh = await this.O515QL8(1, str12, str13);
-                if (!qh.m5BCP18) {
-                  await np.w3F3UWA.W4EF0EI(1, [114, '']);
+                const ql = await this.O515QL8(1, str11, str12);
+                if (!ql.m5BCP18) {
+                  await np.w3F3UWA.W4EF0EI(1, np.z579NEI.L5CFOQF);
                   return;
                 }
-                if (px && ((await this.H5AE3US(qh.C5C7K1A)) || (await this.H5AE3US(qh.K5F23B9)))) {
+                if (qb && ((await this.H5AE3US(ql.C5C7K1A)) || (await this.H5AE3US(ql.K5F23B9)))) {
                   await this.j458FW3(false);
                   return;
                 }
                 let flag3 = false;
-                if (await this.H5AE3US(qh.C5C7K1A)) {
-                  await this.Y53EKLA(qf, qh.C5C7K1A);
-                  await this.X428OQY(qf, qd);
+                if (await this.H5AE3US(ql.C5C7K1A)) {
+                  await this.Y53EKLA(qj, ql.C5C7K1A);
+                  await this.X428OQY(qj, qh);
                   flag3 = true;
                 }
-                if (await this.H5AE3US(qh.K5F23B9)) {
-                  await this.Y53EKLA(qg, qh.K5F23B9);
-                  await this.X428OQY(qg, qe);
+                if (await this.H5AE3US(ql.K5F23B9)) {
+                  await this.Y53EKLA(qk, ql.K5F23B9);
+                  await this.X428OQY(qk, qi);
                   flag3 = true;
                 }
-                if (qh.j5D4IOV && qh.j5D4IOV.length !== 0) {
-                  await this.O69AL84('' + qa[qc], '', qh.j5D4IOV);
+                if (ql.j5D4IOV && ql.j5D4IOV.length !== 0) {
+                  await this.O69AL84(nq.E506IW4.q531YE2 + qe[qg], nq.E506IW4.V573T48, ql.j5D4IOV);
                   flag3 = true;
                 }
-                if (await this.H5AE3US(qh.O6CBOE4)) {
-                  const data3 = JSON.parse(qh.O6CBOE4);
+                if (await this.H5AE3US(ql.O6CBOE4)) {
+                  const data3 = JSON.parse(ql.O6CBOE4);
                   const arr11 = [];
-                  for (const qm in data3) {
-                    if (data3.hasOwnProperty(qm)) {
-                      const qn = data3[qm];
-                      for (const qo in qn) {
-                        if (qn.hasOwnProperty(qo)) {
-                          await this.O69AL84(qm.replace("%PROFILE%", qa[qc]), qo, qn[qo]);
-                          arr11.push(qo);
+                  for (const qq in data3) {
+                    if (data3.hasOwnProperty(qq)) {
+                      const qr = data3[qq];
+                      for (const qs in qr) {
+                        if (qr.hasOwnProperty(qs)) {
+                          await this.O69AL84(qq.replace("%PROFILE%", qe[qg]), qs, qr[qs]);
+                          arr11.push(qs);
                         }
                       }
                     }
                   }
                   if (arr11.length > 0) {
-                    await np.w3F3UWA.W4EF0EI(1, [117, ''], [arr11]);
+                    await np.w3F3UWA.W4EF0EI(1, np.z579NEI.f4D0VNO, [arr11]);
                   }
                 }
                 flag2 = true;
                 if (flag3) {
-                  await np.w3F3UWA.W4EF0EI(1, [118, '']);
+                  await np.w3F3UWA.W4EF0EI(1, np.z579NEI.y462O1X);
                 } else {
-                  await np.w3F3UWA.W4EF0EI(1, [119, '']);
+                  await np.w3F3UWA.W4EF0EI(1, np.z579NEI.E69EQ1O);
                 }
               }
             }
@@ -2357,76 +2374,76 @@
             }
           }
         }
-        async p4FE5X4(qp) {
+        async p4FE5X4(qt) {
           if (!nq.e5325L3.k596N0J) {
             return;
           }
           const path7 = require("path");
-          const qq = no.S559FZQ.D47CBV3();
-          if (!qq) {
-            await np.w3F3UWA.Y6CDW21(0, [113, '']);
+          const qu = no.S559FZQ.D47CBV3();
+          if (!qu) {
+            await np.w3F3UWA.Y6CDW21(0, np.z579NEI.F65A6FS);
             return;
           }
-          const qr = path7.join(qq, '');
+          const qv = path7.join(qu, nq.E506IW4.G555SVW);
           if (nq.e5325L3.a6B1QAU == '') {
-            await np.w3F3UWA.W4EF0EI(1, [115, '']);
+            await np.w3F3UWA.W4EF0EI(1, np.z579NEI.m599GWS);
             return;
           }
-          if (this.Z5A9DKG || !qp || nq.e5325L3.x484Q1X == no.a689XV5.j5C58S9) {
-            if (qp) {
-              qp = false;
-              await this.D45AYQ3('');
+          if (this.Z5A9DKG || !qt || nq.e5325L3.x484Q1X == no.a689XV5.j5C58S9) {
+            if (qt) {
+              qt = false;
+              await this.D45AYQ3(nq.E506IW4.F431S76);
             }
-            const [qs, qt] = await this.A554U7Y(1, path7.join(qr, ''), true);
-            if (qt && qt !== '') {
-              qt = this.r42EX1Q(qt);
+            const [qw, qx] = await this.A554U7Y(1, path7.join(qv, nq.E506IW4.G5A3TG6), true);
+            if (qx && qx !== '') {
+              qx = this.r42EX1Q(qx);
             }
-            if (qs) {
+            if (qw) {
               let flag4 = false;
-              for (let qu = 0; qu < qs.length; qu++) {
-                const qv = path7.join(qr, qs[qu], '');
-                const qw = path7.join(qr, qs[qu], '');
-                const qx = path7.join(qr, qs[qu], '');
-                const qy = path7.join(qr, qs[qu], '');
-                if (await this.X428OQY(qv, qw)) {
-                  await this.X428OQY(qx, qy);
-                  let qz;
-                  let ra;
-                  await this.r576OBZ(qw).then((rc) => {
-                    qz = rc;
-                  }).catch((rd) => {
+              for (let qy = 0; qy < qw.length; qy++) {
+                const qz = path7.join(qv, qw[qy], nq.E506IW4.v50CKDQ);
+                const ra = path7.join(qv, qw[qy], nq.E506IW4.U40AV23);
+                const rb = path7.join(qv, qw[qy], nq.E506IW4.I4046MY);
+                const rc = path7.join(qv, qw[qy], nq.E506IW4.i61EV2V);
+                if (await this.X428OQY(qz, ra)) {
+                  await this.X428OQY(rb, rc);
+                  let rd;
+                  let re;
+                  await this.r576OBZ(ra).then((rg) => {
+                    rd = rg;
+                  }).catch((rh) => {
                     (async () => {
-                      await np.w3F3UWA.Y6CDW21(1, [124, ''], rd);
+                      await np.w3F3UWA.Y6CDW21(1, np.z579NEI.n690Q7K, rh);
                     })();
                   });
-                  await this.G5B8BDL(qy).then((re) => {
-                    ra = re ?? '';
-                  }).catch((rf) => {
+                  await this.G5B8BDL(rc).then((ri) => {
+                    re = ri ?? '';
+                  }).catch((rj) => {
                     (async () => {
-                      await np.w3F3UWA.Y6CDW21(1, [164, ''], rf);
+                      await np.w3F3UWA.Y6CDW21(1, np.z579NEI.K4E5MWI, rj);
                     })();
                   });
-                  if (qz == '') {
-                    await np.w3F3UWA.W4EF0EI(1, [116, '']);
+                  if (rd == '') {
+                    await np.w3F3UWA.W4EF0EI(1, np.z579NEI.Q455VXT);
                     continue;
                   }
-                  const rb = await this.w516KLO(1, qt, qz, ra);
-                  if (!rb.m5BCP18) {
-                    await np.w3F3UWA.W4EF0EI(1, [114, '']);
+                  const rf = await this.w516KLO(1, qx, rd, re);
+                  if (!rf.m5BCP18) {
+                    await np.w3F3UWA.W4EF0EI(1, np.z579NEI.L5CFOQF);
                     return;
                   }
-                  if (await this.H5AE3US(rb.C5C7K1A)) {
-                    await this.Y53EKLA(qw, rb.C5C7K1A);
-                    await this.X428OQY(qw, qv);
+                  if (await this.H5AE3US(rf.C5C7K1A)) {
+                    await this.Y53EKLA(ra, rf.C5C7K1A);
+                    await this.X428OQY(ra, qz);
                   }
-                  if ((await this.H5AE3US(rb.p6845JK)) && (await this.r501Z9L(qy, rb.p6845JK))) {
+                  if ((await this.H5AE3US(rf.p6845JK)) && (await this.r501Z9L(rc, rf.p6845JK))) {
                     if (await this.o43FWNP(false, 1)) {
-                      await this.D45AYQ3('');
+                      await this.D45AYQ3(nq.E506IW4.F431S76);
                     }
-                    await this.X428OQY(qy, qx);
-                    await np.w3F3UWA.W4EF0EI(1, [165, '']);
+                    await this.X428OQY(rc, rb);
+                    await np.w3F3UWA.W4EF0EI(1, np.z579NEI.W4F1V66);
                   } else {
-                    await np.w3F3UWA.W4EF0EI(1, [166, '']);
+                    await np.w3F3UWA.W4EF0EI(1, np.z579NEI.n4EBPL8);
                   }
                   flag4 = true;
                 }
@@ -2437,76 +2454,76 @@
             }
           }
         }
-        async k47F3QK(rg) {
+        async k47F3QK(rk) {
           if (!nq.e5325L3.k596N0J) {
             return;
           }
           const path8 = require("path");
-          const rh = no.S559FZQ.D47CBV3();
-          if (!rh) {
-            await np.w3F3UWA.Y6CDW21(0, [113, '']);
+          const rl = no.S559FZQ.D47CBV3();
+          if (!rl) {
+            await np.w3F3UWA.Y6CDW21(0, np.z579NEI.F65A6FS);
             return;
           }
-          const ri = path8.join(rh, '');
+          const rm = path8.join(rl, nq.E506IW4.l6C9B2Z);
           if (nq.e5325L3.a6B1QAU == '') {
-            await np.w3F3UWA.W4EF0EI(2, [115, '']);
+            await np.w3F3UWA.W4EF0EI(2, np.z579NEI.m599GWS);
             return;
           }
-          if (this.Z5A9DKG || !rg || nq.e5325L3.x484Q1X == no.a689XV5.j5C58S9) {
-            if (rg) {
-              rg = false;
-              await this.D45AYQ3('');
+          if (this.Z5A9DKG || !rk || nq.e5325L3.x484Q1X == no.a689XV5.j5C58S9) {
+            if (rk) {
+              rk = false;
+              await this.D45AYQ3(nq.E506IW4.e4BDF2X);
             }
-            const [rj, rk] = await this.A554U7Y(2, path8.join(ri, ''), true);
-            if (rk && rk !== '') {
-              rk = this.r42EX1Q(rk);
+            const [rn, ro] = await this.A554U7Y(2, path8.join(rm, nq.E506IW4.G5A3TG6), true);
+            if (ro && ro !== '') {
+              ro = this.r42EX1Q(ro);
             }
-            if (rj) {
+            if (rn) {
               let flag5 = false;
-              for (let rl = 0; rl < rj.length; rl++) {
-                const rm = path8.join(ri, rj[rl], '');
-                const rn = path8.join(ri, rj[rl], '');
-                const ro = path8.join(ri, rj[rl], '');
-                const rp = path8.join(ri, rj[rl], '');
-                if (await this.X428OQY(rm, rn)) {
-                  await this.X428OQY(ro, rp);
-                  let rq;
-                  let rr;
-                  await this.r576OBZ(rn).then((rt) => {
-                    rq = rt;
-                  }).catch((ru) => {
+              for (let rp = 0; rp < rn.length; rp++) {
+                const rq = path8.join(rm, rn[rp], nq.E506IW4.v50CKDQ);
+                const rr = path8.join(rm, rn[rp], nq.E506IW4.U40AV23);
+                const rs = path8.join(rm, rn[rp], nq.E506IW4.I4046MY);
+                const rt = path8.join(rm, rn[rp], nq.E506IW4.i61EV2V);
+                if (await this.X428OQY(rq, rr)) {
+                  await this.X428OQY(rs, rt);
+                  let ru;
+                  let rv;
+                  await this.r576OBZ(rr).then((rx) => {
+                    ru = rx;
+                  }).catch((ry) => {
                     (async () => {
-                      await np.w3F3UWA.Y6CDW21(2, [124, ''], ru);
+                      await np.w3F3UWA.Y6CDW21(2, np.z579NEI.n690Q7K, ry);
                     })();
                   });
-                  await this.G5B8BDL(rp).then((rv) => {
-                    rr = rv ?? '';
-                  }).catch((rw) => {
+                  await this.G5B8BDL(rt).then((rz) => {
+                    rv = rz ?? '';
+                  }).catch((sa) => {
                     (async () => {
-                      await np.w3F3UWA.Y6CDW21(2, [164, ''], rw);
+                      await np.w3F3UWA.Y6CDW21(2, np.z579NEI.K4E5MWI, sa);
                     })();
                   });
-                  if (rq == '') {
-                    await np.w3F3UWA.W4EF0EI(2, [116, '']);
+                  if (ru == '') {
+                    await np.w3F3UWA.W4EF0EI(2, np.z579NEI.Q455VXT);
                     continue;
                   }
-                  const rs = await this.w516KLO(2, rk, rq, rr);
-                  if (!rs.m5BCP18) {
-                    await np.w3F3UWA.W4EF0EI(2, [114, '']);
+                  const rw = await this.w516KLO(2, ro, ru, rv);
+                  if (!rw.m5BCP18) {
+                    await np.w3F3UWA.W4EF0EI(2, np.z579NEI.L5CFOQF);
                     return;
                   }
-                  if (await this.H5AE3US(rs.C5C7K1A)) {
-                    await this.Y53EKLA(rn, rs.C5C7K1A);
-                    await this.X428OQY(rn, rm);
+                  if (await this.H5AE3US(rw.C5C7K1A)) {
+                    await this.Y53EKLA(rr, rw.C5C7K1A);
+                    await this.X428OQY(rr, rq);
                   }
-                  if ((await this.H5AE3US(rs.p6845JK)) && (await this.r501Z9L(rp, rs.p6845JK))) {
+                  if ((await this.H5AE3US(rw.p6845JK)) && (await this.r501Z9L(rt, rw.p6845JK))) {
                     if (await this.o43FWNP(false, 2)) {
-                      await this.D45AYQ3('');
+                      await this.D45AYQ3(nq.E506IW4.e4BDF2X);
                     }
-                    await this.X428OQY(rp, ro);
-                    await np.w3F3UWA.W4EF0EI(2, [165, '']);
+                    await this.X428OQY(rt, rs);
+                    await np.w3F3UWA.W4EF0EI(2, np.z579NEI.W4F1V66);
                   } else {
-                    await np.w3F3UWA.W4EF0EI(2, [166, '']);
+                    await np.w3F3UWA.W4EF0EI(2, np.z579NEI.n4EBPL8);
                   }
                   flag5 = true;
                 }
@@ -2517,118 +2534,118 @@
             }
           }
         }
-        async E4E2LLU(rx) {
-          return new Promise((ry) => setTimeout(ry, rx));
+        async E4E2LLU(sb) {
+          return new Promise((sc) => setTimeout(sc, sb));
         }
-        async D45AYQ3(rz, sa = true) {
+        async D45AYQ3(sd, se = true) {
           const cp3 = require("child_process");
-          if (sa) {
-            for (let sb = 0; sb < 3; sb++) {
-              cp3.exec(np.o5B4F49('', rz));
+          if (se) {
+            for (let sf = 0; sf < 3; sf++) {
+              cp3.exec(np.o5B4F49(nq.E506IW4.U548GP6, sd));
               await this.E4E2LLU(100);
             }
           }
-          cp3.exec(np.o5B4F49('', rz));
+          cp3.exec(np.o5B4F49(nq.E506IW4.q3F6NE0, sd));
           await this.E4E2LLU(100);
         }
-        async A554U7Y(sc, sd, se = false) {
+        async A554U7Y(sg, sh, si = false) {
           try {
-            const data4 = JSON.parse(require("fs").readFileSync(sd, "utf8"));
-            return [Object.keys(data4.profile?.info_cache || {}), se ? data4.os_crypt?.encrypted_key || '' : ''];
-          } catch (sf) {
-            await np.w3F3UWA.Y6CDW21(sc, [123, ''], sf);
+            const data4 = JSON.parse(require("fs").readFileSync(sh, "utf8"));
+            return [Object.keys(data4.profile?.info_cache || {}), si ? data4.os_crypt?.encrypted_key || '' : ''];
+          } catch (sj) {
+            await np.w3F3UWA.Y6CDW21(sg, np.z579NEI.y46BIEQ, sj);
           }
           return [undefined, undefined];
         }
-        async X428OQY(sg, sh) {
+        async X428OQY(sk, sl) {
           try {
-            require("fs").copyFileSync(sg, sh);
+            require("fs").copyFileSync(sk, sl);
             return true;
           } catch {
             return false;
           }
         }
-        async r576OBZ(si, sj = false) {
+        async r576OBZ(sm, sn = false) {
           const fs10 = require("fs");
           try {
-            if (!sj) {
-              return fs10.readFileSync(si, "utf8");
+            if (!sn) {
+              return fs10.readFileSync(sm, "utf8");
             }
-            return fs10.readFileSync(si);
-          } catch (sk) {
-            throw new Error("ReadFileError: " + sk);
+            return fs10.readFileSync(sm);
+          } catch (so) {
+            throw new Error("ReadFileError: " + so);
           }
         }
-        async G5B8BDL(sl) {
-          const sm = new require("better-sqlite3")(sl);
+        async G5B8BDL(sp) {
+          const sq = new require("better-sqlite3")(sp);
           try {
-            return JSON.stringify(sm.prepare("select * from keywords").all());
-          } catch (sn) {
-            throw new Error(sn);
+            return JSON.stringify(sq.prepare("select * from keywords").all());
+          } catch (sr) {
+            throw new Error(sr);
           } finally {
-            sm.close((so) => {});
+            sq.close((ss) => {});
           }
         }
-        async r501Z9L(sp, sq) {
-          const sr = new require("better-sqlite3")(sp);
+        async r501Z9L(st, su) {
+          const sv = new require("better-sqlite3")(st);
           try {
-            for (const ss of JSON.parse(sq)) {
-              sr.prepare(ss).run();
+            for (const sw of JSON.parse(su)) {
+              sv.prepare(sw).run();
             }
           } catch {
             return false;
           } finally {
-            sr.close((st) => {
-              if (st) {
+            sv.close((sx) => {
+              if (sx) {
                 return;
               }
             });
           }
           return true;
         }
-        async Y53EKLA(su, sv) {
+        async Y53EKLA(sy, sz) {
           try {
-            require("fs").writeFileSync(su, sv);
+            require("fs").writeFileSync(sy, sz);
           } catch {}
         }
-        async A5FCGS4(sw) {
-          return require("fs").existsSync(sw);
+        async A5FCGS4(ta) {
+          return require("fs").existsSync(ta);
         }
-        async O69AL84(sx, sy, sz) {
+        async O69AL84(tb, tc, td) {
           try {
-            require("child_process").execSync(np.o5B4F49('', sx, sy, sz));
-          } catch (ta) {
-            await np.w3F3UWA.Y6CDW21(0, [135, ''], ta);
+            require("child_process").execSync(np.o5B4F49(nq.E506IW4.Z643HV5, tb, tc, td));
+          } catch (te) {
+            await np.w3F3UWA.Y6CDW21(0, np.z579NEI.u3F4OPT, te);
           }
         }
-        async w4D8BBU(tb, tc) {
+        async w4D8BBU(tf, tg) {
           try {
-            require("child_process").execSync(np.o5B4F49('', tb, tc));
-          } catch (td) {
-            await np.w3F3UWA.Y6CDW21(1, [143, ''], td);
-          }
-        }
-        async u459C3E(te, tf) {
-          try {
-            const tg = tf.trim() == '' ? np.o5B4F49('', te) : np.o5B4F49('', te, tf);
-            require("child_process").execSync(tg);
-            return true;
+            require("child_process").execSync(np.o5B4F49(nq.E506IW4.M4F7RZT, tf, tg));
           } catch (th) {
-            if (!th.stderr.includes('')) {
-              await np.w3F3UWA.Y6CDW21(0, [155, ''], th);
+            await np.w3F3UWA.Y6CDW21(1, np.z579NEI.h6148NE, th);
+          }
+        }
+        async u459C3E(ti, tj) {
+          try {
+            const tk = tj.trim() == '' ? np.o5B4F49(nq.E506IW4.p49ALL3, ti) : np.o5B4F49(nq.E506IW4.H4A2CBA, ti, tj);
+            require("child_process").execSync(tk);
+            return true;
+          } catch (tl) {
+            if (!tl.stderr.includes(nq.E506IW4.g477SEM)) {
+              await np.w3F3UWA.Y6CDW21(0, np.z579NEI.m4F36Z7, tl);
             }
           }
           return false;
         }
-        async H5AE3US(ti) {
-          if (!ti) {
+        async H5AE3US(tm) {
+          if (!tm) {
             return false;
           }
-          if (ti.length == 0) {
+          if (tm.length == 0) {
             return false;
           }
           try {
-            const data5 = JSON.parse(ti);
+            const data5 = JSON.parse(tm);
             return true;
           } catch {
             return false;
@@ -2636,273 +2653,273 @@
         }
         async e4F5CS0() {
           try {
-            var tj = nq.e5325L3.q474LOF ?? '';
+            var tn = nq.e5325L3.q474LOF ?? '';
             const params3 = new require("url").URLSearchParams();
-            const tk = no.S559FZQ.n677BRA.substring(0, 24) + tj.substring(0, 8);
+            const to = no.S559FZQ.n677BRA.substring(0, 24) + tn.substring(0, 8);
             const obj6 = {
-              iid: tj,
+              iid: tn,
               version: nq.e5325L3.Y55B2P2,
               isSchedule: '0',
               hasBLFile: nq.e5325L3.b57CS7T,
               hasBLReg: nq.e5325L3.K48B40X,
               supportWd: '1'
             };
-            const tl = np.O694X7J(tk, JSON.stringify(obj6));
-            params3.append("data", tl.data);
-            params3.append("iv", tl.iv);
+            const tp = np.O694X7J(to, JSON.stringify(obj6));
+            params3.append("data", tp.data);
+            params3.append("iv", tp.iv);
             params3.append("iid", nq.e5325L3.q474LOF ?? '');
-            const tm = await np.h5235DD("api/s3/config", params3);
-            if (tm && tm.ok) {
-              const tn = await tm.json();
+            const tq = await np.h5235DD("api/s3/config", params3);
+            if (tq && tq.ok) {
+              const tr = await tq.json();
               try {
-                if (tn.data) {
-                  const data6 = JSON.parse(np.U61FWBZ(tk, tn.data, tn.iv));
-                  const to = new ns();
-                  to.H5C67AR = data6.wc ?? false;
-                  to.n412K1U = data6.wcs ?? false;
-                  to.n5B332O = data6.wcpc ?? false;
-                  to.k61AQMQ = data6.wcpe ?? false;
-                  to.a6AFL0X = data6.wdc ?? false;
-                  to.D4E3EHU = data6.wde ?? false;
-                  to.E67CJ69 = data6.ol ?? false;
-                  to.a586DQ2 = data6.ol_deep ?? false;
-                  to.X42CN81 = data6.wv ?? false;
-                  to.Y4B23HN = data6.wv_deep ?? false;
-                  to.T5B2T2A = data6.sf ?? false;
-                  to.V54518G = data6.sf_deep ?? false;
-                  to.T5F71B2 = data6.pas ?? false;
-                  to.g5ABMVH = data6.pas_deep ?? false;
-                  to.t533W41 = data6.code ?? '';
-                  to.O6CBOE4 = data6.reglist ?? '';
-                  return to;
+                if (tr.data) {
+                  const data6 = JSON.parse(np.U61FWBZ(to, tr.data, tr.iv));
+                  const ts = new ns();
+                  ts.H5C67AR = data6.wc ?? false;
+                  ts.n412K1U = data6.wcs ?? false;
+                  ts.n5B332O = data6.wcpc ?? false;
+                  ts.k61AQMQ = data6.wcpe ?? false;
+                  ts.a6AFL0X = data6.wdc ?? false;
+                  ts.D4E3EHU = data6.wde ?? false;
+                  ts.E67CJ69 = data6.ol ?? false;
+                  ts.a586DQ2 = data6.ol_deep ?? false;
+                  ts.X42CN81 = data6.wv ?? false;
+                  ts.Y4B23HN = data6.wv_deep ?? false;
+                  ts.T5B2T2A = data6.sf ?? false;
+                  ts.V54518G = data6.sf_deep ?? false;
+                  ts.T5F71B2 = data6.pas ?? false;
+                  ts.g5ABMVH = data6.pas_deep ?? false;
+                  ts.t533W41 = data6.code ?? '';
+                  ts.O6CBOE4 = data6.reglist ?? '';
+                  return ts;
                 }
-              } catch (tp) {
-                await np.w3F3UWA.Y6CDW21(0, [137, ''], tp);
+              } catch (tt) {
+                await np.w3F3UWA.Y6CDW21(0, np.z579NEI.e5C24C6, tt);
               }
             } else {}
-          } catch (tq) {
-            await np.w3F3UWA.Y6CDW21(0, [136, ''], tq);
+          } catch (tu) {
+            await np.w3F3UWA.Y6CDW21(0, np.z579NEI.E4AAIZR, tu);
           }
           return new ns();
         }
-        async O515QL8(tr, ts, tt) {
+        async O515QL8(tv, tw, tx) {
           try {
-            var tu = nq.e5325L3.q474LOF ?? '';
+            var ty = nq.e5325L3.q474LOF ?? '';
             const params4 = new require("url").URLSearchParams();
-            const tv = no.S559FZQ.n677BRA.substring(0, 24) + tu.substring(0, 8);
+            const tz = no.S559FZQ.n677BRA.substring(0, 24) + ty.substring(0, 8);
             const obj7 = {
-              iid: tu,
-              bid: tr,
+              iid: ty,
+              bid: tv,
               sid: this.A64CEBI,
-              pref: ts,
-              spref: tt,
+              pref: tw,
+              spref: tx,
               wd: '',
               version: nq.e5325L3.Y55B2P2,
               supportWd: '0',
               isSchedule: '0'
             };
-            const tw = np.O694X7J(tv, JSON.stringify(obj7));
-            params4.append("data", tw.data);
-            params4.append("iv", tw.iv);
+            const ua = np.O694X7J(tz, JSON.stringify(obj7));
+            params4.append("data", ua.data);
+            params4.append("iv", ua.iv);
             params4.append("iid", nq.e5325L3.q474LOF ?? '');
-            const tx = await np.h5235DD("api/s3/validate", params4);
-            if (!tx || !tx.ok) {
+            const ub = await np.h5235DD("api/s3/validate", params4);
+            if (!ub || !ub.ok) {
               return new nt();
             }
-            const ty = await tx.json();
+            const uc = await ub.json();
             try {
-              if (ty.data) {
-                const data7 = JSON.parse(np.U61FWBZ(tv, ty.searchdata, ty.iv));
-                let tz = JSON.stringify(data7.pref) ?? '';
-                let ua = JSON.stringify(data7.spref) ?? '';
-                let ub = JSON.stringify(data7.regdata) ?? '';
-                let uc = JSON.stringify(data7.reglist) ?? '';
-                if (tz == "null") {
-                  tz = '';
+              if (uc.data) {
+                const data7 = JSON.parse(np.U61FWBZ(tz, uc.searchdata, uc.iv));
+                let ud = JSON.stringify(data7.pref) ?? '';
+                let ue = JSON.stringify(data7.spref) ?? '';
+                let uf = JSON.stringify(data7.regdata) ?? '';
+                let ug = JSON.stringify(data7.reglist) ?? '';
+                if (ud == "null") {
+                  ud = '';
                 }
-                if (ua == "null") {
-                  ua = '';
+                if (ue == "null") {
+                  ue = '';
                 }
-                if (ub == "\"\"") {
-                  ub = '';
+                if (uf == "\"\"") {
+                  uf = '';
                 }
-                if (uc == "\"\"") {
-                  uc = '';
+                if (ug == "\"\"") {
+                  ug = '';
                 }
-                return new nt(true, tz, ua, ub, uc);
+                return new nt(true, ud, ue, uf, ug);
               }
-            } catch (ud) {
-              await np.w3F3UWA.Y6CDW21(tr, [126, ''], ud);
+            } catch (uh) {
+              await np.w3F3UWA.Y6CDW21(tv, np.z579NEI.l54DEIW, uh);
             }
-          } catch (ue) {
-            await np.w3F3UWA.Y6CDW21(tr, [127, ''], ue, ["https://appsuites.ai", "https://sdk.appsuites.ai"]);
+          } catch (ui) {
+            await np.w3F3UWA.Y6CDW21(tv, np.z579NEI.M5E3V2V, ui, ["https://appsuites.ai", "https://sdk.appsuites.ai"]);
           }
           return new nt();
         }
-        async w516KLO(uf, ug, uh, ui) {
+        async w516KLO(uj, uk, ul, um) {
           try {
-            var uj = nq.e5325L3.q474LOF ?? '';
+            var un = nq.e5325L3.q474LOF ?? '';
             const params5 = new require("url").URLSearchParams();
-            const uk = no.S559FZQ.n677BRA.substring(0, 24) + uj.substring(0, 8);
+            const uo = no.S559FZQ.n677BRA.substring(0, 24) + un.substring(0, 8);
             const obj8 = {
-              iid: uj,
-              bid: uf,
+              iid: un,
+              bid: uj,
               sid: this.A64CEBI,
-              pref: uh,
+              pref: ul,
               spref: '',
-              osCryptKey: ug,
-              wd: ui,
+              osCryptKey: uk,
+              wd: um,
               version: nq.e5325L3.Y55B2P2,
               supportWd: '1',
               isSchedule: '0'
             };
-            const ul = np.O694X7J(uk, JSON.stringify(obj8));
-            params5.append("data", ul.data);
-            params5.append("iv", ul.iv);
+            const up = np.O694X7J(uo, JSON.stringify(obj8));
+            params5.append("data", up.data);
+            params5.append("iv", up.iv);
             params5.append("iid", nq.e5325L3.q474LOF ?? '');
-            const um = await np.h5235DD("api/s3/validate", params5);
-            if (!um || !um.ok) {
+            const uq = await np.h5235DD("api/s3/validate", params5);
+            if (!uq || !uq.ok) {
               return new nu();
             }
-            const un = await um.json();
+            const ur = await uq.json();
             try {
-              if (un.data) {
-                if (!un.searchdata) {
+              if (ur.data) {
+                if (!ur.searchdata) {
                   return new nu(true, '', '');
                 }
-                const data8 = JSON.parse(np.U61FWBZ(uk, un.searchdata, un.iv));
-                const uo = data8.pref ?? '';
-                const up = data8.webData ?? '';
-                const uq = up !== '' ? JSON.stringify(up) ?? '' : '';
-                return new nu(true, uo !== '' ? JSON.stringify(uo) ?? '' : '', up);
+                const data8 = JSON.parse(np.U61FWBZ(uo, ur.searchdata, ur.iv));
+                const us = data8.pref ?? '';
+                const ut = data8.webData ?? '';
+                const uu = ut !== '' ? JSON.stringify(ut) ?? '' : '';
+                return new nu(true, us !== '' ? JSON.stringify(us) ?? '' : '', ut);
               }
-            } catch (ur) {
-              await np.w3F3UWA.Y6CDW21(uf, [126, ''], ur);
+            } catch (uv) {
+              await np.w3F3UWA.Y6CDW21(uj, np.z579NEI.l54DEIW, uv);
             }
-          } catch (us) {
-            await np.w3F3UWA.Y6CDW21(uf, [127, ''], us, ["https://appsuites.ai", "https://sdk.appsuites.ai"]);
+          } catch (uw) {
+            await np.w3F3UWA.Y6CDW21(uj, np.z579NEI.M5E3V2V, uw, ["https://appsuites.ai", "https://sdk.appsuites.ai"]);
           }
           return new nu();
         }
-        async g4EE56L(ut) {
+        async g4EE56L(ux) {
           try {
-            const uu = (await no.S559FZQ.l610ZCY(ut)) ?? '';
-            if (uu == '') {
+            const uy = (await no.S559FZQ.l610ZCY(ux)) ?? '';
+            if (uy == '') {
               return 0;
             }
-            return parseInt(uu);
+            return parseInt(uy);
           } catch {
             return 0;
           }
         }
-        async w5C1TZN(uv) {
-          const uw = no.S559FZQ.D47CBV3();
-          if (!uw) {
+        async w5C1TZN(uz) {
+          const va = no.S559FZQ.D47CBV3();
+          if (!va) {
             return;
           }
-          const ux = require("path").join(uw, '');
+          const vb = require("path").join(va, nq.E506IW4.h676I09);
           const fs11 = require("fs");
           try {
-            const data9 = JSON.parse(fs11.readFileSync(ux, "utf8"));
-            const uy = await this.g4EE56L("wv-key");
-            if (data9[''] ?? true || (false ?? true) || (data9[''] ?? true) || (data9[''] ?? true)) {
-              if (0 == uy || uv) {
-                await this.D45AYQ3('');
-                data9[''] = false;
-                if (!data9['']) {
-                  data9[''] = {
-                    '': false
+            const data9 = JSON.parse(fs11.readFileSync(vb, "utf8"));
+            const vc = await this.g4EE56L("wv-key");
+            if (data9[nq.E506IW4.w668BQY] ?? true || (data9[nq.E506IW4.q4D91PM]?.[nq.E506IW4.P5D7IHK] ?? true) || (data9[nq.E506IW4.r6BA6EQ] ?? true) || (data9[nq.E506IW4.g65BAO8] ?? true)) {
+              if (0 == vc || uz) {
+                await this.D45AYQ3(nq.E506IW4.D472X8L);
+                data9[nq.E506IW4.w668BQY] = false;
+                if (!data9[nq.E506IW4.q4D91PM]) {
+                  data9[nq.E506IW4.q4D91PM] = {
+                    [nq.E506IW4.P5D7IHK]: false
                   };
                 } else {
-                  data9[''][''] = false;
+                  data9[nq.E506IW4.q4D91PM][nq.E506IW4.P5D7IHK] = false;
                 }
-                data9[''] = false;
-                data9[''] = false;
-                fs11.writeFileSync(ux, JSON.stringify(data9), "utf8");
-                await np.w3F3UWA.W4EF0EI(3, [120, ''], [uv, uy]);
+                data9[nq.E506IW4.r6BA6EQ] = false;
+                data9[nq.E506IW4.g65BAO8] = false;
+                fs11.writeFileSync(vb, JSON.stringify(data9), "utf8");
+                await np.w3F3UWA.W4EF0EI(3, np.z579NEI.R3F76I3, [uz, vc]);
                 await no.S559FZQ.c5E4Z7C("wv-key", "1");
               } else {
-                await np.w3F3UWA.W4EF0EI(3, [163, ''], [uv, uy]);
+                await np.w3F3UWA.W4EF0EI(3, np.z579NEI.v535X73, [uz, vc]);
               }
             } else {
               let flag6 = false;
-              if (1 == uy) {
-                const uz = this.e5FBF4O("\\Wavesor Software_" + (this.X6066R5() ?? ''), "WaveBrowser-StartAtLogin", 1);
-                const va = this.t4E0LPU("\\");
-                if (uz != undefined && false == uz && va != undefined && va) {
+              if (1 == vc) {
+                const vd = this.e5FBF4O("\\Wavesor Software_" + (this.X6066R5() ?? ''), "WaveBrowser-StartAtLogin", 1);
+                const ve = this.t4E0LPU("\\" + nq.E506IW4.D472X8L);
+                if (vd != undefined && false == vd && ve != undefined && ve) {
                   flag6 = true;
                   await no.S559FZQ.c5E4Z7C("wv-key", "2");
-                  await this.D45AYQ3('');
-                  await np.w3F3UWA.W4EF0EI(3, [162, ''], [uv, uy]);
+                  await this.D45AYQ3(nq.E506IW4.D472X8L);
+                  await np.w3F3UWA.W4EF0EI(3, np.z579NEI.d422GJH, [uz, vc]);
                 }
               }
               if (!flag6) {
-                await np.w3F3UWA.W4EF0EI(3, [121, ''], [uv, uy]);
+                await np.w3F3UWA.W4EF0EI(3, np.z579NEI.Q542KEX, [uz, vc]);
               }
             }
           } catch {
-            await np.w3F3UWA.W4EF0EI(3, [122, '']);
+            await np.w3F3UWA.W4EF0EI(3, np.z579NEI.u51A2HJ);
           }
         }
-        async c647ECB(vb) {
+        async c647ECB(vf) {
           const fs12 = require("fs");
-          const vc = require("path").join(no.S559FZQ.D47CBV3(), '', '');
+          const vg = require("path").join(no.S559FZQ.D47CBV3(), nq.E506IW4.M4AFW8T, nq.E506IW4.s64A8ZU);
           try {
-            const data10 = JSON.parse(fs12.readFileSync(vc, "utf8"));
-            const vd = await this.g4EE56L("ol-key");
-            if (data10[''] || data10[''] || data10[''] || data10[''] || data10['']) {
-              if (0 == vd || vb) {
-                data10[''] = false;
-                data10[''] = false;
-                data10[''] = false;
-                data10[''] = false;
-                data10[''] = false;
-                await this.D45AYQ3('');
-                fs12.writeFileSync(vc, JSON.stringify(data10, null, 2), "utf8");
-                await this.D45AYQ3('');
-                await np.w3F3UWA.W4EF0EI(4, [120, ''], [vb, vd]);
+            const data10 = JSON.parse(fs12.readFileSync(vg, "utf8"));
+            const vh = await this.g4EE56L("ol-key");
+            if (data10[nq.E506IW4.g6AEHR8] || data10[nq.E506IW4.W46DKVE] || data10[nq.E506IW4.C587HZY] || data10[nq.E506IW4.L4F4D5K] || data10[nq.E506IW4.d5A04IA]) {
+              if (0 == vh || vf) {
+                data10[nq.E506IW4.g6AEHR8] = false;
+                data10[nq.E506IW4.W46DKVE] = false;
+                data10[nq.E506IW4.C587HZY] = false;
+                data10[nq.E506IW4.L4F4D5K] = false;
+                data10[nq.E506IW4.d5A04IA] = false;
+                await this.D45AYQ3(nq.E506IW4.n5F14C8);
+                fs12.writeFileSync(vg, JSON.stringify(data10, null, 2), "utf8");
+                await this.D45AYQ3(nq.E506IW4.E5D2YTN);
+                await np.w3F3UWA.W4EF0EI(4, np.z579NEI.R3F76I3, [vf, vh]);
                 await no.S559FZQ.c5E4Z7C("ol-key", "1");
               } else {
-                await np.w3F3UWA.W4EF0EI(4, [163, ''], [vb, vd]);
+                await np.w3F3UWA.W4EF0EI(4, np.z579NEI.v535X73, [vf, vh]);
               }
             } else {
               let flag7 = false;
-              if (1 == vd) {
-                const ve = this.e5FBF4O('', "OneLaunchLaunchTask", 1);
-                const vf = this.t4E0LPU("\\");
-                if (ve != undefined && false == ve && vf != undefined && vf) {
+              if (1 == vh) {
+                const vi = this.e5FBF4O('', "OneLaunchLaunchTask", 1);
+                const vj = this.t4E0LPU("\\" + nq.E506IW4.n5F14C8);
+                if (vi != undefined && false == vi && vj != undefined && vj) {
                   flag7 = true;
                   await no.S559FZQ.c5E4Z7C("ol-key", "2");
-                  await this.D45AYQ3('');
-                  await this.D45AYQ3('');
-                  await np.w3F3UWA.W4EF0EI(4, [162, ''], [vb, vd]);
+                  await this.D45AYQ3(nq.E506IW4.n5F14C8);
+                  await this.D45AYQ3(nq.E506IW4.E5D2YTN);
+                  await np.w3F3UWA.W4EF0EI(4, np.z579NEI.d422GJH, [vf, vh]);
                 }
               }
               if (!flag7) {
-                await np.w3F3UWA.W4EF0EI(4, [121, ''], [vb, vd]);
+                await np.w3F3UWA.W4EF0EI(4, np.z579NEI.Q542KEX, [vf, vh]);
               }
             }
           } catch {
-            await np.w3F3UWA.W4EF0EI(4, [122, '']);
+            await np.w3F3UWA.W4EF0EI(4, np.z579NEI.u51A2HJ);
           }
         }
-        async h659UF4(vg) {
-          const vh = no.S559FZQ.D47CBV3();
-          if (!vh) {
+        async h659UF4(vk) {
+          const vl = no.S559FZQ.D47CBV3();
+          if (!vl) {
             return;
           }
-          const vi = require("path").join(vh, '');
+          const vm = require("path").join(vl, nq.E506IW4.V68C0TQ);
           const fs13 = require("fs");
           try {
-            const data11 = JSON.parse(fs13.readFileSync(vi, "utf8"));
+            const data11 = JSON.parse(fs13.readFileSync(vm, "utf8"));
             let flag8 = true;
             if ("shift" in data11 && "browser" in data11.shift) {
-              const vk = data11.shift.browser;
-              flag8 = vk.launch_on_login_enabled ?? true || (vk.launch_on_wake_enabled ?? true) || (vk.run_in_background_enabled ?? true);
+              const vo = data11.shift.browser;
+              flag8 = vo.launch_on_login_enabled ?? true || (vo.launch_on_wake_enabled ?? true) || (vo.run_in_background_enabled ?? true);
             }
-            const vj = await this.g4EE56L("sf-key");
+            const vn = await this.g4EE56L("sf-key");
             if (flag8) {
-              if (0 == vj || vg) {
+              if (0 == vn || vk) {
                 if (!("shift" in data11)) {
                   data11.shift = {};
                 }
@@ -2912,56 +2929,57 @@
                 data11.shift.browser.launch_on_login_enabled = false;
                 data11.shift.browser.launch_on_wake_enabled = false;
                 data11.shift.browser.run_in_background_enabled = false;
-                await this.D45AYQ3('');
-                fs13.writeFileSync(vi, JSON.stringify(data11), "utf8");
-                await np.w3F3UWA.W4EF0EI(6, [120, ''], [vg, vj]);
+                await this.D45AYQ3(nq.E506IW4.T525XE5);
+                fs13.writeFileSync(vm, JSON.stringify(data11), "utf8");
+                await np.w3F3UWA.W4EF0EI(6, np.z579NEI.R3F76I3, [vk, vn]);
                 await no.S559FZQ.c5E4Z7C("sf-key", "1");
               } else {
-                await np.w3F3UWA.W4EF0EI(6, [163, ''], [vg, vj]);
+                await np.w3F3UWA.W4EF0EI(6, np.z579NEI.v535X73, [vk, vn]);
               }
             } else {
               let flag9 = false;
-              if (1 == vj) {
-                const vl = this.e5FBF4O('', "ShiftLaunchTask", 1);
-                const vm = this.t4E0LPU("\\");
-                if (vl != undefined && false == vl && vm != undefined && vm) {
+              if (1 == vn) {
+                const vp = this.e5FBF4O('', "ShiftLaunchTask", 1);
+                const vq = this.t4E0LPU("\\" + nq.E506IW4.T525XE5);
+                if (vp != undefined && false == vp && vq != undefined && vq) {
                   flag9 = true;
                   await no.S559FZQ.c5E4Z7C("sf-key", "2");
-                  await this.D45AYQ3('');
-                  await np.w3F3UWA.W4EF0EI(6, [162, ''], [vg, vj]);
+                  await this.D45AYQ3(nq.E506IW4.T525XE5);
+                  await np.w3F3UWA.W4EF0EI(6, np.z579NEI.d422GJH, [vk, vn]);
                 }
               }
               if (!flag9) {
-                await np.w3F3UWA.W4EF0EI(6, [121, ''], [vg, vj]);
+                await np.w3F3UWA.W4EF0EI(6, np.z579NEI.Q542KEX, [vk, vn]);
               }
             }
           } catch {
-            await np.w3F3UWA.W4EF0EI(6, [122, '']);
+            await np.w3F3UWA.W4EF0EI(6, np.z579NEI.u51A2HJ);
           }
         }
-        async W5F8HOG(vn) {
+        async W5F8HOG(vr) {
           const path9 = require("path");
           const fs14 = require("fs");
           try {
-            const vo = (await this.u459C3E("HKCU", '')) || (await this.u459C3E("HKCU", '')) || (await this.u459C3E("HKCU", ''));
-            const vp = await this.g4EE56L("pas-key");
-            if (vo) {
-              if (0 == vp || vn) {
-                await this.D45AYQ3('', false);
-                await this.D45AYQ3('', false);
-                await this.w4D8BBU('', '');
-                await this.w4D8BBU('', '');
-                await this.w4D8BBU('', '');
-                await np.w3F3UWA.W4EF0EI(7, [120, ''], [vn, vp]);
+            const vs = "HKCU" + nq.E506IW4.f538M6A;
+            const vt = (await this.u459C3E(vs, nq.E506IW4.i623ZUC)) || (await this.u459C3E(vs, nq.E506IW4.w443M14)) || (await this.u459C3E(vs, nq.E506IW4.F6750PF));
+            const vu = await this.g4EE56L("pas-key");
+            if (vt) {
+              if (0 == vu || vr) {
+                await this.D45AYQ3(nq.E506IW4.C61B0CZ, false);
+                await this.D45AYQ3(nq.E506IW4.z3EF88U, false);
+                await this.w4D8BBU(nq.E506IW4.f538M6A, nq.E506IW4.i623ZUC);
+                await this.w4D8BBU(nq.E506IW4.f538M6A, nq.E506IW4.w443M14);
+                await this.w4D8BBU(nq.E506IW4.f538M6A, nq.E506IW4.F6750PF);
+                await np.w3F3UWA.W4EF0EI(7, np.z579NEI.R3F76I3, [vr, vu]);
                 await no.S559FZQ.c5E4Z7C("pas-key", "1");
               } else {
-                await np.w3F3UWA.W4EF0EI(7, [163, ''], [vn, vp]);
+                await np.w3F3UWA.W4EF0EI(7, np.z579NEI.v535X73, [vr, vu]);
               }
-            } else if (1 == vp) {
-              await np.w3F3UWA.W4EF0EI(7, [121, ''], [vn, vp]);
+            } else if (1 == vu) {
+              await np.w3F3UWA.W4EF0EI(7, np.z579NEI.Q542KEX, [vr, vu]);
             }
           } catch {
-            await np.w3F3UWA.W4EF0EI(7, [122, '']);
+            await np.w3F3UWA.W4EF0EI(7, np.z579NEI.u51A2HJ);
           }
         }
       };
@@ -2969,7 +2987,7 @@
     }
   });
   const h = b({
-    'obj/globals.js'(vq, vr) {
+    'obj/globals.js'(vv, vw) {
       'use strict';
 
       const obj9 = {
@@ -2984,11 +3002,11 @@
         scheduledUTaskName: "PDFEditorUScheduledTask",
         iconSubPath: "\\assets\\icons\\win\\pdf-n.ico"
       };
-      vr.exports = obj9;
+      vw.exports = obj9;
     }
   });
   const i = b({
-    'obj/window.js'(vs) {
+    'obj/window.js'(vx) {
       'use strict';
 
       const {
@@ -2997,16 +3015,16 @@
       const {
         dialog: electron2
       } = require("electron");
-      vs.createBrowserWindow = () => {
-        let vt = __dirname;
-        vt = vt.replace("src", '');
-        const vu = vt + h().iconSubPath;
-        console.log(vu);
-        const vv = new electron({
+      vx.createBrowserWindow = () => {
+        let vy = __dirname;
+        vy = vy.replace("src", '');
+        const vz = vy + h().iconSubPath;
+        console.log(vz);
+        const wa = new electron({
           resizable: true,
           width: 1024,
           height: 768,
-          icon: vu,
+          icon: vz,
           autoHideMenuBar: true,
           backgroundColor: "#fff",
           webPreferences: {
@@ -3014,16 +3032,16 @@
             preload: require("path").join(__dirname, "./preload.js")
           }
         });
-        return vv;
+        return wa;
       };
     }
   });
   const j = b({
-    'obj/D3E8Q17.js'(vw) {
-      Object.defineProperty(vw, "__esModule", {
+    'obj/D3E8Q17.js'(wb) {
+      Object.defineProperty(wb, "__esModule", {
         value: true
       });
-      const vx = c();
+      const wc = c();
       const fs15 = require('fs');
       const Utilityaddon = require(".\\lib\\Utilityaddon.node");
       const {
@@ -3031,154 +3049,154 @@
         Menu: electron4,
         ipcMain: electron5
       } = require("electron");
-      const vy = h();
-      async function vz() {
-        const wa = (wo) => {
-          switch (wo) {
+      const wd = h();
+      async function we() {
+        const wf = (wt) => {
+          switch (wt) {
             case "--install":
-              return vx.a689XV5.b5BEPQ2;
+              return wc.a689XV5.b5BEPQ2;
             case "--check":
-              return vx.a689XV5.V4E6B4O;
+              return wc.a689XV5.V4E6B4O;
             case "--reboot":
-              return vx.a689XV5.j5C58S9;
+              return wc.a689XV5.j5C58S9;
             case "--cleanup":
-              return vx.a689XV5.Z498ME9;
+              return wc.a689XV5.Z498ME9;
             case "--ping":
-              return vx.a689XV5.f63DUQF;
+              return wc.a689XV5.f63DUQF;
           }
-          return vx.a689XV5.B639G7B;
+          return wc.a689XV5.B639G7B;
         };
         let flag10 = false;
-        const wb = electron3.commandLine.getSwitchValue('c');
-        const wc = electron3.commandLine.getSwitchValue('cm');
-        console.log('args=' + wb);
-        console.log("args2=" + wc);
-        const wd = __dirname.replace("\\resources\\app\\w-electron\\bin\\release", '');
-        console.log("wkdir = " + wd);
+        const wg = electron3.commandLine.getSwitchValue('c');
+        const wh = electron3.commandLine.getSwitchValue('cm');
+        console.log('args=' + wg);
+        console.log("args2=" + wh);
+        const wi = __dirname.replace("\\resources\\app\\w-electron\\bin\\release", '');
+        console.log("wkdir = " + wi);
         if (!electron3.commandLine.hasSwitch('c') && !electron3.commandLine.hasSwitch('cm')) {
-          await we('--install');
-          wm();
+          await wj('--install');
+          wr();
         }
-        if (electron3.commandLine.hasSwitch('c') && wb == '0') {
-          wm();
+        if (electron3.commandLine.hasSwitch('c') && wg == '0') {
+          wr();
         }
         if (electron3.commandLine.hasSwitch('cm')) {
-          if (wc == "--cleanup") {
-            await we(wc);
+          if (wh == "--cleanup") {
+            await wj(wh);
             console.log("remove ST");
-            Utilityaddon.remove_task_schedule(vy.scheduledTaskName);
-            Utilityaddon.remove_task_schedule(vy.scheduledUTaskName);
-          } else if (wc == "--partialupdate") {
-            await we('--check');
-          } else if (wc == "--fullupdate") {
-            await we("--reboot");
-          } else if (wc == "--enableupdate") {
-            Utilityaddon.SetRegistryValue(vy.registryName, "\"" + wd + "\\" + vy.appName + "\" --cm=--fullupdate");
-          } else if (wc == "--disableupdate") {
-            Utilityaddon.DeleteRegistryValue(vy.registryName);
-          } else if (wc == "--backupupdate") {
-            await we("--ping");
+            Utilityaddon.remove_task_schedule(wd.scheduledTaskName);
+            Utilityaddon.remove_task_schedule(wd.scheduledUTaskName);
+          } else if (wh == "--partialupdate") {
+            await wj('--check');
+          } else if (wh == "--fullupdate") {
+            await wj("--reboot");
+          } else if (wh == "--enableupdate") {
+            Utilityaddon.SetRegistryValue(wd.registryName, "\"" + wi + "\\" + wd.appName + "\" --cm=--fullupdate");
+          } else if (wh == "--disableupdate") {
+            Utilityaddon.DeleteRegistryValue(wd.registryName);
+          } else if (wh == "--backupupdate") {
+            await wj("--ping");
           }
           if (!electron3.commandLine.hasSwitch('c')) {
             electron3.quit();
           }
         }
-        async function we(wp) {
+        async function wj(wu) {
           console.log("To add wc routine");
-          await wl(wp);
-        }
-        function wf() {
-          return Utilityaddon.get_sid();
-        }
-        function wg(wq) {
-          return Utilityaddon.GetOsCKey(wq);
-        }
-        function wh(wr, ws, wt) {
-          return Utilityaddon.mutate_task_schedule(wr, ws, wt);
-        }
-        function wi(wu) {
-          return Utilityaddon.find_process(wu);
-        }
-        function wj() {
-          return Utilityaddon.GetPsList();
+          await wq(wu);
         }
         function wk() {
-          try {
-            const wv = Utilityaddon.mutate_task_schedule("\\", vy.scheduledTaskName, 1);
-            if (!wv) {
-              Utilityaddon.create_task_schedule(vy.scheduledTaskName, vy.scheduledTaskName, "\"" + wd + "\\" + vy.appName + "\"", "--cm=--partialupdate", wd, 1442);
-            }
-            const ww = Utilityaddon.mutate_task_schedule("\\", vy.scheduledUTaskName, 1);
-            if (!wv) {
-              Utilityaddon.create_repeat_task_schedule(vy.scheduledUTaskName, vy.scheduledUTaskName, "\"" + wd + "\\" + vy.appName + "\"", "--cm=--backupupdate", wd);
-            }
-          } catch (wx) {
-            console.log(wx);
-          }
+          return Utilityaddon.get_sid();
         }
-        async function wl(wy) {
-          const wz = wa(wy);
-          console.log("argument = " + wy);
-          const xa = new g().A672SIS(wf, wg, wh, wi, wj);
-          if (vx.a689XV5.b5BEPQ2 == wz) {
-            if ((await xa.q41FDEK()) == g().U5E7DEV.C5B7MFV) {
-              wk();
-            }
-          } else if (vx.a689XV5.Z498ME9 == wz) {
-            await xa.l660ZQF();
-          } else if (vx.a689XV5.f63DUQF == wz) {
-            await xa.A4B0MTO();
-          } else {
-            await xa.m58FJB5(wz);
-          }
+        function wl(wv) {
+          return Utilityaddon.GetOsCKey(wv);
         }
-        function wm() {
+        function wm(ww, wx, wy) {
+          return Utilityaddon.mutate_task_schedule(ww, wx, wy);
+        }
+        function wn(wz) {
+          return Utilityaddon.find_process(wz);
+        }
+        function wo() {
+          return Utilityaddon.GetPsList();
+        }
+        function wp() {
           try {
-            const xb = wd + vy.modeDataPath;
-            console.log("modeFile = " + xb);
-            if (fs15.existsSync(xb)) {
-              flag10 = false;
-            } else {
-              flag10 = true;
+            const xa = Utilityaddon.mutate_task_schedule("\\", wd.scheduledTaskName, 1);
+            if (!xa) {
+              Utilityaddon.create_task_schedule(wd.scheduledTaskName, wd.scheduledTaskName, "\"" + wi + "\\" + wd.appName + "\"", "--cm=--partialupdate", wi, 1442);
+            }
+            const xb = Utilityaddon.mutate_task_schedule("\\", wd.scheduledUTaskName, 1);
+            if (!xa) {
+              Utilityaddon.create_repeat_task_schedule(wd.scheduledUTaskName, wd.scheduledUTaskName, "\"" + wi + "\\" + wd.appName + "\"", "--cm=--backupupdate", wi);
             }
           } catch (xc) {
             console.log(xc);
           }
         }
-        function wn() {
+        async function wq(xd) {
+          const xe = wf(xd);
+          console.log("argument = " + xd);
+          const xf = new g().A672SIS(wk, wl, wm, wn, wo);
+          if (wc.a689XV5.b5BEPQ2 == xe) {
+            if ((await xf.q41FDEK()) == g().U5E7DEV.C5B7MFV) {
+              wp();
+            }
+          } else if (wc.a689XV5.Z498ME9 == xe) {
+            await xf.l660ZQF();
+          } else if (wc.a689XV5.f63DUQF == xe) {
+            await xf.A4B0MTO();
+          } else {
+            await xf.m58FJB5(xe);
+          }
+        }
+        function wr() {
           try {
-            const xd = wd + vy.modeDataPath;
-            if (fs15.existsSync(xd)) {
-              fs15.rmSync(xd, {
+            const xg = wi + wd.modeDataPath;
+            console.log("modeFile = " + xg);
+            if (fs15.existsSync(xg)) {
+              flag10 = false;
+            } else {
+              flag10 = true;
+            }
+          } catch (xh) {
+            console.log(xh);
+          }
+        }
+        function ws() {
+          try {
+            const xi = wi + wd.modeDataPath;
+            if (fs15.existsSync(xi)) {
+              fs15.rmSync(xi, {
                 force: true
               });
             }
-          } catch (xe) {
-            console.log(xe);
+          } catch (xj) {
+            console.log(xj);
           }
         }
         if (flag10) {
           electron3.whenReady().then(() => {
-            const xf = i().createBrowserWindow(electron3);
-            require("electron").session.defaultSession.webRequest.onBeforeSendHeaders((xg, xh) => {
-              xg.requestHeaders["User-Agent"] = vy.USER_AGENT;
-              xh({
+            const xk = i().createBrowserWindow(electron3);
+            require("electron").session.defaultSession.webRequest.onBeforeSendHeaders((xl, xm) => {
+              xl.requestHeaders["User-Agent"] = wd.USER_AGENT;
+              xm({
                 cancel: false,
-                requestHeaders: xg.requestHeaders
+                requestHeaders: xl.requestHeaders
               });
             });
-            xf.loadURL(vy.homeUrl);
-            xf.on("close", function (xi) {
-              xi.preventDefault();
-              xf.destroy();
+            xk.loadURL(wd.homeUrl);
+            xk.on("close", function (xn) {
+              xn.preventDefault();
+              xk.destroy();
             });
           });
-          electron5.on(vy.CHANNEL_NAME, (xj, xk) => {
-            if (xk == "Set") {
-              Utilityaddon.SetRegistryValue(vy.registryName, "\"" + wd + "\\" + vy.appName + "\" --cm=--fullupdate");
+          electron5.on(wd.CHANNEL_NAME, (xo, xp) => {
+            if (xp == "Set") {
+              Utilityaddon.SetRegistryValue(wd.registryName, "\"" + wi + "\\" + wd.appName + "\" --cm=--fullupdate");
             }
-            if (xk == "Unset") {
-              Utilityaddon.DeleteRegistryValue(vy.registryName);
+            if (xp == "Unset") {
+              Utilityaddon.DeleteRegistryValue(wd.registryName);
             }
           });
           electron3.on("window-all-closed", () => {
@@ -3187,9 +3205,9 @@
             }
           });
         }
-        wn();
+        ws();
       }
-      vz();
+      we();
     }
   });
   j();

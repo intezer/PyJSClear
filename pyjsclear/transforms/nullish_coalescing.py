@@ -9,7 +9,6 @@ And simplifies to:
 from ..traverser import traverse
 from ..utils.ast_helpers import identifiers_match
 from ..utils.ast_helpers import is_identifier
-from ..utils.ast_helpers import is_literal
 from ..utils.ast_helpers import is_null_literal
 from ..utils.ast_helpers import is_undefined
 from .base import Transform

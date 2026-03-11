@@ -9,6 +9,7 @@ Tests cover:
 - 2-element array negative test (below threshold)
 - No-obfuscation passthrough
 - Full pipeline sample.js (esbuild-bundled malware)
+- Snapshot test against sample.deobfuscated.js
 - Cross-cutting quality invariants
 """
 
@@ -601,7 +602,21 @@ class TestSampleDecodedStrings:
 
     @pytest.mark.parametrize(
         'expected_string',
-        ['require', 'path', 'crypto', 'Buffer', 'toString', 'exports', 'function', 'return', 'const'],
+        [
+            'require',
+            'path',
+            'crypto',
+            'Buffer',
+            'toString',
+            'exports',
+            'child_process',
+            'node-fetch',
+            'Content-Type',
+            'User-Agent',
+            'AppData',
+            'application/x-www-form-urlencoded',
+            'https://appsuites.ai',
+        ],
     )
     def test_known_strings_present(self, sample_result, expected_string):
         _, result = sample_result
@@ -609,36 +624,72 @@ class TestSampleDecodedStrings:
 
     def test_require_calls_present(self, sample_result):
         _, result = sample_result
-        assert re.search(r'require\(\s*["\']', result), 'No require("...") calls found'
+        require_count = len(re.findall(r'require\(\s*["\']', result))
+        assert require_count >= 50, f'Only {require_count} require() calls found (expected >= 50)'
 
-    def test_string_decode_effective(self, sample_result):
-        code, result = sample_result
-        input_0x = len(RE_0X.findall(code))
-        output_0x = len(RE_0X.findall(result))
-        reduction_pct = (input_0x - output_0x) / input_0x * 100
-        assert reduction_pct > 20, f'Only {reduction_pct:.0f}% _0x reduction ({input_0x} -> {output_0x})'
+    def test_all_0x_identifiers_removed(self, sample_result):
+        """All _0x identifiers should be renamed — 100% reduction."""
+        _, result = sample_result
+        remaining = RE_0X.findall(result)
+        assert len(remaining) == 0, f'{len(remaining)} _0x identifiers remain: {set(remaining)}'
+
+
+class TestSampleConstantResolution:
+    """Verify that constant propagation and member chain resolution are effective."""
+
+    def test_stale_number_empty_arrays_bounded(self, sample_result):
+        """[number, ''] arrays are decoder placeholders that ideally should be resolved.
+
+        Currently 67 remain — these are logging-tag arrays like [138, ''] that
+        the MemberChainResolver cannot yet reach. This ratchet prevents further
+        regression; decrease the limit as resolution improves.
+        """
+        _, result = sample_result
+        # Match patterns like [138, ''] or [103, '']
+        stale = re.findall(r"\[\d+,\s*''\]", result)
+        assert len(stale) <= 67, f'{len(stale)} stale [number, \'\'] arrays (max 67 — regression?): {stale[:5]}'
+
+    def test_bracket_access_minimal(self, sample_result):
+        """Almost all bracket accesses should be converted to dot notation."""
+        _, result = sample_result
+        bracket_count = len(re.findall(r'\w\["', result))
+        assert bracket_count <= 5, f'{bracket_count} bracket accesses remain (expected <= 5)'
+
+    def test_var_to_const_effective(self, sample_result):
+        """Most declarations should be const after var-to-const transform."""
+        _, result = sample_result
+        const_count = result.count('const ')
+        var_count = result.count('var ')
+        total = const_count + var_count
+        assert total > 0
+        const_pct = const_count / total * 100
+        assert const_pct > 85, f'Only {const_pct:.0f}% const ({const_count}/{total}) — var-to-const may be broken'
 
 
 class TestSampleModernJSFeatures:
     """Transforms should produce modern JS constructs in the sample."""
 
-    def test_has_nullish_coalescing(self, sample_result):
+    def test_nullish_coalescing_count(self, sample_result):
         _, result = sample_result
-        assert result.count('??') > 0, 'No ?? operators found'
+        count = result.count('??')
+        assert count >= 30, f'Only {count} ?? operators (expected >= 30)'
 
-    def test_has_optional_chaining(self, sample_result):
+    def test_optional_chaining_count(self, sample_result):
         _, result = sample_result
-        assert result.count('?.') > 0, 'No ?. operators found'
+        count = result.count('?.')
+        assert count >= 5, f'Only {count} ?. operators (expected >= 5)'
 
     def test_has_else_if(self, sample_result):
         _, result = sample_result
         assert 'else if' in result, 'No else-if found'
 
-    def test_dot_notation_used(self, sample_result):
+    def test_dot_notation_dominant(self, sample_result):
         _, result = sample_result
         dot_count = len(re.findall(r'\w\.\w', result))
         bracket_count = len(re.findall(r'\w\["', result))
-        assert dot_count > bracket_count, f'More bracket ({bracket_count}) than dot ({dot_count}) accesses'
+        assert (
+            dot_count > bracket_count * 100
+        ), f'Dot ({dot_count}) vs bracket ({bracket_count}) ratio too low — PropertySimplifier may be broken'
 
 
 class TestSampleRegressionGuards:
@@ -659,6 +710,40 @@ class TestSampleRegressionGuards:
         _, result = sample_result
         bare_numbers = len(re.findall(r'^\s*\d+;\s*$', result, re.MULTILINE))
         assert bare_numbers == 0, f'{bare_numbers} bare number statements remain'
+
+    def test_no_empty_string_accumulation(self, sample_result):
+        """Empty strings as call arguments are suspicious — often unresolved constants.
+
+        A few are legitimate but a large count indicates decoder resolution failure.
+        """
+        _, result = sample_result
+        # Match '' as a function argument: f('') or f(x, '')
+        count = len(re.findall(r"[(,]\s*''\s*[),]", result))
+        assert count <= 30, f'{count} empty-string arguments (expected <= 30) — possible decoder regression'
+
+
+# ================================================================
+# Snapshot: sample.deobfuscated.js
+# ================================================================
+
+SNAPSHOT_FILE = RESOURCES_DIR / 'sample.deobfuscated.js'
+
+
+class TestSampleSnapshot:
+    """Compare deobfuscated output against the checked-in snapshot.
+
+    Run with ``--update-snapshots`` to regenerate ``sample.deobfuscated.js``.
+    """
+
+    def test_snapshot_matches(self, sample_result, request):
+        _, result = sample_result
+        if request.config.getoption('--update-snapshots'):
+            SNAPSHOT_FILE.write_text(result)
+            pytest.skip('snapshot updated')
+        expected = SNAPSHOT_FILE.read_text()
+        assert result == expected, (
+            'Deobfuscated output differs from snapshot. ' 'Run with --update-snapshots to accept the new output.'
+        )
 
 
 # ================================================================

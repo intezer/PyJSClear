@@ -18,7 +18,6 @@ from ..traverser import traverse
 from ..utils.ast_helpers import deep_copy
 from ..utils.ast_helpers import get_member_names
 from ..utils.ast_helpers import is_identifier
-from ..utils.ast_helpers import is_literal
 from ..utils.ast_helpers import is_string_literal
 from .base import Transform
 
