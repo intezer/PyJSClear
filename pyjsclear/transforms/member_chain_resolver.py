@@ -16,29 +16,11 @@ Resolves _0x285ccd.i4B82NN.XXX → "literal" by:
 from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import deep_copy
+from ..utils.ast_helpers import get_member_names
 from ..utils.ast_helpers import is_identifier
 from ..utils.ast_helpers import is_literal
 from ..utils.ast_helpers import is_string_literal
 from .base import Transform
-
-
-def _get_member_names(node):
-    """Extract (object_name, property_name) from a MemberExpression."""
-    if not node or node.get('type') != 'MemberExpression':
-        return None, None
-    obj = node.get('object')
-    prop = node.get('property')
-    if not obj or not is_identifier(obj):
-        return None, None
-    if not prop:
-        return None, None
-    if node.get('computed'):
-        if is_string_literal(prop):
-            return obj['name'], prop['value']
-        return None, None
-    if is_identifier(prop):
-        return obj['name'], prop['name']
-    return None, None
 
 
 def _is_constant_expr(node):
@@ -72,7 +54,7 @@ class MemberChainResolver(Transform):
                 return
             left = node.get('left')
             right = node.get('right')
-            obj_name, prop_name = _get_member_names(left)
+            obj_name, prop_name = get_member_names(left)
             if not obj_name:
                 return
 

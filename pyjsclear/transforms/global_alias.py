@@ -46,7 +46,13 @@ _WELL_KNOWN_GLOBALS = frozenset(
 
 
 class GlobalAliasInliner(Transform):
-    """Replace aliases of well-known globals with the global name."""
+    """Replace aliases of well-known globals with the global name.
+
+    Note: this transform does not use scope analysis and may incorrectly
+    replace references if a local binding shadows the alias name.  This is
+    acceptable for the obfuscated code this tool targets, where shadowing
+    of mangled variable names is extremely unlikely.
+    """
 
     def execute(self):
         aliases = {}

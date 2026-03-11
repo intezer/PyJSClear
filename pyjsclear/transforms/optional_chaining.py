@@ -12,30 +12,9 @@ Also handles temp assignment patterns:
 
 from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
+from ..utils.ast_helpers import is_null_literal
+from ..utils.ast_helpers import is_undefined
 from .base import Transform
-
-
-def _is_undefined(node):
-    """Check if node is `undefined` or `void 0`."""
-    if not isinstance(node, dict):
-        return False
-    if is_identifier(node) and node.get('name') == 'undefined':
-        return True
-    # void 0
-    if (
-        node.get('type') == 'UnaryExpression'
-        and node.get('operator') == 'void'
-        and isinstance(node.get('argument'), dict)
-        and node['argument'].get('type') == 'Literal'
-        and node['argument'].get('value') == 0
-    ):
-        return True
-    return False
-
-
-def _is_null_literal(node):
-    """Check if node is `null`."""
-    return isinstance(node, dict) and node.get('type') == 'Literal' and node.get('value') is None
 
 
 def _identifiers_match(a, b):
@@ -74,7 +53,7 @@ class OptionalChaining(Transform):
             consequent = node.get('consequent')
 
             # consequent must be undefined/void 0
-            if not _is_undefined(consequent):
+            if not is_undefined(consequent):
                 return
 
             result = self._match_optional_pattern(test.get('left'), test.get('right'), alternate)
@@ -103,17 +82,17 @@ class OptionalChaining(Transform):
             undef_left, undef_right = undef_cmp.get('left'), undef_cmp.get('right')
 
             # X === null
-            if _is_null_literal(null_right):
+            if is_null_literal(null_right):
                 null_checked = null_left
-            elif _is_null_literal(null_left):
+            elif is_null_literal(null_left):
                 null_checked = null_right
             else:
                 continue
 
             # X === undefined
-            if _is_undefined(undef_right):
+            if is_undefined(undef_right):
                 undef_checked = undef_left
-            elif _is_undefined(undef_left):
+            elif is_undefined(undef_left):
                 undef_checked = undef_right
             else:
                 continue

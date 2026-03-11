@@ -130,7 +130,7 @@ class TestClassStringDecoderHelpers:
     """Tests for ClassStringDecoder helper functions."""
 
     def test_get_member_names_computed_string(self):
-        from pyjsclear.transforms.class_string_decoder import _get_member_names
+        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
 
         node = {
             'type': 'MemberExpression',
@@ -141,7 +141,7 @@ class TestClassStringDecoderHelpers:
         assert _get_member_names(node) == ('obj', 'prop')
 
     def test_get_member_names_non_identifier_prop(self):
-        from pyjsclear.transforms.class_string_decoder import _get_member_names
+        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
 
         node = {
             'type': 'MemberExpression',
@@ -152,7 +152,7 @@ class TestClassStringDecoderHelpers:
         assert _get_member_names(node) == (None, None)
 
     def test_get_member_names_dot_notation(self):
-        from pyjsclear.transforms.class_string_decoder import _get_member_names
+        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
 
         node = {
             'type': 'MemberExpression',
@@ -163,13 +163,13 @@ class TestClassStringDecoderHelpers:
         assert _get_member_names(node) == ('obj', 'prop')
 
     def test_get_member_names_no_prop(self):
-        from pyjsclear.transforms.class_string_decoder import _get_member_names
+        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
 
         assert _get_member_names(None) == (None, None)
         assert _get_member_names({'type': 'Literal'}) == (None, None)
 
     def test_get_member_names_non_identifier_object(self):
-        from pyjsclear.transforms.class_string_decoder import _get_member_names
+        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
 
         node = {
             'type': 'MemberExpression',

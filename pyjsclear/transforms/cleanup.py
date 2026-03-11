@@ -235,7 +235,7 @@ class VarToConst(Transform):
     def execute(self):
         scope_tree, _ = build_scope_tree(self.ast)
         safe_declarators = set()
-        self._collect_const_candidates(scope_tree, safe_declarators)
+        self._collect_const_candidates(scope_tree, safe_declarators, in_function=True)
 
         if not safe_declarators:
             return False
@@ -253,7 +253,9 @@ class VarToConst(Transform):
             if not parent:
                 return
             parent_type = parent.get('type')
-            if parent_type == 'BlockStatement':
+            if parent_type == 'Program':
+                pass  # Top-level var — safe to convert
+            elif parent_type == 'BlockStatement':
                 if id(parent) not in func_body_ids:
                     return  # Inside a nested block — unsafe
             else:

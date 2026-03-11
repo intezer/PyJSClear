@@ -40,8 +40,19 @@ def is_null_literal(node):
 
 
 def is_undefined(node):
-    """Check if node represents undefined."""
-    return is_identifier(node) and node.get('name') == 'undefined'
+    """Check if node represents undefined (identifier or ``void 0``)."""
+    if is_identifier(node) and node.get('name') == 'undefined':
+        return True
+    if (
+        isinstance(node, dict)
+        and node.get('type') == 'UnaryExpression'
+        and node.get('operator') == 'void'
+        and isinstance(node.get('argument'), dict)
+        and node['argument'].get('type') == 'Literal'
+        and node['argument'].get('value') == 0
+    ):
+        return True
+    return False
 
 
 def get_literal_value(node):
@@ -239,6 +250,29 @@ def replace_identifiers(node, param_map):
                     node[key] = copy.deepcopy(param_map[child['name']])
             elif 'type' in child:
                 replace_identifiers(child, param_map)
+
+
+def get_member_names(node):
+    """Extract (object_name, property_name) from a MemberExpression.
+
+    Handles both computed (obj["prop"]) and non-computed (obj.prop) forms.
+    Returns (str, str) or (None, None).
+    """
+    if not node or node.get('type') != 'MemberExpression':
+        return None, None
+    obj = node.get('object')
+    prop = node.get('property')
+    if not obj or not is_identifier(obj):
+        return None, None
+    if not prop:
+        return None, None
+    if node.get('computed'):
+        if is_string_literal(prop):
+            return obj['name'], prop['value']
+        return None, None
+    if is_identifier(prop):
+        return obj['name'], prop['name']
+    return None, None
 
 
 def nodes_equal(a, b):

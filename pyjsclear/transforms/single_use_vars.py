@@ -17,8 +17,9 @@ Only inlines when:
 
 from ..scope import build_scope_tree
 from ..traverser import REMOVE
-from ..traverser import traverse
+from ..traverser import find_parent
 from ..traverser import simple_traverse
+from ..traverser import traverse
 from ..utils.ast_helpers import deep_copy
 from ..utils.ast_helpers import is_identifier
 from .base import Transform
@@ -125,9 +126,6 @@ class SingleUseVarInliner(Transform):
         if ref_key != 'object':
             return False
         # Now check if this MemberExpression is an assignment target
-        # We need to find the MemberExpression's parent in the AST
-        from ..traverser import find_parent
-
         parent_info = find_parent(self.ast, ref_parent)
         if not parent_info:
             return False

@@ -55,8 +55,8 @@ class TestDeobfuscatorExecute:
         """Simple code with no obfuscation returns original code unchanged."""
         code = 'var x = 1;'
         result = Deobfuscator(code).execute()
-        # When no transform changes anything, the original code is returned
-        assert result == code
+        # VarToConst now correctly converts top-level var to const
+        assert result == 'const x = 1;'
 
     def test_hex_escapes_decoded(self):
         """Code with hex escape sequences gets decoded."""
@@ -228,8 +228,8 @@ class TestLargeFileHandling:
 
     def test_large_file_reduces_iterations(self):
         """Files > 500KB reduce max_iterations (line 142)."""
-        # Create simple but large code
-        code = 'var x = 1;\n' * 50001  # > 500KB
+        # Create simple but large code — use const to avoid VarToConst changing output
+        code = 'const x = 1;\n' * 50001  # > 500KB
         d = Deobfuscator(code)
         result = d.execute()
         # Should not crash, returns original since no transforms fire

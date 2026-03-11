@@ -90,12 +90,12 @@ class TestHelperFunctions:
     """Direct tests for _get_member_names helper."""
 
     def test_get_member_names_none(self):
-        from pyjsclear.transforms.member_chain_resolver import _get_member_names
+        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
 
         assert _get_member_names(None) == (None, None)
 
     def test_get_member_names_no_prop(self):
-        from pyjsclear.transforms.member_chain_resolver import _get_member_names
+        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
 
         node = {
             'type': 'MemberExpression',
@@ -106,7 +106,7 @@ class TestHelperFunctions:
         assert _get_member_names(node) == (None, None)
 
     def test_get_member_names_computed_non_string(self):
-        from pyjsclear.transforms.member_chain_resolver import _get_member_names
+        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
 
         node = {
             'type': 'MemberExpression',
@@ -117,7 +117,7 @@ class TestHelperFunctions:
         assert _get_member_names(node) == (None, None)
 
     def test_get_member_names_non_identifier_obj(self):
-        from pyjsclear.transforms.member_chain_resolver import _get_member_names
+        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
 
         node = {
             'type': 'MemberExpression',

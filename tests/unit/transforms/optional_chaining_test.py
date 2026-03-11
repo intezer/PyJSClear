@@ -1,9 +1,9 @@
 """Tests for the OptionalChaining transform."""
 
 from pyjsclear.transforms.optional_chaining import OptionalChaining
-from pyjsclear.transforms.optional_chaining import _is_null_literal
-from pyjsclear.transforms.optional_chaining import _is_undefined
 from pyjsclear.transforms.optional_chaining import _nodes_match
+from pyjsclear.utils.ast_helpers import is_null_literal
+from pyjsclear.utils.ast_helpers import is_undefined
 from tests.unit.conftest import roundtrip
 
 
@@ -151,8 +151,8 @@ class TestHelperFunctions:
     """Direct tests for helper functions to cover edge cases."""
 
     def test_is_undefined_with_non_dict(self):
-        assert _is_undefined(None) is False
-        assert _is_undefined('string') is False
+        assert is_undefined(None) is False
+        assert is_undefined('string') is False
 
     def test_is_undefined_with_void_0(self):
         node = {
@@ -160,7 +160,7 @@ class TestHelperFunctions:
             'operator': 'void',
             'argument': {'type': 'Literal', 'value': 0},
         }
-        assert _is_undefined(node) is True
+        assert is_undefined(node) is True
 
     def test_is_undefined_with_void_non_zero(self):
         node = {
@@ -168,14 +168,14 @@ class TestHelperFunctions:
             'operator': 'void',
             'argument': {'type': 'Literal', 'value': 1},
         }
-        assert _is_undefined(node) is False
+        assert is_undefined(node) is False
 
     def test_is_null_literal_true(self):
-        assert _is_null_literal({'type': 'Literal', 'value': None}) is True
+        assert is_null_literal({'type': 'Literal', 'value': None, 'raw': 'null'}) is True
 
     def test_is_null_literal_false(self):
-        assert _is_null_literal({'type': 'Literal', 'value': 0}) is False
-        assert _is_null_literal(None) is False
+        assert is_null_literal({'type': 'Literal', 'value': 0}) is False
+        assert is_null_literal(None) is False
 
     def test_nodes_match_non_dict(self):
         assert _nodes_match(None, None) is False

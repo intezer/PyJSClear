@@ -23,33 +23,11 @@ resolved constants at their usage sites.
 
 from ..traverser import simple_traverse
 from ..traverser import traverse
+from ..utils.ast_helpers import get_member_names
 from ..utils.ast_helpers import is_numeric_literal
 from ..utils.ast_helpers import is_string_literal
 from ..utils.ast_helpers import make_literal
 from .base import Transform
-
-
-def _get_member_names(node):
-    """Extract (object_name, property_name) from a MemberExpression.
-
-    Handles both computed (obj["prop"]) and non-computed (obj.prop) forms.
-    Returns (str, str) or (None, None).
-    """
-    if not node or node.get('type') != 'MemberExpression':
-        return None, None
-    obj = node.get('object')
-    prop = node.get('property')
-    if not obj or obj.get('type') != 'Identifier':
-        return None, None
-    if not prop:
-        return None, None
-    if node.get('computed'):
-        if is_string_literal(prop):
-            return obj['name'], prop['value']
-        return None, None
-    if prop.get('type') == 'Identifier':
-        return obj['name'], prop['name']
-    return None, None
 
 
 class ClassStringDecoder(Transform):
@@ -84,7 +62,7 @@ class ClassStringDecoder(Transform):
             if node.get('operator') != '=':
                 return
 
-            var_name, prop_name = _get_member_names(node.get('left'))
+            var_name, prop_name = get_member_names(node.get('left'))
             if not var_name:
                 return
 
@@ -105,7 +83,7 @@ class ClassStringDecoder(Transform):
         props = class_props.get(var_name, {})
         resolved = []
         for el in elements:
-            el_obj, el_prop = _get_member_names(el)
+            el_obj, el_prop = get_member_names(el)
             if not el_obj or el_obj != var_name:
                 return None
             value = props.get(el_prop)
@@ -195,7 +173,7 @@ class ClassStringDecoder(Transform):
                 continue
             for decl in stmt.get('declarations', []):
                 init = decl.get('init')
-                obj_name, prop_name = _get_member_names(init)
+                obj_name, prop_name = get_member_names(init)
                 if obj_name and prop_name:
                     decl_id = decl.get('id')
                     if decl_id and decl_id.get('type') == 'Identifier':
@@ -299,7 +277,7 @@ class ClassStringDecoder(Transform):
             if node.get('type') != 'CallExpression':
                 return
             callee = node.get('callee')
-            obj_name, method_name = _get_member_names(callee)
+            obj_name, method_name = get_member_names(callee)
             if not obj_name:
                 return
 
@@ -316,7 +294,7 @@ class ClassStringDecoder(Transform):
 
             # Track the assignment target so we can inline the constant later
             if parent and parent.get('type') == 'AssignmentExpression' and key == 'right':
-                lobj, lprop = _get_member_names(parent.get('left'))
+                lobj, lprop = get_member_names(parent.get('left'))
                 if lobj and lprop:
                     decoded_constants[(lobj, lprop)] = decoded
 
@@ -338,7 +316,7 @@ class ClassStringDecoder(Transform):
             if parent and parent.get('type') == 'AssignmentExpression' and key == 'left':
                 return
 
-            obj_name, prop_name = _get_member_names(node)
+            obj_name, prop_name = get_member_names(node)
             if not obj_name:
                 return
 

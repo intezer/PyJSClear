@@ -9,17 +9,9 @@ And simplifies to:
 from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
 from ..utils.ast_helpers import is_literal
+from ..utils.ast_helpers import is_null_literal
+from ..utils.ast_helpers import is_undefined
 from .base import Transform
-
-
-def _is_null_literal(node):
-    """Check if node is `null`."""
-    return isinstance(node, dict) and node.get('type') == 'Literal' and node.get('value') is None
-
-
-def _is_undefined_identifier(node):
-    """Check if node is `undefined`."""
-    return is_identifier(node) and node.get('name') == 'undefined'
 
 
 def _identifiers_match(a, b):
@@ -74,10 +66,10 @@ class NullishCoalescing(Transform):
         undef_right = undef_check.get('right')
 
         # Determine which side has null and which has undefined
-        if _is_null_literal(null_right) and _is_undefined_identifier(undef_right):
+        if is_null_literal(null_right) and is_undefined(undef_right):
             checked_in_null = null_left
             checked_in_undef = undef_left
-        elif _is_null_literal(null_left) and _is_undefined_identifier(undef_left):
+        elif is_null_literal(null_left) and is_undefined(undef_left):
             checked_in_null = null_right
             checked_in_undef = undef_right
         else:
@@ -91,10 +83,7 @@ class NullishCoalescing(Transform):
         ):
             tmp_var = checked_in_null.get('left')
             value_expr = checked_in_null.get('right')
-            if (
-                _identifiers_match(tmp_var, checked_in_undef)
-                and _identifiers_match(tmp_var, consequent)
-            ):
+            if _identifiers_match(tmp_var, checked_in_undef) and _identifiers_match(tmp_var, consequent):
                 return {
                     'type': 'LogicalExpression',
                     'operator': '??',
@@ -103,10 +92,7 @@ class NullishCoalescing(Transform):
                 }
 
         # Case 2: X !== null && X !== undefined ? X : default (no temp assignment)
-        if (
-            _identifiers_match(checked_in_null, checked_in_undef)
-            and _identifiers_match(checked_in_null, consequent)
-        ):
+        if _identifiers_match(checked_in_null, checked_in_undef) and _identifiers_match(checked_in_null, consequent):
             return {
                 'type': 'LogicalExpression',
                 'operator': '??',

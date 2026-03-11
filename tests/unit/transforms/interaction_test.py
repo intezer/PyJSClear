@@ -116,7 +116,7 @@ class TestFullPipelineSmoke:
 
     def test_simple_code_roundtrip(self):
         result = deobfuscate('var x = 1;')
-        assert result == 'var x = 1;'
+        assert result == 'const x = 1;'
 
     def test_constant_folding_in_pipeline(self):
         result = deobfuscate('var x = 1 + 2;')

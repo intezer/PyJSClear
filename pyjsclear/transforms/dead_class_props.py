@@ -17,28 +17,10 @@ Uses two strategies:
 from ..traverser import REMOVE
 from ..traverser import simple_traverse
 from ..traverser import traverse
+from ..utils.ast_helpers import get_member_names
 from ..utils.ast_helpers import is_identifier
 from ..utils.ast_helpers import is_string_literal
 from .base import Transform
-
-
-def _get_member_names(node):
-    """Extract (object_name, property_name) from a MemberExpression."""
-    if not node or node.get('type') != 'MemberExpression':
-        return None, None
-    obj = node.get('object')
-    prop = node.get('property')
-    if not obj or not is_identifier(obj):
-        return None, None
-    if not prop:
-        return None, None
-    if node.get('computed'):
-        if is_string_literal(prop):
-            return obj['name'], prop['value']
-        return None, None
-    if is_identifier(prop):
-        return obj['name'], prop['name']
-    return None, None
 
 
 class DeadClassPropRemover(Transform):
@@ -190,7 +172,7 @@ class DeadClassPropRemover(Transform):
         def count_prop_refs(node, parent):
             if node.get('type') != 'MemberExpression':
                 return
-            obj_name, prop_name = _get_member_names(node)
+            obj_name, prop_name = get_member_names(node)
             if not obj_name or obj_name not in class_vars:
                 return
             canonical = _normalize(obj_name)
@@ -222,7 +204,7 @@ class DeadClassPropRemover(Transform):
             def collect_all_dead(node, parent):
                 if node.get('type') != 'AssignmentExpression' or node.get('operator') != '=':
                     return
-                obj_name, prop_name = _get_member_names(node.get('left'))
+                obj_name, prop_name = get_member_names(node.get('left'))
                 if obj_name and obj_name in fully_dead_canonical:
                     dead_props.add((_normalize(obj_name), prop_name))
 
@@ -243,7 +225,7 @@ class DeadClassPropRemover(Transform):
             if not expr:
                 return
             if expr.get('type') == 'AssignmentExpression' and expr.get('operator') == '=':
-                obj_name, prop_name = _get_member_names(expr.get('left'))
+                obj_name, prop_name = get_member_names(expr.get('left'))
                 if obj_name and _is_dead(obj_name, prop_name):
                     self.set_changed()
                     return REMOVE
@@ -252,7 +234,7 @@ class DeadClassPropRemover(Transform):
                 remaining = []
                 for e in exprs:
                     if e.get('type') == 'AssignmentExpression' and e.get('operator') == '=':
-                        obj_name, prop_name = _get_member_names(e.get('left'))
+                        obj_name, prop_name = get_member_names(e.get('left'))
                         if obj_name and _is_dead(obj_name, prop_name):
                             self.set_changed()
                             continue
