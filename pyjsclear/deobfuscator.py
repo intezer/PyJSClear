@@ -7,7 +7,6 @@ from .transforms.aa_decode import is_aa_encoded
 from .transforms.anti_tamper import AntiTamperRemover
 from .transforms.class_static_resolver import ClassStaticResolver
 from .transforms.class_string_decoder import ClassStringDecoder
-from .transforms.enum_resolver import EnumResolver
 from .transforms.cleanup import OptionalCatchBinding
 from .transforms.cleanup import ReturnUndefinedCleanup
 from .transforms.cleanup import VarToConst
@@ -16,7 +15,9 @@ from .transforms.control_flow import ControlFlowRecoverer
 from .transforms.dead_branch import DeadBranchRemover
 from .transforms.dead_class_props import DeadClassPropRemover
 from .transforms.dead_expressions import DeadExpressionRemover
+from .transforms.dead_object_props import DeadObjectPropRemover
 from .transforms.else_if_flatten import ElseIfFlattener
+from .transforms.enum_resolver import EnumResolver
 from .transforms.eval_unpack import eval_unpack
 from .transforms.eval_unpack import is_eval_packed
 from .transforms.expression_simplifier import ExpressionSimplifier
@@ -68,6 +69,7 @@ TRANSFORM_CLASSES = [
     ReassignmentRemover,
     SingleUseVarInliner,
     DeadBranchRemover,
+    DeadObjectPropRemover,
     ObjectPacker,
     ProxyFunctionInliner,
     SequenceSplitter,
