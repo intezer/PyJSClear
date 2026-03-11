@@ -1,12 +1,11 @@
 """Tests for the SingleUseVarInliner transform."""
 
 from pyjsclear.transforms.single_use_vars import SingleUseVarInliner
-from pyjsclear.transforms.single_use_vars import _is_require_call
 from tests.unit.conftest import roundtrip
 
 
-class TestBasicInlining:
-    """Tests for basic single-use require() inlining."""
+class TestRequireInlining:
+    """Tests for single-use require() inlining."""
 
     def test_simple_require_inlined(self):
         code = '''
@@ -44,6 +43,67 @@ class TestBasicInlining:
         assert 'var x' not in result
 
 
+class TestExpressionInlining:
+    """Tests for single-use non-require expression inlining."""
+
+    def test_property_access_inlined(self):
+        code = '''
+        function f() {
+            const x = obj.prop;
+            return x.foo;
+        }
+        '''
+        result, changed = roundtrip(code, SingleUseVarInliner)
+        assert changed is True
+        assert 'obj.prop.foo' in result
+        assert 'const x' not in result
+
+    def test_method_call_inlined(self):
+        code = '''
+        function f(arr) {
+            const x = Buffer.from(arr);
+            return x.toString();
+        }
+        '''
+        result, changed = roundtrip(code, SingleUseVarInliner)
+        assert changed is True
+        assert 'Buffer.from(arr).toString()' in result
+
+    def test_new_expression_inlined(self):
+        code = '''
+        function f() {
+            const d = new Date();
+            return d.getTime();
+        }
+        '''
+        result, changed = roundtrip(code, SingleUseVarInliner)
+        assert changed is True
+        assert 'new Date().getTime()' in result
+
+    def test_string_literal_inlined(self):
+        code = '''
+        function f() {
+            const url = "https://example.com";
+            fetch(url);
+        }
+        '''
+        result, changed = roundtrip(code, SingleUseVarInliner)
+        assert changed is True
+        assert 'fetch("https://example.com")' in result
+        assert 'const url' not in result
+
+    def test_simple_call_inlined(self):
+        code = '''
+        function f(x) {
+            const n = parseInt(x);
+            return n + 1;
+        }
+        '''
+        result, changed = roundtrip(code, SingleUseVarInliner)
+        assert changed is True
+        assert 'parseInt(x) + 1' in result
+
+
 class TestNoInlining:
     """Tests where inlining should NOT occur."""
 
@@ -53,16 +113,6 @@ class TestNoInlining:
             const fs = require("fs");
             fs.readFileSync("a");
             fs.writeFileSync("b", "c");
-        }
-        '''
-        result, changed = roundtrip(code, SingleUseVarInliner)
-        assert changed is False
-
-    def test_non_require_call_not_inlined(self):
-        code = '''
-        function f() {
-            const x = getData("foo");
-            return x.bar;
         }
         '''
         result, changed = roundtrip(code, SingleUseVarInliner)
@@ -79,25 +129,50 @@ class TestNoInlining:
         result, changed = roundtrip(code, SingleUseVarInliner)
         assert changed is False
 
-    def test_no_require_returns_false(self):
-        result, changed = roundtrip('var x = 1;', SingleUseVarInliner)
+    def test_no_init_returns_false(self):
+        result, changed = roundtrip('var x;', SingleUseVarInliner)
         assert changed is False
 
-    def test_require_no_args_not_inlined(self):
+    def test_large_init_not_inlined(self):
+        """Init expressions with too many AST nodes should not be inlined."""
+        # Build a deeply nested expression that exceeds the node limit
         code = '''
         function f() {
-            const x = require();
-            return x.foo;
+            const x = a.b.c.d(e.f.g(h.i.j(k, l, m), n), o, p);
+            return x;
         }
         '''
         result, changed = roundtrip(code, SingleUseVarInliner)
         assert changed is False
 
-    def test_require_numeric_arg_not_inlined(self):
+    def test_assignment_target_not_inlined(self):
         code = '''
         function f() {
-            const x = require(42);
-            return x.foo;
+            const x = obj.prop;
+            x = 42;
+        }
+        '''
+        result, changed = roundtrip(code, SingleUseVarInliner)
+        assert changed is False
+
+    def test_mutated_member_not_inlined(self):
+        """var x = {}; x[key] = val; should NOT inline to {}[key] = val."""
+        code = '''
+        function f() {
+            var x = {};
+            x["foo"] = 42;
+        }
+        '''
+        result, changed = roundtrip(code, SingleUseVarInliner)
+        assert changed is False
+        assert 'var x' in result
+
+    def test_mutated_dot_member_not_inlined(self):
+        """var x = {}; x.foo = val; should NOT inline."""
+        code = '''
+        function f() {
+            var x = {};
+            x.foo = 42;
         }
         '''
         result, changed = roundtrip(code, SingleUseVarInliner)
@@ -136,70 +211,15 @@ class TestNestedContexts:
     def test_multiple_scopes_inlined(self):
         code = '''
         function a() {
-            const x = require("fs");
-            x.readFileSync("a");
+            const x = obj.foo;
+            use(x);
         }
         function b() {
-            const y = require("path");
-            y.join("a", "b");
+            const y = obj.bar;
+            use(y);
         }
         '''
         result, changed = roundtrip(code, SingleUseVarInliner)
         assert changed is True
         assert 'const x' not in result
         assert 'const y' not in result
-
-
-class TestIsRequireCall:
-    """Tests for the _is_require_call helper."""
-
-    def test_valid_require(self):
-        node = {
-            'type': 'CallExpression',
-            'callee': {'type': 'Identifier', 'name': 'require'},
-            'arguments': [{'type': 'Literal', 'value': 'fs'}],
-        }
-        assert _is_require_call(node) is True
-
-    def test_non_require_callee(self):
-        node = {
-            'type': 'CallExpression',
-            'callee': {'type': 'Identifier', 'name': 'import'},
-            'arguments': [{'type': 'Literal', 'value': 'fs'}],
-        }
-        assert _is_require_call(node) is False
-
-    def test_not_call_expression(self):
-        assert _is_require_call({'type': 'Literal', 'value': 1}) is False
-        assert _is_require_call(None) is False
-
-    def test_numeric_arg(self):
-        node = {
-            'type': 'CallExpression',
-            'callee': {'type': 'Identifier', 'name': 'require'},
-            'arguments': [{'type': 'Literal', 'value': 42}],
-        }
-        assert _is_require_call(node) is False
-
-    def test_multiple_args(self):
-        node = {
-            'type': 'CallExpression',
-            'callee': {'type': 'Identifier', 'name': 'require'},
-            'arguments': [
-                {'type': 'Literal', 'value': 'fs'},
-                {'type': 'Literal', 'value': 'extra'},
-            ],
-        }
-        assert _is_require_call(node) is False
-
-    def test_member_callee(self):
-        node = {
-            'type': 'CallExpression',
-            'callee': {
-                'type': 'MemberExpression',
-                'object': {'type': 'Identifier', 'name': 'module'},
-                'property': {'type': 'Identifier', 'name': 'require'},
-            },
-            'arguments': [{'type': 'Literal', 'value': 'fs'}],
-        }
-        assert _is_require_call(node) is False
