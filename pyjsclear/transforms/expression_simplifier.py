@@ -45,6 +45,7 @@ class ExpressionSimplifier(Transform):
         self._simplify_unary_binary()
         self._simplify_conditionals()
         self._simplify_awaits()
+        self._simplify_comma_calls()
         self._simplify_method_calls()
         return self.has_changed()
 
@@ -97,6 +98,27 @@ class ExpressionSimplifier(Transform):
             if len(exprs) <= 1:
                 return
             node['argument'] = exprs[-1]
+            self.set_changed()
+
+        traverse(self.ast, {'enter': enter})
+
+    def _simplify_comma_calls(self):
+        """Simplify (0, expr)(args) → expr(args)."""
+
+        def enter(node, parent, key, index):
+            if node.get('type') != 'CallExpression':
+                return
+            callee = node.get('callee')
+            if not isinstance(callee, dict) or callee.get('type') != 'SequenceExpression':
+                return
+            exprs = callee.get('expressions', [])
+            if len(exprs) < 2:
+                return
+            # Only simplify when the leading expressions are side-effect-free literals
+            for expr in exprs[:-1]:
+                if not isinstance(expr, dict) or expr.get('type') != 'Literal':
+                    return
+            node['callee'] = exprs[-1]
             self.set_changed()
 
         traverse(self.ast, {'enter': enter})

