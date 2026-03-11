@@ -27,13 +27,13 @@ def _is_constant_expr(node):
     """Check if a node is a constant expression safe to inline."""
     if not isinstance(node, dict):
         return False
-    t = node.get('type')
-    if t == 'Literal':
-        return True
-    if t == 'UnaryExpression' and node.get('operator') in ('-', '+', '!', '~'):
-        return _is_constant_expr(node.get('argument'))
-    if t == 'ArrayExpression':
-        return all(_is_constant_expr(el) for el in (node.get('elements') or []) if el)
+    match node.get('type'):
+        case 'Literal':
+            return True
+        case 'UnaryExpression' if node.get('operator') in ('-', '+', '!', '~'):
+            return _is_constant_expr(node.get('argument'))
+        case 'ArrayExpression':
+            return all(_is_constant_expr(el) for el in (node.get('elements') or []) if el)
     return False
 
 

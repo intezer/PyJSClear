@@ -103,12 +103,13 @@ class ClassStringDecoder(Transform):
             method_key = node.get('key')
             if not method_key:
                 return
-            if method_key.get('type') == 'Literal' and isinstance(method_key.get('value'), str):
-                method_name = method_key['value']
-            elif method_key.get('type') == 'Identifier':
-                method_name = method_key['name']
-            else:
-                return
+            match method_key.get('type'):
+                case 'Literal' if isinstance(method_key.get('value'), str):
+                    method_name = method_key['value']
+                case 'Identifier':
+                    method_name = method_key['name']
+                case _:
+                    return
 
             func = node.get('value')
             if not func or func.get('type') != 'FunctionExpression':

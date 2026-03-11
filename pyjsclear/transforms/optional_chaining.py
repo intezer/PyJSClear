@@ -11,15 +11,11 @@ Also handles temp assignment patterns:
 """
 
 from ..traverser import traverse
+from ..utils.ast_helpers import identifiers_match
 from ..utils.ast_helpers import is_identifier
 from ..utils.ast_helpers import is_null_literal
 from ..utils.ast_helpers import is_undefined
 from .base import Transform
-
-
-def _identifiers_match(a, b):
-    """Check if two nodes are the same identifier."""
-    return is_identifier(a) and is_identifier(b) and a.get('name') == b.get('name')
 
 
 def _nodes_match(a, b):
@@ -110,7 +106,7 @@ class OptionalChaining(Transform):
             ):
                 tmp_var = null_checked.get('left')
                 value_expr = null_checked.get('right')
-                if _identifiers_match(tmp_var, undef_checked):
+                if identifiers_match(tmp_var, undef_checked):
                     # The alternate should use tmp_var as the object
                     checked_var = tmp_var
                     # We'll replace tmp_var references in alternate with value_expr

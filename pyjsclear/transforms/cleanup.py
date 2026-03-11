@@ -11,34 +11,8 @@ from ..traverser import REMOVE
 from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
+from ..utils.ast_helpers import is_side_effect_free
 from .base import Transform
-
-
-def _is_side_effect_free(node):
-    """Check if an expression node is side-effect-free (safe to discard)."""
-    if not isinstance(node, dict):
-        return False
-    t = node.get('type')
-    if t == 'Literal':
-        return True
-    if t == 'Identifier':
-        return True
-    if t == 'MemberExpression':
-        return _is_side_effect_free(node.get('object')) and (
-            not node.get('computed') or _is_side_effect_free(node.get('property'))
-        )
-    if t == 'UnaryExpression':
-        if node.get('operator') in ('-', '+', '!', '~', 'typeof', 'void'):
-            return _is_side_effect_free(node.get('argument'))
-    if t == 'BinaryExpression' or t == 'LogicalExpression':
-        return _is_side_effect_free(node.get('left')) and _is_side_effect_free(node.get('right'))
-    if t == 'ConditionalExpression':
-        return (
-            _is_side_effect_free(node.get('test'))
-            and _is_side_effect_free(node.get('consequent'))
-            and _is_side_effect_free(node.get('alternate'))
-        )
-    return False
 
 
 class EmptyIfRemover(Transform):
@@ -59,7 +33,7 @@ class EmptyIfRemover(Transform):
             alternate = node.get('alternate')
             if not alternate:
                 # if (expr) {} — remove entirely if test is pure
-                if _is_side_effect_free(node.get('test')):
+                if is_side_effect_free(node.get('test')):
                     self.set_changed()
                     return REMOVE
             else:

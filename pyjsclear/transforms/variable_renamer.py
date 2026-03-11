@@ -454,16 +454,17 @@ class VariableRenamer(Transform):
                 if func_id and func_id.get('type') == 'Identifier' and func_id.get('name') == old_name:
                     func_id['name'] = new_name
             elif kind == 'param':
-                if node.get('type') == 'Identifier' and node.get('name') == old_name:
-                    node['name'] = new_name
-                elif node.get('type') == 'AssignmentPattern':
-                    left = node.get('left')
-                    if left and left.get('type') == 'Identifier' and left.get('name') == old_name:
-                        left['name'] = new_name
-                elif node.get('type') == 'RestElement':
-                    arg = node.get('argument')
-                    if arg and arg.get('type') == 'Identifier' and arg.get('name') == old_name:
-                        arg['name'] = new_name
+                match node.get('type'):
+                    case 'Identifier' if node.get('name') == old_name:
+                        node['name'] = new_name
+                    case 'AssignmentPattern':
+                        left = node.get('left')
+                        if left and left.get('type') == 'Identifier' and left.get('name') == old_name:
+                            left['name'] = new_name
+                    case 'RestElement':
+                        arg = node.get('argument')
+                        if arg and arg.get('type') == 'Identifier' and arg.get('name') == old_name:
+                            arg['name'] = new_name
 
         # 2. Rename at all reference sites
         for ref_node, ref_parent, ref_key, ref_index in binding.references:

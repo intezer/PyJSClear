@@ -252,6 +252,42 @@ def replace_identifiers(node, param_map):
                 replace_identifiers(child, param_map)
 
 
+def identifiers_match(a, b):
+    """Check if two nodes are the same identifier."""
+    return is_identifier(a) and is_identifier(b) and a.get('name') == b.get('name')
+
+
+def is_side_effect_free(node):
+    """Check if an expression node is side-effect-free (safe to discard)."""
+    if not isinstance(node, dict):
+        return False
+    match node.get('type'):
+        case 'Literal' | 'Identifier':
+            return True
+        case 'MemberExpression':
+            return is_side_effect_free(node.get('object')) and (
+                not node.get('computed') or is_side_effect_free(node.get('property'))
+            )
+        case 'UnaryExpression':
+            if node.get('operator') in ('-', '+', '!', '~', 'typeof', 'void'):
+                return is_side_effect_free(node.get('argument'))
+        case 'BinaryExpression' | 'LogicalExpression':
+            return is_side_effect_free(node.get('left')) and is_side_effect_free(node.get('right'))
+        case 'ConditionalExpression':
+            return (
+                is_side_effect_free(node.get('test'))
+                and is_side_effect_free(node.get('consequent'))
+                and is_side_effect_free(node.get('alternate'))
+            )
+        case 'ArrayExpression':
+            return all(is_side_effect_free(el) for el in (node.get('elements') or []) if el)
+        case 'ObjectExpression':
+            return all(is_side_effect_free(prop.get('value')) for prop in (node.get('properties') or []))
+        case 'TemplateLiteral':
+            return all(is_side_effect_free(expr) for expr in (node.get('expressions') or []))
+    return False
+
+
 def get_member_names(node):
     """Extract (object_name, property_name) from a MemberExpression.
 

@@ -13,6 +13,7 @@ from ..traverser import REMOVE
 from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
+from ..utils.ast_helpers import is_side_effect_free
 from .base import Transform
 
 
@@ -141,40 +142,9 @@ class DeadObjectPropRemover(Transform):
             if pair in dead_props:
                 # Only remove if the RHS is side-effect-free
                 rhs = expr.get('right')
-                if self._is_side_effect_free(rhs):
+                if is_side_effect_free(rhs):
                     self.set_changed()
                     return REMOVE
 
         traverse(self.ast, {'enter': remove_dead})
         return self.has_changed()
-
-    @staticmethod
-    def _is_side_effect_free(node):
-        """Check if an expression node is side-effect-free (safe to remove)."""
-        if not node:
-            return False
-        t = node.get('type')
-        if t == 'Literal':
-            return True
-        if t == 'Identifier':
-            return True
-        if t == 'MemberExpression':
-            return True
-        if t == 'UnaryExpression':
-            op = node.get('operator')
-            if op in ('-', '+', '!', '~', 'typeof', 'void'):
-                return DeadObjectPropRemover._is_side_effect_free(node.get('argument'))
-        if t == 'BinaryExpression':
-            return DeadObjectPropRemover._is_side_effect_free(
-                node.get('left')
-            ) and DeadObjectPropRemover._is_side_effect_free(node.get('right'))
-        if t == 'ArrayExpression':
-            return all(DeadObjectPropRemover._is_side_effect_free(el) for el in (node.get('elements') or []) if el)
-        if t == 'ObjectExpression':
-            for prop in node.get('properties') or []:
-                if not DeadObjectPropRemover._is_side_effect_free(prop.get('value')):
-                    return False
-            return True
-        if t == 'TemplateLiteral':
-            return all(DeadObjectPropRemover._is_side_effect_free(expr) for expr in (node.get('expressions') or []))
-        return False

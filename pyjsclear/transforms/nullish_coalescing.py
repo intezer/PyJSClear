@@ -7,16 +7,12 @@ And simplifies to:
 """
 
 from ..traverser import traverse
+from ..utils.ast_helpers import identifiers_match
 from ..utils.ast_helpers import is_identifier
 from ..utils.ast_helpers import is_literal
 from ..utils.ast_helpers import is_null_literal
 from ..utils.ast_helpers import is_undefined
 from .base import Transform
-
-
-def _identifiers_match(a, b):
-    """Check if two nodes are the same identifier."""
-    return is_identifier(a) and is_identifier(b) and a.get('name') == b.get('name')
 
 
 class NullishCoalescing(Transform):
@@ -83,7 +79,7 @@ class NullishCoalescing(Transform):
         ):
             tmp_var = checked_in_null.get('left')
             value_expr = checked_in_null.get('right')
-            if _identifiers_match(tmp_var, checked_in_undef) and _identifiers_match(tmp_var, consequent):
+            if identifiers_match(tmp_var, checked_in_undef) and identifiers_match(tmp_var, consequent):
                 return {
                     'type': 'LogicalExpression',
                     'operator': '??',
@@ -92,7 +88,7 @@ class NullishCoalescing(Transform):
                 }
 
         # Case 2: X !== null && X !== undefined ? X : default (no temp assignment)
-        if _identifiers_match(checked_in_null, checked_in_undef) and _identifiers_match(checked_in_null, consequent):
+        if identifiers_match(checked_in_null, checked_in_undef) and identifiers_match(checked_in_null, consequent):
             return {
                 'type': 'LogicalExpression',
                 'operator': '??',
