@@ -32,6 +32,7 @@ from .transforms.jsfuck_decode import is_jsfuck
 from .transforms.jsfuck_decode import jsfuck_decode
 from .transforms.logical_to_if import LogicalToIf
 from .transforms.member_chain_resolver import MemberChainResolver
+from .transforms.noop_calls import NoopCallRemover
 from .transforms.nullish_coalescing import NullishCoalescing
 from .transforms.object_packer import ObjectPacker
 from .transforms.object_simplifier import ObjectSimplifier
@@ -71,6 +72,7 @@ TRANSFORM_CLASSES = [
     SingleUseVarInliner,
     DeadBranchRemover,
     UnreachableCodeRemover,
+    NoopCallRemover,
     DeadObjectPropRemover,
     ObjectPacker,
     ProxyFunctionInliner,
