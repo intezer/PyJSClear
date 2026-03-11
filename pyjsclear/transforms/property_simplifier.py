@@ -40,4 +40,22 @@ class PropertySimplifier(Transform):
                     self.set_changed()
 
         traverse(self.ast, {'enter': enter_obj})
+
+        # Simplify method definitions with string literal keys:
+        # static ["name"]() → static name()
+        # Also handles cases where parser sets computed=False but key is still a Literal
+        def enter_method(node, parent, key, index):
+            if node.get('type') != 'MethodDefinition':
+                return
+            key_node = node.get('key')
+            if not is_string_literal(key_node):
+                return
+            name = key_node.get('value', '')
+            if not is_valid_identifier(name):
+                return
+            node['computed'] = False
+            node['key'] = {'type': 'Identifier', 'name': name}
+            self.set_changed()
+
+        traverse(self.ast, {'enter': enter_method})
         return self.has_changed()

