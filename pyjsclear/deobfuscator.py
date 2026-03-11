@@ -25,6 +25,7 @@ from .transforms.jj_decode import jj_decode_via_eval
 from .transforms.jsfuck_decode import is_jsfuck
 from .transforms.jsfuck_decode import jsfuck_decode
 from .transforms.logical_to_if import LogicalToIf
+from .transforms.nullish_coalescing import NullishCoalescing
 from .transforms.member_chain_resolver import MemberChainResolver
 from .transforms.object_packer import ObjectPacker
 from .transforms.object_simplifier import ObjectSimplifier
@@ -61,6 +62,7 @@ TRANSFORM_CLASSES = [
     SequenceSplitter,
     DeadExpressionRemover,
     ExpressionSimplifier,
+    NullishCoalescing,
     LogicalToIf,
     ElseIfFlattener,
     ControlFlowRecoverer,
