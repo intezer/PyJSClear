@@ -8,7 +8,7 @@ Python package with no Node.js dependency.
 from .deobfuscator import Deobfuscator
 
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
 
 def deobfuscate(code, max_iterations=50):
