@@ -40,6 +40,7 @@ from .transforms.sequence_splitter import SequenceSplitter
 from .transforms.single_use_vars import SingleUseVarInliner
 from .transforms.string_revealer import StringRevealer
 from .transforms.unused_vars import UnusedVariableRemover
+from .transforms.variable_renamer import VariableRenamer
 from .transforms.xor_string_decode import XorStringDecoder
 from .traverser import simple_traverse
 
@@ -209,6 +210,13 @@ class Deobfuscator:
 
             if not modified:
                 break
+
+        # Post-pass: rename obfuscated identifiers (runs once, outside the loop)
+        try:
+            if VariableRenamer(ast).execute():
+                any_transform_changed = True
+        except Exception:
+            pass
 
         if not any_transform_changed:
             return self.original_code
