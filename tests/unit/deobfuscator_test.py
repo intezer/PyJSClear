@@ -16,8 +16,8 @@ class TestTransformClasses:
     """Tests for the TRANSFORM_CLASSES list."""
 
     def test_transform_classes_length(self):
-        """TRANSFORM_CLASSES has exactly 16 entries, with StringRevealer appearing twice."""
-        assert len(TRANSFORM_CLASSES) == 16
+        """TRANSFORM_CLASSES has exactly 22 entries, with StringRevealer appearing twice."""
+        assert len(TRANSFORM_CLASSES) == 22
 
     def test_string_revealer_appears_twice(self):
         from pyjsclear.transforms.string_revealer import StringRevealer

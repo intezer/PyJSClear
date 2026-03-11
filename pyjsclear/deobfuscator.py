@@ -5,25 +5,31 @@ from .parser import parse
 from .transforms.aa_decode import aa_decode
 from .transforms.aa_decode import is_aa_encoded
 from .transforms.anti_tamper import AntiTamperRemover
+from .transforms.class_string_decoder import ClassStringDecoder
 from .transforms.constant_prop import ConstantProp
 from .transforms.control_flow import ControlFlowRecoverer
 from .transforms.dead_branch import DeadBranchRemover
+from .transforms.dead_class_props import DeadClassPropRemover
 from .transforms.eval_unpack import eval_unpack
 from .transforms.eval_unpack import is_eval_packed
 from .transforms.expression_simplifier import ExpressionSimplifier
+from .transforms.global_alias import GlobalAliasInliner
 from .transforms.hex_escapes import HexEscapes
 from .transforms.hex_escapes import decode_hex_escapes_source
+from .transforms.hex_numerics import HexNumerics
 from .transforms.jj_decode import is_jj_encoded
 from .transforms.jj_decode import jj_decode
 from .transforms.jj_decode import jj_decode_via_eval
 from .transforms.jsfuck_decode import is_jsfuck
 from .transforms.jsfuck_decode import jsfuck_decode
 from .transforms.logical_to_if import LogicalToIf
+from .transforms.member_chain_resolver import MemberChainResolver
 from .transforms.object_packer import ObjectPacker
 from .transforms.object_simplifier import ObjectSimplifier
 from .transforms.property_simplifier import PropertySimplifier
 from .transforms.proxy_functions import ProxyFunctionInliner
 from .transforms.reassignment import ReassignmentRemover
+from .transforms.require_inliner import RequireInliner
 from .transforms.sequence_splitter import SequenceSplitter
 from .transforms.string_revealer import StringRevealer
 from .transforms.unused_vars import UnusedVariableRemover
@@ -36,6 +42,12 @@ from .traverser import simple_traverse
 TRANSFORM_CLASSES = [
     StringRevealer,
     HexEscapes,
+    HexNumerics,
+    ClassStringDecoder,
+    MemberChainResolver,
+    DeadClassPropRemover,
+    RequireInliner,
+    GlobalAliasInliner,
     UnusedVariableRemover,
     ConstantProp,
     ReassignmentRemover,
