@@ -6,6 +6,8 @@ from .transforms.aa_decode import aa_decode
 from .transforms.aa_decode import is_aa_encoded
 from .transforms.anti_tamper import AntiTamperRemover
 from .transforms.class_string_decoder import ClassStringDecoder
+from .transforms.cleanup import OptionalCatchBinding
+from .transforms.cleanup import ReturnUndefinedCleanup
 from .transforms.constant_prop import ConstantProp
 from .transforms.control_flow import ControlFlowRecoverer
 from .transforms.dead_branch import DeadBranchRemover
@@ -35,6 +37,7 @@ from .transforms.proxy_functions import ProxyFunctionInliner
 from .transforms.reassignment import ReassignmentRemover
 from .transforms.require_inliner import RequireInliner
 from .transforms.sequence_splitter import SequenceSplitter
+from .transforms.single_use_vars import SingleUseVarInliner
 from .transforms.string_revealer import StringRevealer
 from .transforms.unused_vars import UnusedVariableRemover
 from .transforms.xor_string_decode import XorStringDecoder
@@ -57,6 +60,7 @@ TRANSFORM_CLASSES = [
     UnusedVariableRemover,
     ConstantProp,
     ReassignmentRemover,
+    SingleUseVarInliner,
     DeadBranchRemover,
     ObjectPacker,
     ProxyFunctionInliner,
@@ -67,6 +71,8 @@ TRANSFORM_CLASSES = [
     OptionalChaining,
     LogicalToIf,
     ElseIfFlattener,
+    OptionalCatchBinding,
+    ReturnUndefinedCleanup,
     ControlFlowRecoverer,
     PropertySimplifier,
     AntiTamperRemover,

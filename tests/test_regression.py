@@ -8,6 +8,7 @@ Tests cover:
 - Residual _0x parameter names (not decoder calls)
 - 2-element array negative test (below threshold)
 - No-obfuscation passthrough
+- Full pipeline sample.js (esbuild-bundled malware)
 - Cross-cutting quality invariants
 """
 
@@ -15,13 +16,18 @@ import os
 import re
 from pathlib import Path
 
+import pytest
+
 import pyjsclear
+from pyjsclear.parser import parse
 
 
-SAMPLES_DIR = Path(__file__).parent / 'resources' / 'regression_samples'
+RESOURCES_DIR = Path(__file__).parent / 'resources'
+SAMPLES_DIR = RESOURCES_DIR / 'regression_samples'
 
 RE_0X = re.compile(r'\b_0x[0-9a-fA-F]{2,}\b')
 RE_HEX = re.compile(r'\\x[0-9a-fA-F]{2}')
+RE_HEX_NUMERIC = re.compile(r'\b0x[0-9a-fA-F]+\b')
 
 
 def _deobfuscate(filename):
@@ -512,6 +518,148 @@ class TestMultipleDecoders:
         code, result = _deobfuscate('string_multiple.js')
         assert len(result) < 300, f'Expected compact output, got {len(result)} chars'
         assert 'forEach' in result
+
+
+# ================================================================
+# Full pipeline: esbuild-bundled sample.js
+# ================================================================
+
+
+def _deobfuscate_resource(filename):
+    """Load and deobfuscate a file from tests/resources/."""
+    code = (RESOURCES_DIR / filename).read_text()
+    result = pyjsclear.deobfuscate(code)
+    return code, result
+
+
+@pytest.fixture(scope='module')
+def sample_result():
+    """Deobfuscate sample.js once for the entire module."""
+    return _deobfuscate_resource('sample.js')
+
+
+class TestSampleOutputValidity:
+    """The sample output must be valid, parseable JavaScript."""
+
+    def test_output_parses(self, sample_result):
+        _, result = sample_result
+        ast = parse(result)
+        assert ast is not None
+        assert ast.get('type') == 'Program'
+
+    def test_output_not_empty(self, sample_result):
+        _, result = sample_result
+        assert len(result.strip()) > 1000
+
+    def test_output_is_multiline(self, sample_result):
+        _, result = sample_result
+        assert len(result.splitlines()) > 100
+
+
+class TestSampleSizeInvariants:
+    """Sample output size should be reasonable — not bloated, not empty."""
+
+    def test_output_smaller_than_input(self, sample_result):
+        code, result = sample_result
+        assert len(result) < len(code), f'Output ({len(result)}) should be smaller than input ({len(code)})'
+
+    def test_output_not_too_small(self, sample_result):
+        code, result = sample_result
+        assert len(result) > len(code) * 0.3, f'Output suspiciously small: {len(result)} < 30% of {len(code)}'
+
+    def test_output_ratio_within_bounds(self, sample_result):
+        code, result = sample_result
+        ratio = len(result) / len(code)
+        assert 0.50 < ratio < 0.85, f'Output/input ratio {ratio:.2f} outside expected range 0.50–0.85'
+
+    def test_no_extremely_long_lines(self, sample_result):
+        _, result = sample_result
+        for i, line in enumerate(result.splitlines(), 1):
+            assert len(line) <= 2000, f'Line {i} is {len(line)} chars (max 2000). Preview: {line[:100]}...'
+
+    def test_few_long_lines(self, sample_result):
+        _, result = sample_result
+        long_lines = sum(1 for l in result.splitlines() if len(l) > 500)
+        assert long_lines <= 5, f'{long_lines} lines > 500 chars'
+
+
+class TestSampleEncodingCleanup:
+    """All hex/encoding artifacts should be cleaned up in the sample."""
+
+    def test_no_hex_escapes(self, sample_result):
+        _, result = sample_result
+        count = len(RE_HEX.findall(result))
+        assert count == 0, f'{count} hex escapes remain'
+
+    def test_no_hex_numeric_literals(self, sample_result):
+        _, result = sample_result
+        count = len(RE_HEX_NUMERIC.findall(result))
+        assert count == 0, f'{count} hex numeric literals remain (0x...)'
+
+
+class TestSampleDecodedStrings:
+    """Known strings that should appear in the sample deobfuscated output."""
+
+    @pytest.mark.parametrize(
+        'expected_string',
+        ['require', 'path', 'crypto', 'Buffer', 'toString', 'exports', 'function', 'return', 'const'],
+    )
+    def test_known_strings_present(self, sample_result, expected_string):
+        _, result = sample_result
+        assert expected_string in result, f'Expected string {expected_string!r} not found in output'
+
+    def test_require_calls_present(self, sample_result):
+        _, result = sample_result
+        assert re.search(r'require\(\s*["\']', result), 'No require("...") calls found'
+
+    def test_string_decode_effective(self, sample_result):
+        code, result = sample_result
+        input_0x = len(RE_0X.findall(code))
+        output_0x = len(RE_0X.findall(result))
+        reduction_pct = (input_0x - output_0x) / input_0x * 100
+        assert reduction_pct > 20, f'Only {reduction_pct:.0f}% _0x reduction ({input_0x} -> {output_0x})'
+
+
+class TestSampleModernJSFeatures:
+    """Transforms should produce modern JS constructs in the sample."""
+
+    def test_has_nullish_coalescing(self, sample_result):
+        _, result = sample_result
+        assert result.count('??') > 0, 'No ?? operators found'
+
+    def test_has_optional_chaining(self, sample_result):
+        _, result = sample_result
+        assert result.count('?.') > 0, 'No ?. operators found'
+
+    def test_has_else_if(self, sample_result):
+        _, result = sample_result
+        assert 'else if' in result, 'No else-if found'
+
+    def test_dot_notation_used(self, sample_result):
+        _, result = sample_result
+        dot_count = len(re.findall(r'\w\.\w', result))
+        bracket_count = len(re.findall(r'\w\["', result))
+        assert dot_count > bracket_count, f'More bracket ({bracket_count}) than dot ({dot_count}) accesses'
+
+
+class TestSampleRegressionGuards:
+    """Guards against specific bugs found during development."""
+
+    def test_no_proxy_inliner_blowup(self, sample_result):
+        """OptionalChaining + ProxyFunctionInliner interaction guard."""
+        _, result = sample_result
+        max_line_len = max(len(l) for l in result.splitlines())
+        assert max_line_len < 2000, f'Max line length {max_line_len} suggests proxy inliner blowup'
+
+    def test_helper_functions_preserved(self, sample_result):
+        _, result = sample_result
+        nested_typeof = len(re.findall(r'typeof.*typeof.*typeof.*typeof', result))
+        assert nested_typeof <= 3, f'{nested_typeof} deeply nested typeof chains'
+
+    def test_dead_expressions_removed(self, sample_result):
+        _, result = sample_result
+        bare_numbers = len(re.findall(r'^\s*\d+;\s*$', result, re.MULTILINE))
+        assert bare_numbers == 0, f'{bare_numbers} bare number statements remain'
 
 
 # ================================================================
