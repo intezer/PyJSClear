@@ -9,7 +9,9 @@ from .transforms.class_string_decoder import ClassStringDecoder
 from .transforms.constant_prop import ConstantProp
 from .transforms.control_flow import ControlFlowRecoverer
 from .transforms.dead_branch import DeadBranchRemover
+from .transforms.else_if_flatten import ElseIfFlattener
 from .transforms.dead_class_props import DeadClassPropRemover
+from .transforms.dead_expressions import DeadExpressionRemover
 from .transforms.eval_unpack import eval_unpack
 from .transforms.eval_unpack import is_eval_packed
 from .transforms.expression_simplifier import ExpressionSimplifier
@@ -57,8 +59,10 @@ TRANSFORM_CLASSES = [
     ObjectPacker,
     ProxyFunctionInliner,
     SequenceSplitter,
+    DeadExpressionRemover,
     ExpressionSimplifier,
     LogicalToIf,
+    ElseIfFlattener,
     ControlFlowRecoverer,
     PropertySimplifier,
     AntiTamperRemover,

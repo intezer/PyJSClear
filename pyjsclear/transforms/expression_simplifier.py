@@ -4,6 +4,7 @@ import math
 
 from ..traverser import traverse
 from ..utils.ast_helpers import is_literal
+from ..utils.ast_helpers import is_numeric_literal
 from ..utils.ast_helpers import make_literal
 from .base import Transform
 
@@ -44,6 +45,7 @@ class ExpressionSimplifier(Transform):
         self._simplify_unary_binary()
         self._simplify_conditionals()
         self._simplify_awaits()
+        self._simplify_method_calls()
         return self.has_changed()
 
     def _simplify_unary_binary(self):
@@ -400,4 +402,86 @@ class ExpressionSimplifier(Transform):
                 return make_literal(value)
             case str():
                 return make_literal(value)
+        return None
+
+    def _simplify_method_calls(self):
+        """Statically evaluate simple method calls on literals.
+
+        Handles:
+          Buffer.from([...nums...]).toString("utf8") → string literal
+          (N).toString() → "N"
+        """
+
+        def enter(node, parent, key, index):
+            if node.get('type') != 'CallExpression':
+                return
+            callee = node.get('callee')
+            if not isinstance(callee, dict) or callee.get('type') != 'MemberExpression':
+                return
+            prop = callee.get('property')
+            if not prop:
+                return
+            method_name = prop.get('name') if prop.get('type') == 'Identifier' else None
+            if not method_name:
+                return
+
+            # (N).toString() → "N"
+            if method_name == 'toString' and len(node.get('arguments', [])) == 0:
+                obj = callee.get('object')
+                if is_numeric_literal(obj):
+                    val = obj['value']
+                    s = str(int(val)) if isinstance(val, float) and val == int(val) else str(val)
+                    self.set_changed()
+                    return make_literal(s)
+
+            # Buffer.from([...nums...]).toString(encoding) → string literal
+            if method_name == 'toString' and len(node.get('arguments', [])) <= 1:
+                result = self._try_eval_buffer_from_tostring(callee.get('object'), node.get('arguments', []))
+                if result is not None:
+                    self.set_changed()
+                    return make_literal(result)
+
+        traverse(self.ast, {'enter': enter})
+
+    def _try_eval_buffer_from_tostring(self, obj, args):
+        """Try to evaluate Buffer.from([...nums...]).toString(encoding)."""
+        if not isinstance(obj, dict) or obj.get('type') != 'CallExpression':
+            return None
+        callee = obj.get('callee')
+        if not isinstance(callee, dict) or callee.get('type') != 'MemberExpression':
+            return None
+        # Check for Buffer.from
+        buf_obj = callee.get('object')
+        buf_prop = callee.get('property')
+        if not (buf_obj and buf_obj.get('type') == 'Identifier' and buf_obj.get('name') == 'Buffer'):
+            return None
+        if not (buf_prop and buf_prop.get('type') == 'Identifier' and buf_prop.get('name') == 'from'):
+            return None
+        # First arg must be an array of numbers
+        call_args = obj.get('arguments', [])
+        if not call_args or call_args[0].get('type') != 'ArrayExpression':
+            return None
+        elements = call_args[0].get('elements', [])
+        byte_values = []
+        for el in elements:
+            if not is_numeric_literal(el):
+                return None
+            val = el['value']
+            if not isinstance(val, (int, float)) or val != int(val) or val < 0 or val > 255:
+                return None
+            byte_values.append(int(val))
+        # Determine encoding for toString
+        encoding = 'utf8'
+        if args and is_literal(args[0]) and isinstance(args[0].get('value'), str):
+            encoding = args[0]['value']
+        try:
+            data = bytes(byte_values)
+            if encoding in ('utf8', 'utf-8'):
+                return data.decode('utf-8')
+            if encoding == 'hex':
+                return data.hex()
+            if encoding in ('ascii', 'latin1', 'binary'):
+                return data.decode(encoding)
+        except (UnicodeDecodeError, ValueError):
+            pass
         return None
