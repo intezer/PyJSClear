@@ -7,6 +7,7 @@ from .transforms.aa_decode import is_aa_encoded
 from .transforms.anti_tamper import AntiTamperRemover
 from .transforms.class_static_resolver import ClassStaticResolver
 from .transforms.class_string_decoder import ClassStringDecoder
+from .transforms.enum_resolver import EnumResolver
 from .transforms.cleanup import OptionalCatchBinding
 from .transforms.cleanup import ReturnUndefinedCleanup
 from .transforms.cleanup import VarToConst
@@ -59,6 +60,7 @@ TRANSFORM_CLASSES = [
     MemberChainResolver,
     DeadClassPropRemover,
     ClassStaticResolver,
+    EnumResolver,
     RequireInliner,
     GlobalAliasInliner,
     UnusedVariableRemover,
