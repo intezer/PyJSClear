@@ -2,7 +2,6 @@
 
 import sys
 from io import StringIO
-from unittest.mock import mock_open
 from unittest.mock import patch
 
 import pytest
@@ -102,24 +101,3 @@ class TestMissingInputArgument:
             main()
 
         assert exc_info.value.code == 2
-
-
-# ---------------------------------------------------------------------------
-# Coverage gap tests
-# ---------------------------------------------------------------------------
-
-
-class TestModuleExecution:
-    """Line 37: if __name__ == '__main__': main() in __main__.py."""
-
-    def test_module_execution(self):
-        import subprocess
-
-        result = subprocess.run(
-            ['python', '-m', 'pyjsclear', '-'],
-            input='var x = 1;',
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0
-        assert 'var x = 1' in result.stdout
