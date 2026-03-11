@@ -363,6 +363,10 @@ class VariableRenamer(Transform):
                     left = node.get('left')
                     if left and left.get('type') == 'Identifier' and left.get('name') == old_name:
                         left['name'] = new_name
+                elif node.get('type') == 'RestElement':
+                    arg = node.get('argument')
+                    if arg and arg.get('type') == 'Identifier' and arg.get('name') == old_name:
+                        arg['name'] = new_name
 
         # 2. Rename at all reference sites
         for ref_node, ref_parent, ref_key, ref_index in binding.references:

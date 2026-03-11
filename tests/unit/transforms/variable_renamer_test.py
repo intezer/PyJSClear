@@ -226,3 +226,21 @@ class TestNestedScopes:
         result, changed = roundtrip(code, VariableRenamer)
         assert changed is True
         assert '_0x' not in result
+
+    def test_class_expression_name_renamed(self):
+        code = 'var C = class _0xabc { static m() { return _0xabc; } };'
+        result, changed = roundtrip(code, VariableRenamer)
+        assert changed is True
+        assert '_0xabc' not in result
+
+    def test_rest_param_renamed(self):
+        code = 'function f(_0xaaa, ..._0xbbb) { return _0xbbb; }'
+        result, changed = roundtrip(code, VariableRenamer)
+        assert changed is True
+        assert '_0x' not in result
+
+    def test_catch_param_renamed(self):
+        code = 'function f() { try { x(); } catch (_0xabc) { console.log(_0xabc); } }'
+        result, changed = roundtrip(code, VariableRenamer)
+        assert changed is True
+        assert '_0xabc' not in result

@@ -78,7 +78,7 @@ def _is_non_reference_identifier(parent, parent_key):
     if parent_type == 'Property' and parent_key == 'key' and not parent.get('computed'):
         return True
     # Function/class names at declaration site
-    if parent_type in ('FunctionDeclaration', 'FunctionExpression', 'ClassDeclaration') and parent_key == 'id':
+    if parent_type in ('FunctionDeclaration', 'FunctionExpression', 'ClassDeclaration', 'ClassExpression') and parent_key == 'id':
         return True
     # VariableDeclarator id
     if parent_type == 'VariableDeclarator' and parent_key == 'id':
@@ -154,6 +154,10 @@ def build_scope_tree(ast):
                     new_scope.add_binding(param['name'], param, 'param')
                 elif param.get('type') == 'AssignmentPattern' and param.get('left', {}).get('type') == 'Identifier':
                     new_scope.add_binding(param['left']['name'], param, 'param')
+                elif param.get('type') == 'RestElement':
+                    arg = param.get('argument')
+                    if arg and arg.get('type') == 'Identifier':
+                        new_scope.add_binding(arg['name'], param, 'param')
 
             # Body - use the new scope
             body = node.get('body')
@@ -165,6 +169,30 @@ def build_scope_tree(ast):
                     _collect_declarations(statement, new_scope)
             else:
                 _collect_declarations(body, new_scope)
+            return
+
+        # Class expressions/declarations — name is a binding
+        if node_type in ('ClassExpression', 'ClassDeclaration'):
+            class_id = node.get('id')
+            # ClassDeclaration name goes in outer scope; ClassExpression in inner scope
+            inner_scope = scope
+            if class_id and class_id.get('type') == 'Identifier':
+                name = class_id['name']
+                if node_type == 'ClassDeclaration':
+                    scope.add_binding(name, node, 'function')
+                else:
+                    # ClassExpression name is only visible inside the class (like FunctionExpression)
+                    inner_scope = Scope(scope, node)
+                    node_scope[id(node)] = inner_scope
+                    all_scopes.append(inner_scope)
+                    inner_scope.add_binding(name, node, 'function')
+            # Recurse into the class body and superclass
+            body = node.get('body')
+            if body:
+                _collect_declarations(body, inner_scope)
+            superclass = node.get('superClass')
+            if superclass:
+                _collect_declarations(superclass, scope)
             return
 
         # Variable declarations
@@ -202,6 +230,20 @@ def build_scope_tree(ast):
                 _collect_declarations(node['init'], new_scope)
             if node.get('body'):
                 _collect_declarations(node['body'], new_scope)
+            return
+
+        # CatchClause — param is scoped to the catch block
+        if node_type == 'CatchClause':
+            catch_body = node.get('body')
+            if catch_body and catch_body.get('type') == 'BlockStatement':
+                catch_scope = Scope(scope, catch_body)
+                node_scope[id(catch_body)] = catch_scope
+                all_scopes.append(catch_scope)
+                param = node.get('param')
+                if param and param.get('type') == 'Identifier':
+                    catch_scope.add_binding(param['name'], param, 'param')
+                for statement in catch_body.get('body', []):
+                    _collect_declarations(statement, catch_scope)
             return
 
         # Recurse into children
