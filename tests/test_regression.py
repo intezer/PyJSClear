@@ -538,9 +538,52 @@ class TestQualityInvariants:
                 code
             ), f'{f.name}: hex escapes increased from {_count_hex(code)} to {_count_hex(result)}'
 
-    def test_output_not_larger_than_3x(self):
-        """Output should not be excessively larger than input."""
+    def test_output_not_larger_than_input(self):
+        """Deobfuscated output should never be larger than the input.
+
+        Deobfuscation removes string arrays, dead code, and infrastructure.
+        If output grows, something is wrong (e.g., proxy inlining blowup).
+        """
         for f in SAMPLES_DIR.glob('*.js'):
             code = f.read_text()
             result = pyjsclear.deobfuscate(code)
-            assert len(result) <= len(code) * 3, f'{f.name}: output {len(result)} > 3x input {len(code)}'
+            assert len(result) <= len(code) * 1.1, (
+                f'{f.name}: output ({len(result)}) > 110% of input ({len(code)}). '
+                f'Ratio: {len(result)/len(code):.2f}'
+            )
+
+    def test_output_parseable(self):
+        """Deobfuscated output should be parseable JavaScript.
+
+        If the output doesn't parse, a transform likely corrupted the AST.
+        We skip files whose input doesn't parse (ES modules with import).
+        """
+        from pyjsclear.parser import parse
+
+        for f in SAMPLES_DIR.glob('*.js'):
+            code = f.read_text()
+            # Skip files that don't parse as input (ES modules)
+            try:
+                parse(code)
+            except SyntaxError:
+                continue
+            result = pyjsclear.deobfuscate(code)
+            try:
+                parse(result)
+            except SyntaxError as e:
+                pytest.fail(f'{f.name}: output does not parse: {e}')
+
+    def test_no_extremely_long_lines(self):
+        """No output line should exceed 5000 chars.
+
+        Long lines indicate expression blowup from proxy function inlining
+        or other expansion bugs. The limit is generous (5000) to accommodate
+        files with legitimately long array literals.
+        """
+        for f in SAMPLES_DIR.glob('*.js'):
+            code = f.read_text()
+            result = pyjsclear.deobfuscate(code)
+            for i, line in enumerate(result.splitlines(), 1):
+                assert len(line) <= 5000, (
+                    f'{f.name} line {i}: {len(line)} chars (max 5000). ' f'Preview: {line[:80]}...'
+                )

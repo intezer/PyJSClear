@@ -9,9 +9,9 @@ from .transforms.class_string_decoder import ClassStringDecoder
 from .transforms.constant_prop import ConstantProp
 from .transforms.control_flow import ControlFlowRecoverer
 from .transforms.dead_branch import DeadBranchRemover
-from .transforms.else_if_flatten import ElseIfFlattener
 from .transforms.dead_class_props import DeadClassPropRemover
 from .transforms.dead_expressions import DeadExpressionRemover
+from .transforms.else_if_flatten import ElseIfFlattener
 from .transforms.eval_unpack import eval_unpack
 from .transforms.eval_unpack import is_eval_packed
 from .transforms.expression_simplifier import ExpressionSimplifier
@@ -25,10 +25,11 @@ from .transforms.jj_decode import jj_decode_via_eval
 from .transforms.jsfuck_decode import is_jsfuck
 from .transforms.jsfuck_decode import jsfuck_decode
 from .transforms.logical_to_if import LogicalToIf
-from .transforms.nullish_coalescing import NullishCoalescing
 from .transforms.member_chain_resolver import MemberChainResolver
+from .transforms.nullish_coalescing import NullishCoalescing
 from .transforms.object_packer import ObjectPacker
 from .transforms.object_simplifier import ObjectSimplifier
+from .transforms.optional_chaining import OptionalChaining
 from .transforms.property_simplifier import PropertySimplifier
 from .transforms.proxy_functions import ProxyFunctionInliner
 from .transforms.reassignment import ReassignmentRemover
@@ -63,6 +64,7 @@ TRANSFORM_CLASSES = [
     DeadExpressionRemover,
     ExpressionSimplifier,
     NullishCoalescing,
+    OptionalChaining,
     LogicalToIf,
     ElseIfFlattener,
     ControlFlowRecoverer,
