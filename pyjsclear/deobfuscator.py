@@ -7,8 +7,11 @@ from .transforms.aa_decode import is_aa_encoded
 from .transforms.anti_tamper import AntiTamperRemover
 from .transforms.class_static_resolver import ClassStaticResolver
 from .transforms.class_string_decoder import ClassStringDecoder
+from .transforms.cleanup import EmptyIfRemover
+from .transforms.cleanup import LetToConst
 from .transforms.cleanup import OptionalCatchBinding
 from .transforms.cleanup import ReturnUndefinedCleanup
+from .transforms.cleanup import TrailingReturnRemover
 from .transforms.cleanup import VarToConst
 from .transforms.constant_prop import ConstantProp
 from .transforms.control_flow import ControlFlowRecoverer
@@ -73,6 +76,7 @@ TRANSFORM_CLASSES = [
     DeadBranchRemover,
     UnreachableCodeRemover,
     NoopCallRemover,
+    EmptyIfRemover,
     DeadObjectPropRemover,
     ObjectPacker,
     ProxyFunctionInliner,
@@ -85,6 +89,7 @@ TRANSFORM_CLASSES = [
     ElseIfFlattener,
     OptionalCatchBinding,
     ReturnUndefinedCleanup,
+    TrailingReturnRemover,
     ControlFlowRecoverer,
     PropertySimplifier,
     AntiTamperRemover,
@@ -223,7 +228,7 @@ class Deobfuscator:
                 break
 
         # Post-passes: cosmetic transforms that run once after convergence
-        for post_transform in [VariableRenamer, VarToConst]:
+        for post_transform in [VariableRenamer, VarToConst, LetToConst]:
             try:
                 if post_transform(ast).execute():
                     any_transform_changed = True
