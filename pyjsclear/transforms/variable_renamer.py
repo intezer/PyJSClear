@@ -12,24 +12,84 @@ import re
 
 from ..scope import build_scope_tree
 from ..traverser import simple_traverse
+from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
 from .base import Transform
 
 
 _OBF_RE = re.compile(r'^_0x[0-9a-fA-F]+$')
 
-_JS_RESERVED = frozenset({
-    'abstract', 'arguments', 'await', 'boolean', 'break', 'byte', 'case',
-    'catch', 'char', 'class', 'const', 'continue', 'debugger', 'default',
-    'delete', 'do', 'double', 'else', 'enum', 'eval', 'export', 'extends',
-    'false', 'final', 'finally', 'float', 'for', 'function', 'goto', 'if',
-    'implements', 'import', 'in', 'instanceof', 'int', 'interface', 'let',
-    'long', 'native', 'new', 'null', 'package', 'private', 'protected',
-    'public', 'return', 'short', 'static', 'super', 'switch', 'synchronized',
-    'this', 'throw', 'throws', 'transient', 'true', 'try', 'typeof', 'var',
-    'void', 'volatile', 'while', 'with', 'yield', 'undefined', 'NaN',
-    'Infinity',
-})
+_JS_RESERVED = frozenset(
+    {
+        'abstract',
+        'arguments',
+        'await',
+        'boolean',
+        'break',
+        'byte',
+        'case',
+        'catch',
+        'char',
+        'class',
+        'const',
+        'continue',
+        'debugger',
+        'default',
+        'delete',
+        'do',
+        'double',
+        'else',
+        'enum',
+        'eval',
+        'export',
+        'extends',
+        'false',
+        'final',
+        'finally',
+        'float',
+        'for',
+        'function',
+        'goto',
+        'if',
+        'implements',
+        'import',
+        'in',
+        'instanceof',
+        'int',
+        'interface',
+        'let',
+        'long',
+        'native',
+        'new',
+        'null',
+        'package',
+        'private',
+        'protected',
+        'public',
+        'return',
+        'short',
+        'static',
+        'super',
+        'switch',
+        'synchronized',
+        'this',
+        'throw',
+        'throws',
+        'transient',
+        'true',
+        'try',
+        'typeof',
+        'var',
+        'void',
+        'volatile',
+        'while',
+        'with',
+        'yield',
+        'undefined',
+        'NaN',
+        'Infinity',
+    }
+)
 
 # Maps require("module") → preferred variable name
 _REQUIRE_NAMES = {
@@ -204,9 +264,20 @@ def _infer_from_usage(binding):
                 methods.add(prop.get('name'))
 
     # fs-like methods
-    _FS_METHODS = {'readFileSync', 'writeFileSync', 'existsSync', 'mkdirSync',
-                   'statSync', 'readdirSync', 'unlinkSync', 'createWriteStream',
-                   'createReadStream', 'readFile', 'writeFile', 'appendFileSync'}
+    _FS_METHODS = {
+        'readFileSync',
+        'writeFileSync',
+        'existsSync',
+        'mkdirSync',
+        'statSync',
+        'readdirSync',
+        'unlinkSync',
+        'createWriteStream',
+        'createReadStream',
+        'readFile',
+        'writeFile',
+        'appendFileSync',
+    }
     if methods & _FS_METHODS:
         return 'fs'
 
@@ -264,6 +335,28 @@ def _infer_loop_var(binding):
     return None
 
 
+def _collect_pattern_idents(pattern, result):
+    """Collect all Identifier nodes from a destructuring pattern."""
+    if not isinstance(pattern, dict):
+        return
+    pat_type = pattern.get('type')
+    if pat_type == 'Identifier':
+        result.append(pattern)
+    elif pat_type == 'ArrayPattern':
+        for elem in pattern.get('elements', []):
+            if elem:
+                _collect_pattern_idents(elem, result)
+    elif pat_type == 'ObjectPattern':
+        for prop in pattern.get('properties', []):
+            val = prop.get('value', prop.get('argument'))
+            if val:
+                _collect_pattern_idents(val, result)
+    elif pat_type == 'RestElement':
+        _collect_pattern_idents(pattern.get('argument'), result)
+    elif pat_type == 'AssignmentPattern':
+        _collect_pattern_idents(pattern.get('left'), result)
+
+
 class VariableRenamer(Transform):
     """Rename _0x-prefixed identifiers to readable names using heuristics."""
 
@@ -281,6 +374,10 @@ class VariableRenamer(Transform):
         # Track loop var counter for i, j, k assignment
         self._loop_counter = iter('ijklmn')
         self._rename_scope(scope_tree, gen, reserved)
+
+        # Fix duplicate names in destructuring patterns (can come from broken obfuscated input)
+        self._fix_destructuring_dupes(reserved)
+
         return self.has_changed()
 
     def _collect_reserved(self, scope, reserved):
@@ -375,3 +472,37 @@ class VariableRenamer(Transform):
 
         # 3. Update binding.name
         binding.name = new_name
+
+    def _fix_destructuring_dupes(self, reserved):
+        """Fix duplicate identifier names in destructuring patterns.
+
+        Obfuscators sometimes produce invalid code like `const [a, a, a] = x;`.
+        This walks the AST and renames duplicates within each pattern.
+
+        Note: this mutates AST nodes directly without updating scope bindings,
+        so scope data is stale after this point. This is fine since it runs as
+        the last step of the renamer post-pass.
+        """
+
+        def enter(node, parent, key, index):
+            if node.get('type') != 'VariableDeclarator':
+                return
+            pat = node.get('id')
+            if not pat or pat.get('type') not in ('ArrayPattern', 'ObjectPattern'):
+                return
+            # Collect all identifier nodes in the pattern
+            idents = []
+            _collect_pattern_idents(pat, idents)
+            seen = {}
+            for ident_node in idents:
+                name = ident_node.get('name')
+                if name in seen:
+                    # Duplicate — assign a unique name
+                    new_name = _dedupe_name(name, reserved)
+                    reserved.add(new_name)
+                    ident_node['name'] = new_name
+                    self.set_changed()
+                else:
+                    seen[name] = ident_node
+
+        traverse(self.ast, {'enter': enter})

@@ -8,6 +8,7 @@ from .transforms.anti_tamper import AntiTamperRemover
 from .transforms.class_string_decoder import ClassStringDecoder
 from .transforms.cleanup import OptionalCatchBinding
 from .transforms.cleanup import ReturnUndefinedCleanup
+from .transforms.cleanup import VarToConst
 from .transforms.constant_prop import ConstantProp
 from .transforms.control_flow import ControlFlowRecoverer
 from .transforms.dead_branch import DeadBranchRemover
@@ -211,12 +212,13 @@ class Deobfuscator:
             if not modified:
                 break
 
-        # Post-pass: rename obfuscated identifiers (runs once, outside the loop)
-        try:
-            if VariableRenamer(ast).execute():
-                any_transform_changed = True
-        except Exception:
-            pass
+        # Post-passes: cosmetic transforms that run once after convergence
+        for post_transform in [VariableRenamer, VarToConst]:
+            try:
+                if post_transform(ast).execute():
+                    any_transform_changed = True
+            except Exception:
+                pass
 
         if not any_transform_changed:
             return self.original_code

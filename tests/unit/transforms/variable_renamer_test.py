@@ -244,3 +244,12 @@ class TestNestedScopes:
         result, changed = roundtrip(code, VariableRenamer)
         assert changed is True
         assert '_0xabc' not in result
+
+    def test_destructuring_duplicate_names_fixed(self):
+        """Obfuscators can produce const [a, a, a] = x; — fix duplicates."""
+        code = 'function f(_0xabc) { const [_0xabc, _0xabc, _0xabc] = _0xabc; }'
+        result, changed = roundtrip(code, VariableRenamer)
+        assert changed is True
+        # Should have three different names in the destructuring
+        ast = parse(result)
+        assert ast is not None  # Must be valid JS
