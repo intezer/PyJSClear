@@ -28,6 +28,11 @@ from .transforms.global_alias import GlobalAliasInliner
 from .transforms.hex_escapes import HexEscapes
 from .transforms.hex_escapes import decode_hex_escapes_source
 from .transforms.hex_numerics import HexNumerics
+from .transforms.jj_decode import is_jj_encoded
+from .transforms.jj_decode import jj_decode
+from .transforms.jj_decode import jj_decode_via_eval
+from .transforms.jsfuck_decode import is_jsfuck
+from .transforms.jsfuck_decode import jsfuck_decode
 from .transforms.logical_to_if import LogicalToIf
 from .transforms.member_chain_resolver import MemberChainResolver
 from .transforms.noop_calls import NoopCallRemover
@@ -127,9 +132,21 @@ class Deobfuscator:
         Returns decoded code if an encoding/packing was detected and decoded,
         or None to continue with the normal AST pipeline.
         """
+        # JSFuck check (must be first — these are whole-file encodings)
+        if is_jsfuck(code):
+            decoded = jsfuck_decode(code)
+            if decoded:
+                return decoded
+
         # AAEncode check
         if is_aa_encoded(code):
             decoded = aa_decode(code)
+            if decoded:
+                return decoded
+
+        # JJEncode check
+        if is_jj_encoded(code):
+            decoded = jj_decode(code) or jj_decode_via_eval(code)
             if decoded:
                 return decoded
 
