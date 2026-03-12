@@ -302,12 +302,35 @@ def _tokenize(code):
 
 
 # ---------------------------------------------------------------------------
-# Recursive-descent parser/evaluator
+# Iterative parser/evaluator (state-machine with explicit continuation stack)
 # ---------------------------------------------------------------------------
+
+# Parse states
+_S_EXPR = 0
+_S_UNARY = 1
+_S_POSTFIX = 2
+_S_PRIMARY = 3
+_S_RESUME = 4
+
+# Continuation types
+_K_DONE = 0
+_K_EXPR_LOOP = 1
+_K_EXPR_ADD = 2
+_K_UNARY_APPLY = 3
+_K_POSTFIX_LOOP = 4
+_K_POSTFIX_BRACKET = 5
+_K_POSTFIX_ARGDONE = 6
+_K_PAREN_CLOSE = 7
+_K_ARRAY_ELEM = 8
 
 
 class _Parser:
-    """Recursive descent parser for JSFuck expressions."""
+    """Iterative state-machine parser for JSFuck expressions.
+
+    Replaces mutual recursion (_expression → _unary → _postfix → _primary →
+    _expression) with an explicit value stack and continuation stack, so
+    arbitrarily deep nesting never overflows the Python call stack.
+    """
 
     def __init__(self, tokens):
         self.tokens = tokens
@@ -328,97 +351,145 @@ class _Parser:
         self.pos += 1
         return tok
 
+    # ------------------------------------------------------------------
+
     def parse(self):
-        """Parse and evaluate the full expression."""
-        result = self._expression()
-        return result
+        """Parse and evaluate the full expression (iterative)."""
+        val_stack = []
+        cont = [(_K_DONE,)]
+        state = _S_EXPR
 
-    def _expression(self):
-        """Parse addition: expr ('+' expr)*"""
-        left = self._unary()
+        while True:
+            if state == _S_EXPR:
+                # expression = unary ('+' unary)*
+                cont.append((_K_EXPR_LOOP,))
+                state = _S_UNARY
 
-        while self.peek() == '+':
-            self.consume('+')
-            right = self._unary()
-            left = self._js_add(left, right)
+            elif state == _S_UNARY:
+                # Collect prefix operators, then parse postfix
+                ops = []
+                while self.peek() in ('!', '+'):
+                    ops.append(self.consume())
+                cont.append((_K_UNARY_APPLY, ops))
+                state = _S_POSTFIX
 
-        return left
+            elif state == _S_POSTFIX:
+                # Parse primary, then handle postfix [ ] and ( )
+                cont.append((_K_POSTFIX_LOOP, None))  # receiver=None
+                state = _S_PRIMARY
 
-    def _unary(self):
-        """Parse unary: [!+]* postfix"""
-        ops = []
-        while self.peek() in ('!', '+'):
-            # + is unary only if the next token is not a postfix start
-            # Actually in JSFuck, + before [ or ( or ! is always unary
-            if self.peek() == '+':
-                ops.append('+')
-                self.consume('+')
-            else:
-                ops.append('!')
-                self.consume('!')
+            elif state == _S_PRIMARY:
+                tok = self.peek()
+                if tok == '(':
+                    self.consume('(')
+                    cont.append((_K_PAREN_CLOSE,))
+                    state = _S_EXPR
+                elif tok == '[':
+                    self.consume('[')
+                    if self.peek() == ']':
+                        self.consume(']')
+                        val_stack.append(_JSValue([], 'array'))
+                        state = _S_RESUME
+                    else:
+                        cont.append((_K_ARRAY_ELEM, []))
+                        state = _S_EXPR
+                else:
+                    raise _ParseError(
+                        f'Unexpected token: {tok!r} at pos {self.pos}')
 
-        val = self._postfix()
+            elif state == _S_RESUME:
+                k = cont.pop()
+                ktype = k[0]
 
-        # Apply unary operators right to left
-        for op in reversed(ops):
-            if op == '!':
-                val = _JSValue(not val.to_bool(), 'bool')
-            elif op == '+':
-                val = _JSValue(val.to_number(), 'number')
+                if ktype == _K_DONE:
+                    return val_stack.pop()
 
-        return val
+                elif ktype == _K_PAREN_CLOSE:
+                    self.consume(')')
+                    state = _S_RESUME
 
-    def _postfix(self):
-        """Parse postfix: primary ('[' expr ']')* ('(' args ')')*"""
-        val = self._primary()
-        receiver = None  # Track receiver for method calls
+                elif ktype == _K_ARRAY_ELEM:
+                    elements = k[1]
+                    elements.append(val_stack.pop())
+                    if self.peek() not in (']', None):
+                        cont.append((_K_ARRAY_ELEM, elements))
+                        state = _S_EXPR
+                    else:
+                        self.consume(']')
+                        val_stack.append(_JSValue(elements, 'array'))
+                        state = _S_RESUME
 
-        while self.peek() in ('[', '('):
-            if self.peek() == '[':
-                self.consume('[')
-                key = self._expression()
-                self.consume(']')
-                receiver = val  # val is the receiver of the property access
-                val = val.get_property(key)
-            elif self.peek() == '(':
-                self.consume('(')
-                args = self._arglist()
-                self.consume(')')
-                val = self._call(val, args, receiver)
-                receiver = None
+                elif ktype == _K_POSTFIX_LOOP:
+                    receiver = k[1]
+                    val = val_stack[-1]
+                    if self.peek() == '[':
+                        self.consume('[')
+                        val_stack.pop()
+                        cont.append((_K_POSTFIX_BRACKET, val))
+                        state = _S_EXPR
+                    elif self.peek() == '(':
+                        self.consume('(')
+                        if self.peek() == ')':
+                            self.consume(')')
+                            val_stack.pop()
+                            result = self._call(val, [], receiver)
+                            val_stack.append(result)
+                            cont.append((_K_POSTFIX_LOOP, None))
+                            state = _S_RESUME
+                        else:
+                            val_stack.pop()
+                            cont.append((_K_POSTFIX_ARGDONE, val, receiver))
+                            state = _S_EXPR
+                    else:
+                        # No more postfix ops
+                        state = _S_RESUME
 
-        return val
+                elif ktype == _K_POSTFIX_BRACKET:
+                    parent_val = k[1]
+                    key = val_stack.pop()
+                    self.consume(']')
+                    val_stack.append(parent_val.get_property(key))
+                    cont.append((_K_POSTFIX_LOOP, parent_val))
+                    state = _S_RESUME
 
-    def _primary(self):
-        """Parse primary: '(' expr ')' | '[' elements ']'"""
-        tok = self.peek()
+                elif ktype == _K_POSTFIX_ARGDONE:
+                    func = k[1]
+                    receiver = k[2]
+                    arg = val_stack.pop()
+                    self.consume(')')
+                    result = self._call(func, [arg], receiver)
+                    val_stack.append(result)
+                    cont.append((_K_POSTFIX_LOOP, None))
+                    state = _S_RESUME
 
-        if tok == '(':
-            self.consume('(')
-            val = self._expression()
-            self.consume(')')
-            return val
+                elif ktype == _K_UNARY_APPLY:
+                    ops = k[1]
+                    val = val_stack.pop()
+                    for op in reversed(ops):
+                        if op == '!':
+                            val = _JSValue(not val.to_bool(), 'bool')
+                        elif op == '+':
+                            val = _JSValue(val.to_number(), 'number')
+                    val_stack.append(val)
+                    state = _S_RESUME
 
-        if tok == '[':
-            self.consume('[')
-            if self.peek() == ']':
-                self.consume(']')
-                return _JSValue([], 'array')
-            elements = [self._expression()]
-            while self.peek() not in (']', None):
-                # JSFuck doesn't use commas, but handle them if present
-                elements.append(self._expression())
-            self.consume(']')
-            return _JSValue(elements, 'array')
+                elif ktype == _K_EXPR_LOOP:
+                    if self.peek() == '+':
+                        self.consume('+')
+                        left = val_stack.pop()
+                        cont.append((_K_EXPR_ADD, left))
+                        state = _S_UNARY
+                    else:
+                        state = _S_RESUME
 
-        raise _ParseError(f'Unexpected token: {tok!r} at pos {self.pos}')
+                elif ktype == _K_EXPR_ADD:
+                    left = k[1]
+                    right = val_stack.pop()
+                    val_stack.append(_js_add(left, right))
+                    cont.append((_K_EXPR_LOOP,))
+                    state = _S_RESUME
 
-    def _arglist(self):
-        """Parse argument list (comma-separated or just one expression)."""
-        if self.peek() == ')':
-            return []
-        args = [self._expression()]
-        return args
+    # ------------------------------------------------------------------
 
     def _call(self, func, args, receiver=None):
         """Handle function call semantics."""
@@ -426,7 +497,6 @@ class _Parser:
         if func.type == 'function' and func.val == 'Function':
             if args:
                 body = args[-1].to_string()
-                # Return a callable that when invoked, captures the body
                 return _JSValue(('__function_body__', body), 'function')
 
         # Calling a function created by Function(body)
@@ -438,14 +508,11 @@ class _Parser:
         # Constructor property access — e.g., []["flat"]["constructor"]
         if func.type == 'function' and isinstance(func.val, str):
             name = func.val
-            # Handle constructor-of-constructor chains
             if name in _CONSTRUCTOR_MAP:
-                # Calling a constructor as function, e.g., String(x)
                 if args:
                     return _JSValue(args[0].to_string(), 'string')
                 return _JSValue('', 'string')
 
-            # String methods
             if name == 'italics':
                 return _JSValue('<i></i>', 'string')
             if name == 'fontcolor':
@@ -463,18 +530,14 @@ class _Parser:
 
         return _JSValue(None, 'undefined')
 
-    def _js_add(self, left, right):
-        """JS + operator with type coercion."""
-        # If either is a string, concatenate
-        if left.type == 'string' or right.type == 'string':
-            return _JSValue(left.to_string() + right.to_string(), 'string')
 
-        # If either is an array or object, convert both to strings and concatenate
-        if left.type in ('array', 'object') or right.type in ('array', 'object'):
-            return _JSValue(left.to_string() + right.to_string(), 'string')
-
-        # Otherwise numeric addition
-        return _JSValue(left.to_number() + right.to_number(), 'number')
+def _js_add(left, right):
+    """JS + operator with type coercion."""
+    if left.type == 'string' or right.type == 'string':
+        return _JSValue(left.to_string() + right.to_string(), 'string')
+    if left.type in ('array', 'object') or right.type in ('array', 'object'):
+        return _JSValue(left.to_string() + right.to_string(), 'string')
+    return _JSValue(left.to_number() + right.to_number(), 'number')
 
 
 def _int_to_base(num, base):
@@ -507,12 +570,7 @@ def jsfuck_decode(code):
     if not code or not code.strip():
         return None
 
-    import sys
-    old_limit = sys.getrecursionlimit()
     try:
-        # JSFuck can be deeply nested; temporarily raise the limit
-        sys.setrecursionlimit(max(old_limit, 10000))
-
         tokens = _tokenize(code)
         if not tokens:
             return None
@@ -523,9 +581,7 @@ def jsfuck_decode(code):
         if parser.captured:
             return parser.captured
         return None
-    except (_ParseError, RecursionError, MemoryError):
+    except (_ParseError, MemoryError):
         return None
     except Exception:
         return None
-    finally:
-        sys.setrecursionlimit(old_limit)

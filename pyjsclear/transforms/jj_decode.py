@@ -236,13 +236,19 @@ def _eval_coercion(expr, varname):
 # ---------------------------------------------------------------------------
 
 
-def _eval_expr(expr, table, varname):
+_MAX_EVAL_DEPTH = 100
+
+
+def _eval_expr(expr, table, varname, _depth=0):
     """Evaluate a JJEncode expression to a string value.
 
     Handles symbol-table references, string literals, coercion
     expressions with indexing, sub-assignments, and concatenation.
     Returns the resolved string or None.
     """
+    if _depth > _MAX_EVAL_DEPTH:
+        return None
+
     expr = expr.strip()
     if not expr:
         return None
@@ -260,15 +266,23 @@ def _eval_expr(expr, table, varname):
         return _OBJECT_STR
 
     # Parenthesised expression possibly followed by [index]
-    # e.g. ($.$_=$+"")[$.$_$]  or  ($._$=$.$_[$.__$])
+    # Strip nested parens iteratively before delegating to _eval_inner
     if expr.startswith('('):
         close = _find_matching_close(expr, 0, '(', ')')
         if close != -1:
             inner = expr[1:close].strip()
-            val = _eval_inner(inner, table, varname)
             rest = expr[close + 1:].strip()
+
+            # Iteratively unwrap pure parenthesised expressions: (((...expr...)))
+            while inner.startswith('(') and not rest:
+                inner_close = _find_matching_close(inner, 0, '(', ')')
+                if inner_close == len(inner) - 1:
+                    inner = inner[1:inner_close].strip()
+                else:
+                    break
+
+            val = _eval_inner(inner, table, varname, _depth + 1)
             if not rest:
-                # Just a parenthesised expression
                 return val
             # Check for [index] after the paren
             if rest.startswith('[') and rest.endswith(']'):
@@ -313,7 +327,7 @@ def _eval_expr(expr, table, varname):
         if len(tokens) > 1:
             parts = []
             for t in tokens:
-                v = _eval_expr(t, table, varname)
+                v = _eval_expr(t, table, varname, _depth + 1)
                 if v is None:
                     return None
                 parts.append(v)
@@ -322,9 +336,12 @@ def _eval_expr(expr, table, varname):
     return None
 
 
-def _eval_inner(inner, table, varname):
+def _eval_inner(inner, table, varname, _depth=0):
     """Evaluate the inside of a parenthesised expression.
     Handles sub-assignments and simple expressions."""
+    if _depth > _MAX_EVAL_DEPTH:
+        return None
+
     prefix = varname + '.'
 
     # Sub-assignment: VARNAME.KEY=EXPR
@@ -333,7 +350,7 @@ def _eval_inner(inner, table, varname):
         if eq_pos is not None:
             key = inner[len(prefix):eq_pos]
             rhs = inner[eq_pos + 1:]
-            val = _eval_expr(rhs, table, varname)
+            val = _eval_expr(rhs, table, varname, _depth + 1)
             if val is not None:
                 table[key] = val
                 return val
@@ -344,7 +361,7 @@ def _eval_inner(inner, table, varname):
         return coercion_str
 
     # Just a nested expression
-    return _eval_expr(inner, table, varname)
+    return _eval_expr(inner, table, varname, _depth + 1)
 
 
 def _find_top_level_eq(expr):

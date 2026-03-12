@@ -186,49 +186,54 @@ class Deobfuscator:
         # the final cycle to avoid interfering with subsequent transform rounds.
         previous_code = code
         last_changed_ast = None
-        for _cycle in range(self._MAX_OUTER_CYCLES):
-            changed = self._run_ast_transforms(
-                ast,
-                code_size=len(previous_code),
-            )
-
-            if not changed:
-                break
-
-            last_changed_ast = ast
-
-            try:
-                generated = generate(ast)
-            except Exception:
-                break
-
-            if generated == previous_code:
-                break
-
-            previous_code = generated
-
-            # Re-parse for the next cycle
-            try:
-                ast = parse(generated)
-            except SyntaxError:
-                break
-
-        # Run post-passes on the final AST (always — they're cheap and handle
-        # cosmetic transforms like var→const even when no main transforms fired)
-        any_post_changed = False
-        for post_transform in [VariableRenamer, VarToConst, LetToConst]:
-            try:
-                if post_transform(ast).execute():
-                    any_post_changed = True
-            except Exception:
-                pass
-
-        if last_changed_ast is None and not any_post_changed:
-            return self.original_code
-
         try:
-            return generate(ast)
-        except Exception:
+            for _cycle in range(self._MAX_OUTER_CYCLES):
+                changed = self._run_ast_transforms(
+                    ast,
+                    code_size=len(previous_code),
+                )
+
+                if not changed:
+                    break
+
+                last_changed_ast = ast
+
+                try:
+                    generated = generate(ast)
+                except Exception:
+                    break
+
+                if generated == previous_code:
+                    break
+
+                previous_code = generated
+
+                # Re-parse for the next cycle
+                try:
+                    ast = parse(generated)
+                except SyntaxError:
+                    break
+
+            # Run post-passes on the final AST (always — they're cheap and handle
+            # cosmetic transforms like var→const even when no main transforms fired)
+            any_post_changed = False
+            for post_transform in [VariableRenamer, VarToConst, LetToConst]:
+                try:
+                    if post_transform(ast).execute():
+                        any_post_changed = True
+                except Exception:
+                    pass
+
+            if last_changed_ast is None and not any_post_changed:
+                return self.original_code
+
+            try:
+                return generate(ast)
+            except Exception:
+                return previous_code
+        except RecursionError:
+            # Safety net: return best result so far on any recursion overflow
+            # from esprima-bounded AST walkers or future regressions
             return previous_code
 
     def _run_ast_transforms(self, ast, code_size=0):
