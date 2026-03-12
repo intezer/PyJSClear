@@ -6,13 +6,6 @@ This decoder evaluates the JSFuck expression subset and captures the
 string passed to Function().
 """
 
-import re
-
-
-# JSFuck uses only these characters (plus optional whitespace/semicolons)
-_JSFUCK_RE = re.compile(r'^[\s\[\]\(\)!+;]+$')
-
-
 def is_jsfuck(code):
     """Check if code is JSFuck-encoded.
 

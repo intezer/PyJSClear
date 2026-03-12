@@ -7,7 +7,6 @@ import pytest
 
 from pyjsclear.transforms.jj_decode import is_jj_encoded
 from pyjsclear.transforms.jj_decode import jj_decode
-from pyjsclear.transforms.jj_decode import jj_decode_via_eval
 
 
 JJ_SAMPLE_LINE = '$=~[];$={___:++$,'
@@ -55,11 +54,6 @@ class TestJJDecode:
         result = jj_decode(code)
         if result is not None:
             assert any(c.isalpha() for c in result)
-
-    def test_jj_decode_via_eval_returns_none_on_normal_code(self):
-        """jj_decode_via_eval with non-JJ code returns None."""
-        result = jj_decode_via_eval('var x = 1;')
-        assert result is None
 
     def test_returns_none_on_no_payload(self):
         """JJEncode detection passes but no decodable payload -> None."""

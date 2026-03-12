@@ -99,7 +99,7 @@ class TestDeobfuscatorExecute:
     @patch('pyjsclear.deobfuscator.parse')
     @patch('pyjsclear.deobfuscator.generate', return_value='generated code')
     def test_max_iterations_limits_passes(self, mock_generate, mock_parse, mock_transforms):
-        """max_iterations=1 limits transform passes to one iteration."""
+        """max_iterations=1 limits transform passes to one inner iteration per outer cycle."""
         mock_ast = MagicMock()
         mock_parse.return_value = mock_ast
 
@@ -112,8 +112,10 @@ class TestDeobfuscatorExecute:
 
         result = Deobfuscator('var x = 1;', max_iterations=1).execute()
 
-        # With max_iterations=1, the loop runs exactly once
-        assert always_changes.call_count == 1
+        # With max_iterations=1, the inner loop runs once per outer cycle.
+        # Outer cycle 1: 1 call, generates "generated code" (differs from input).
+        # Outer cycle 2: 1 call, generates "generated code" (same as previous) → stops.
+        assert always_changes.call_count == 2
         assert result == 'generated code'
 
     @patch('pyjsclear.deobfuscator.TRANSFORM_CLASSES')
@@ -216,21 +218,27 @@ class TestLargeFileHandling:
     @patch('pyjsclear.deobfuscator._count_nodes', return_value=150_000)
     @patch('pyjsclear.deobfuscator.TRANSFORM_CLASSES')
     def test_very_large_ast_reduces_to_3_iterations(self, mock_transforms, mock_count, mock_parse):
-        """Very large AST (>100k nodes) reduces to 3 iterations (line 149)."""
+        """Very large AST (>100k nodes) reduces to 3 iterations per outer cycle."""
         mock_ast = MagicMock()
         mock_parse.return_value = mock_ast
 
-        # Transform that always changes
-        instance = MagicMock()
-        instance.execute.return_value = True
-        always_changes = MagicMock(return_value=instance)
-        mock_transforms.__iter__ = lambda self: iter([always_changes])
+        # Generate must also return a large string so the iteration limit
+        # applies on subsequent outer cycles too.
+        large_generated = 'y' * (_LARGE_FILE_SIZE + 1)
+        with patch('pyjsclear.deobfuscator.generate', return_value=large_generated):
+            # Transform that always changes
+            instance = MagicMock()
+            instance.execute.return_value = True
+            always_changes = MagicMock(return_value=instance)
+            mock_transforms.__iter__ = lambda self: iter([always_changes])
 
-        # Code > _LARGE_FILE_SIZE to trigger node counting
-        code = 'x' * (_LARGE_FILE_SIZE + 1)
-        result = Deobfuscator(code).execute()
-        # With 150k nodes, max iterations should be min(10, 3) = 3
-        assert always_changes.call_count == 3
+            # Code > _LARGE_FILE_SIZE to trigger node counting
+            code = 'x' * (_LARGE_FILE_SIZE + 1)
+            result = Deobfuscator(code).execute()
+            # With 150k nodes, max iterations = min(10, 3) = 3 per outer cycle.
+            # Outer cycle 1: 3 calls, generates large_generated (differs from input).
+            # Outer cycle 2: 3 calls, generates large_generated (same) → stops.
+            assert always_changes.call_count == 6
 
     @patch('pyjsclear.deobfuscator.parse')
     @patch('pyjsclear.deobfuscator._count_nodes', return_value=0)

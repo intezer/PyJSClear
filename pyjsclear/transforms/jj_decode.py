@@ -46,13 +46,6 @@ def jj_decode(code):
         return None
 
 
-def jj_decode_via_eval(code):
-    """Alternative decode attempt using a different parsing strategy."""
-    try:
-        return _decode_jjencode(code)
-    except Exception:
-        return None
-
 
 # ---------------------------------------------------------------------------
 # String-aware semicolon splitter

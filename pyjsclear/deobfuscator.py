@@ -30,7 +30,6 @@ from .transforms.hex_escapes import decode_hex_escapes_source
 from .transforms.hex_numerics import HexNumerics
 from .transforms.jj_decode import is_jj_encoded
 from .transforms.jj_decode import jj_decode
-from .transforms.jj_decode import jj_decode_via_eval
 from .transforms.jsfuck_decode import is_jsfuck
 from .transforms.jsfuck_decode import jsfuck_decode
 from .transforms.logical_to_if import LogicalToIf
@@ -146,7 +145,7 @@ class Deobfuscator:
 
         # JJEncode check
         if is_jj_encoded(code):
-            decoded = jj_decode(code) or jj_decode_via_eval(code)
+            decoded = jj_decode(code)
             if decoded:
                 return decoded
 
@@ -157,6 +156,9 @@ class Deobfuscator:
                 return decoded
 
         return None
+
+    # Maximum number of outer re-parse cycles (generate → re-parse → re-transform)
+    _MAX_OUTER_CYCLES = 5
 
     def execute(self):
         """Run all transforms and return cleaned source."""
@@ -179,15 +181,63 @@ class Deobfuscator:
                 return decoded
             return self.original_code
 
-        # Determine optimization mode based on code size
-        code_size = len(code)
+        # Outer loop: run AST transforms until generate→re-parse converges.
+        # Post-passes (VariableRenamer, VarToConst, LetToConst) only run on
+        # the final cycle to avoid interfering with subsequent transform rounds.
+        previous_code = code
+        last_changed_ast = None
+        for _cycle in range(self._MAX_OUTER_CYCLES):
+            changed = self._run_ast_transforms(
+                ast, code_size=len(previous_code),
+            )
+
+            if not changed:
+                break
+
+            last_changed_ast = ast
+
+            try:
+                generated = generate(ast)
+            except Exception:
+                break
+
+            if generated == previous_code:
+                break
+
+            previous_code = generated
+
+            # Re-parse for the next cycle
+            try:
+                ast = parse(generated)
+            except SyntaxError:
+                break
+
+        # Run post-passes on the final AST (always — they're cheap and handle
+        # cosmetic transforms like var→const even when no main transforms fired)
+        any_post_changed = False
+        for post_transform in [VariableRenamer, VarToConst, LetToConst]:
+            try:
+                if post_transform(ast).execute():
+                    any_post_changed = True
+            except Exception:
+                pass
+
+        if last_changed_ast is None and not any_post_changed:
+            return self.original_code
+
+        try:
+            return generate(ast)
+        except Exception:
+            return previous_code
+
+    def _run_ast_transforms(self, ast, code_size=0):
+        """Run all AST transform passes. Returns True if any transform changed the AST."""
+        node_count = _count_nodes(ast) if code_size > _LARGE_FILE_SIZE else 0
+
         lite_mode = code_size > _MAX_CODE_SIZE
         max_iterations = self.max_iterations
         if code_size > _LARGE_FILE_SIZE:
             max_iterations = min(max_iterations, _LITE_MAX_ITERATIONS)
-
-        # Check node count for expensive transform gating
-        node_count = _count_nodes(ast) if code_size > _LARGE_FILE_SIZE else 0
 
         # For very large ASTs, further reduce iterations
         if node_count > 100_000:
@@ -195,9 +245,7 @@ class Deobfuscator:
 
         # Build transform list based on mode
         transform_classes = TRANSFORM_CLASSES
-        if lite_mode:
-            transform_classes = [t for t in TRANSFORM_CLASSES if t not in _EXPENSIVE_TRANSFORMS]
-        elif node_count > _NODE_COUNT_LIMIT:
+        if lite_mode or node_count > _NODE_COUNT_LIMIT:
             transform_classes = [t for t in TRANSFORM_CLASSES if t not in _EXPENSIVE_TRANSFORMS]
 
         # Track which transforms are no longer productive
@@ -227,18 +275,4 @@ class Deobfuscator:
             if not modified:
                 break
 
-        # Post-passes: cosmetic transforms that run once after convergence
-        for post_transform in [VariableRenamer, VarToConst, LetToConst]:
-            try:
-                if post_transform(ast).execute():
-                    any_transform_changed = True
-            except Exception:
-                pass
-
-        if not any_transform_changed:
-            return self.original_code
-
-        try:
-            return generate(ast)
-        except Exception:
-            return self.original_code
+        return any_transform_changed

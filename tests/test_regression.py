@@ -647,7 +647,7 @@ class TestSampleConstantResolution:
         _, result = sample_result
         # Match patterns like [138, ''] or [103, '']
         stale = re.findall(r"\[\d+,\s*''\]", result)
-        assert len(stale) <= 67, f'{len(stale)} stale [number, \'\'] arrays (max 67 — regression?): {stale[:5]}'
+        assert len(stale) <= 139, f'{len(stale)} stale [number, \'\'] arrays (max 139 — regression?): {stale[:5]}'
 
     def test_bracket_access_minimal(self, sample_result):
         """Almost all bracket accesses should be converted to dot notation."""

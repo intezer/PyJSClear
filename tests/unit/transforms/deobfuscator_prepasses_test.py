@@ -64,12 +64,11 @@ class TestJJEncodePrePass:
 
     @patch('pyjsclear.deobfuscator.is_jsfuck', return_value=False)
     @patch('pyjsclear.deobfuscator.is_aa_encoded', return_value=False)
-    @patch('pyjsclear.deobfuscator.is_jj_encoded', side_effect=[True, False])
+    @patch('pyjsclear.deobfuscator.is_jj_encoded', return_value=True)
     @patch('pyjsclear.deobfuscator.jj_decode', return_value=None)
-    @patch('pyjsclear.deobfuscator.jj_decode_via_eval', return_value='var w = 4;')
-    def test_jj_encode_fallback_to_eval(self, mock_eval, mock_decode, mock_detect, mock_aa, mock_jsfuck):
-        """JJEncode falls back to jj_decode_via_eval when jj_decode returns None."""
-        code = 'some jj encoded stuff'
+    @patch('pyjsclear.deobfuscator.is_eval_packed', return_value=False)
+    def test_jj_decode_failure_continues(self, *mocks):
+        """When jj_decode fails, pipeline continues normally."""
+        code = 'var w = 4;'
         result = Deobfuscator(code).execute()
-        mock_eval.assert_called_once_with(code)
-        assert 'w' in result or 'var' in result
+        assert result is not None
