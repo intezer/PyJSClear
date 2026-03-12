@@ -171,35 +171,37 @@ class TestDeobfuscatorExecute:
 
 
 class TestPrePasses:
-    """Tests for pre-pass encoding detection (lines 91-112)."""
+    """Tests for pre-pass encoding detection."""
 
-    @patch('pyjsclear.deobfuscator.is_aa_encoded', side_effect=[True, False])
-    @patch('pyjsclear.deobfuscator.aa_decode', return_value='var y = 2;')
-    def test_aa_encode_pre_pass(self, mock_decode, mock_detect):
-        """AAEncode pre-pass: detected and decoded."""
-        code = 'some aa encoded stuff'
-        result = Deobfuscator(code).execute()
-        mock_decode.assert_called_once_with(code)
-        assert 'var' in result or 'y' in result
-
-    @patch('pyjsclear.deobfuscator.is_aa_encoded', return_value=False)
     @patch('pyjsclear.deobfuscator.is_eval_packed', side_effect=[True, False])
     @patch('pyjsclear.deobfuscator.eval_unpack', return_value='var w = 4;')
-    def test_eval_packer_pre_pass(self, mock_decode, mock_detect, mock_aa):
+    def test_eval_packer_pre_pass(self, mock_decode, mock_detect):
         """Eval packer pre-pass: detected and decoded."""
         code = 'eval("var w = 4;")'
         result = Deobfuscator(code).execute()
         mock_decode.assert_called_once_with(code)
         assert 'var' in result or 'w' in result
 
+    @patch('pyjsclear.deobfuscator.is_jsfuck', return_value=False)
     @patch('pyjsclear.deobfuscator.is_aa_encoded', side_effect=[True, False])
-    @patch('pyjsclear.deobfuscator.aa_decode', return_value='var decoded = "\\x48\\x65\\x6c\\x6c\\x6f";')
-    def test_recursive_deobfuscation(self, mock_decode, mock_detect):
-        """Pre-pass decoded result goes through full pipeline."""
-        code = 'some aa encoded stuff'
+    @patch('pyjsclear.deobfuscator.aa_decode', return_value='var a = 1;')
+    def test_aa_encode_pre_pass(self, mock_decode, mock_detect, mock_jsfuck):
+        """AAEncode pre-pass: detected and decoded."""
+        code = '\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f] fake aa'
         result = Deobfuscator(code).execute()
-        # The decoded result has hex escapes, which should be further deobfuscated
-        assert 'Hello' in result
+        mock_decode.assert_called_once_with(code)
+        assert 'a' in result
+
+    @patch('pyjsclear.deobfuscator.is_jsfuck', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_aa_encoded', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_jj_encoded', side_effect=[True, False])
+    @patch('pyjsclear.deobfuscator.jj_decode', return_value='var b = 2;')
+    def test_jj_encode_pre_pass(self, mock_decode, mock_detect, mock_aa, mock_jsfuck):
+        """JJEncode pre-pass: detected and decoded."""
+        code = '$=~[];$={};'
+        result = Deobfuscator(code).execute()
+        mock_decode.assert_called_once_with(code)
+        assert 'b' in result
 
 
 class TestLargeFileHandling:

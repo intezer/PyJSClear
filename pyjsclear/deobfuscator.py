@@ -2,8 +2,6 @@
 
 from .generator import generate
 from .parser import parse
-from .transforms.aa_decode import aa_decode
-from .transforms.aa_decode import is_aa_encoded
 from .transforms.anti_tamper import AntiTamperRemover
 from .transforms.class_static_resolver import ClassStaticResolver
 from .transforms.class_string_decoder import ClassStringDecoder
@@ -28,6 +26,8 @@ from .transforms.global_alias import GlobalAliasInliner
 from .transforms.hex_escapes import HexEscapes
 from .transforms.hex_escapes import decode_hex_escapes_source
 from .transforms.hex_numerics import HexNumerics
+from .transforms.aa_decode import aa_decode
+from .transforms.aa_decode import is_aa_encoded
 from .transforms.jj_decode import is_jj_encoded
 from .transforms.jj_decode import jj_decode
 from .transforms.jsfuck_decode import is_jsfuck
@@ -188,7 +188,8 @@ class Deobfuscator:
         last_changed_ast = None
         for _cycle in range(self._MAX_OUTER_CYCLES):
             changed = self._run_ast_transforms(
-                ast, code_size=len(previous_code),
+                ast,
+                code_size=len(previous_code),
             )
 
             if not changed:
