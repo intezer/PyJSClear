@@ -94,7 +94,13 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 
 This project is a derivative work based on
 [obfuscator-io-deobfuscator](https://github.com/ben-sb/obfuscator-io-deobfuscator)
-(Apache 2.0) and
+(Apache 2.0),
 [javascript-deobfuscator](https://github.com/ben-sb/javascript-deobfuscator)
-(Apache 2.0). See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and
+(Apache 2.0), and
+[webcrack](https://github.com/j4k0xb/webcrack) (MIT).
+See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and
 [NOTICE](NOTICE) for full attribution.
+
+Test samples include obfuscated JavaScript from the
+[JSIMPLIFIER dataset](https://zenodo.org/records/17531662) (GPL-3.0),
+used solely for evaluation purposes.

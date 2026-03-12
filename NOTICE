@@ -13,7 +13,16 @@ This product is a derivative work based on the following projects:
    Licensed under the Apache License, Version 2.0
    https://github.com/ben-sb/javascript-deobfuscator
 
+3. webcrack (v2.14.1)
+   Copyright (c) 2023 j4k0xb
+   Licensed under the MIT License
+   https://github.com/j4k0xb/webcrack
+
 This Python library re-implements the deobfuscation algorithms and transform
-logic from the above Node.js/Babel-based tools in pure Python. No source code
-was directly copied; the implementations were written from scratch following
-the same algorithmic approaches.
+logic from the above projects in pure Python. No source code was directly
+copied; the implementations were written from scratch following the same
+algorithmic approaches.
+
+Test dataset: obfuscated JavaScript samples from the JSIMPLIFIER dataset
+(https://zenodo.org/records/17531662) are included in tests/resources/ for
+evaluation purposes only. They are not part of the distributed package.
