@@ -15,9 +15,11 @@ def is_jsfuck(code):
     stripped = code.strip()
     if len(stripped) < 100:
         return False
-    jsfuck_chars = set('[]()!+ \t\n\r;')
+    # Only count the six JSFuck operator characters — whitespace and
+    # semicolons are not distinctive and inflate the ratio on minified JS.
+    jsfuck_chars = set('[]()!+')
     jsfuck_count = sum(1 for c in stripped if c in jsfuck_chars)
-    return jsfuck_count / len(stripped) > 0.9
+    return jsfuck_count / len(stripped) > 0.95
 
 
 # ---------------------------------------------------------------------------
@@ -492,7 +494,12 @@ class _Parser:
     # ------------------------------------------------------------------
 
     def _call(self, func, args, receiver=None):
-        """Handle function call semantics."""
+        """Handle function call semantics.
+
+        Only single-argument calls are supported (e.g. Function(body),
+        toString(radix)).  This is sufficient for JSFuck which never
+        emits multi-argument calls.
+        """
         # Function constructor: Function(body) returns a new function
         if func.type == 'function' and func.val == 'Function':
             if args:
@@ -581,7 +588,6 @@ def jsfuck_decode(code):
         if parser.captured:
             return parser.captured
         return None
-    except (_ParseError, MemoryError):
-        return None
-    except Exception:
+    except (_ParseError, MemoryError, IndexError, ValueError, TypeError,
+            KeyError, OverflowError):
         return None

@@ -629,7 +629,8 @@ def jj_decode(code):
     ``None`` on any failure."""
     try:
         return _jj_decode_inner(code)
-    except Exception:
+    except (ValueError, TypeError, IndexError, KeyError, OverflowError,
+            AttributeError, re.error):
         return None
 
 

@@ -232,8 +232,10 @@ class Deobfuscator:
             except Exception:
                 return previous_code
         except RecursionError:
-            # Safety net: return best result so far on any recursion overflow
-            # from esprima-bounded AST walkers or future regressions
+            # Safety net: esprima's parser is purely recursive with no depth
+            # limit, so deeply nested JS hits Python's recursion limit during
+            # parsing or re-parsing.  Our AST walkers are cheaper per level
+            # but also recursive.  Return best result so far.
             return previous_code
 
     def _run_ast_transforms(self, ast, code_size=0):

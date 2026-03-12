@@ -193,6 +193,16 @@ class TestPrePasses:
         assert 'a' in result
 
     @patch('pyjsclear.deobfuscator.is_jsfuck', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_aa_encoded', side_effect=[True, False])
+    @patch('pyjsclear.deobfuscator.aa_decode', return_value='var decoded = "\\x48\\x65\\x6c\\x6c\\x6f";')
+    def test_recursive_deobfuscation(self, mock_decode, mock_detect, mock_jsfuck):
+        """Pre-pass decoded result goes through full pipeline."""
+        code = '\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f] fake aa'
+        result = Deobfuscator(code).execute()
+        # The decoded result has hex escapes, which should be further deobfuscated
+        assert 'Hello' in result
+
+    @patch('pyjsclear.deobfuscator.is_jsfuck', return_value=False)
     @patch('pyjsclear.deobfuscator.is_aa_encoded', return_value=False)
     @patch('pyjsclear.deobfuscator.is_jj_encoded', side_effect=[True, False])
     @patch('pyjsclear.deobfuscator.jj_decode', return_value='var b = 2;')

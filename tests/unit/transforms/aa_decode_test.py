@@ -42,16 +42,22 @@ class TestAADecode:
         """Synthetic AAEncode for 'Hi' (H=110 octal, i=151 octal).
 
         This builds a minimal AAEncoded payload that the decoder can parse.
+        Note: real AAEncode uses U+FF70 (\uff70 halfwidth), NOT U+30FC (fullwidth).
         """
         # H = 0x48 = 110 octal, i = 0x69 = 151 octal
-        # Digit 1 = (ﾟーﾟ), Digit 0 = (c^_^o), Digit 5 = ((ﾟーﾟ) + (ﾟーﾟ) + (ﾟΘﾟ))
-        sep = '(ﾟДﾟ)[ﾟεﾟ]+'
-        h_digits = '(ﾟーﾟ)+(ﾟーﾟ)+(c^_^o)'  # 1 1 0
-        i_digits = '(ﾟーﾟ)+((ﾟーﾟ) + (ﾟーﾟ) + (ﾟΘﾟ))+(ﾟーﾟ)'  # 1 5 1
+        # Digit 1 = (\uff9f\uff70\uff9f), Digit 0 = (c^_^o),
+        # Digit 5 = ((\uff9f\uff70\uff9f) + (\uff9f\uff70\uff9f) + (\uff9f\u0398\uff9f))
+        sep = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+'
+        h_digits = '(\uff9f\uff70\uff9f)+(\uff9f\uff70\uff9f)+(c^_^o)'  # 1 1 0
+        i_digits = (
+            '(\uff9f\uff70\uff9f)+'
+            '((\uff9f\uff70\uff9f) + (\uff9f\uff70\uff9f) + (\uff9f\u0398\uff9f))+'
+            '(\uff9f\uff70\uff9f)'
+        )  # 1 5 1
 
         data = sep + h_digits + sep + i_digits
         # Add execution wrapper with the signature
-        code = data + "(ﾟДﾟ)['_'](ﾟΘﾟ)"
+        code = data + "(\uff9f\u0414\uff9f)['_'](\uff9f\u0398\uff9f)"
 
         result = aa_decode(code)
         assert result is not None

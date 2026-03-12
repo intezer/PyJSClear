@@ -18,21 +18,24 @@ _SIGNATURE = '\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]'
 _SEPARATOR = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+'
 
 # Unicode hex marker — when present before a segment, the value is hex (\uXXXX).
-_UNICODE_MARKER = '(o\uff9f\u30fc\uff9fo)'
+# Note: real AAEncode uses U+FF70 (halfwidth katakana-hiragana prolonged sound mark ｰ),
+# NOT U+30FC (fullwidth ー).
+_UNICODE_MARKER = '(o\uff9f\uff70\uff9fo)'
 
 # Sentinel used to track unicode marker positions after replacement.
 _HEX_SENTINEL = '\x01'
 
 # Replacement rules: longer/more specific patterns first to avoid partial matches.
+# All patterns use U+FF70 (ｰ) to match real AAEncode output.
 _REPLACEMENTS = [
-    ('(o\uff9f\u30fc\uff9fo)',                                      _HEX_SENTINEL),
-    ('((\uff9f\u30fc\uff9f) + (\uff9f\u30fc\uff9f) + (\uff9f\u0398\uff9f))', '5'),
-    ('((\uff9f\u30fc\uff9f) + (\uff9f\u30fc\uff9f))',              '4'),
-    ('((\uff9f\u30fc\uff9f) + (o^_^o))',                            '3'),
-    ('((\uff9f\u30fc\uff9f) + (\uff9f\u0398\uff9f))',              '2'),
+    ('(o\uff9f\uff70\uff9fo)',                                      _HEX_SENTINEL),
+    ('((\uff9f\uff70\uff9f) + (\uff9f\uff70\uff9f) + (\uff9f\u0398\uff9f))', '5'),
+    ('((\uff9f\uff70\uff9f) + (\uff9f\uff70\uff9f))',              '4'),
+    ('((\uff9f\uff70\uff9f) + (o^_^o))',                            '3'),
+    ('((\uff9f\uff70\uff9f) + (\uff9f\u0398\uff9f))',              '2'),
     ('((o^_^o) - (\uff9f\u0398\uff9f))',                            '2'),
     ('((o^_^o) + (o^_^o))',                                          '6'),
-    ('(\uff9f\u30fc\uff9f)',                                        '1'),
+    ('(\uff9f\uff70\uff9f)',                                        '1'),
     ('(\uff9f\u0398\uff9f)',                                        '1'),
     ('(c^_^o)',                                                      '0'),
     ('(o^_^o)',                                                      '3'),
