@@ -297,11 +297,13 @@ class StringRevealer(Transform):
                 expressions = seq_expr.get('expressions', [])
                 try:
                     expressions.remove(rotation_call_expr)
+                    self.set_changed()
                 except ValueError:
                     pass
                 # If only one expression remains, unwrap the SequenceExpression
                 if len(expressions) == 1:
                     body[rotation_idx]['expression'] = expressions[0]
+                    self.set_changed()
             else:
                 indices_to_remove.add(rotation_idx)
         # Only remove decoder/array funcs if we actually decoded strings

@@ -363,9 +363,12 @@ def _gen_member(node, indent):
         object_code = f'({object_code})'
 
     property_code = generate(node['property'], indent)
+    dot = '?.' if node.get('optional') else '.'
     if computed:
+        if node.get('optional'):
+            return f'{object_code}?.[{property_code}]'
         return f'{object_code}[{property_code}]'
-    return f'{object_code}.{property_code}'
+    return f'{object_code}{dot}{property_code}'
 
 
 def _gen_call(node, indent):
@@ -374,6 +377,8 @@ def _gen_call(node, indent):
     if callee_type in ('FunctionExpression', 'ArrowFunctionExpression', 'SequenceExpression'):
         callee = f'({callee})'
     args = ', '.join(generate(a, indent) for a in node.get('arguments', []))
+    if node.get('optional'):
+        return f'{callee}?.({args})'
     return f'{callee}({args})'
 
 

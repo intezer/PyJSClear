@@ -68,6 +68,11 @@ class ReassignmentRemover(Transform):
             if not isinstance(node, dict) or node.get('type') != 'VariableDeclarator':
                 continue
 
+            # Skip destructuring patterns — id must be a simple Identifier
+            decl_id = node.get('id')
+            if not decl_id or decl_id.get('type') != 'Identifier':
+                continue
+
             initializer = node.get('init')
             if not initializer or not is_identifier(initializer):
                 continue

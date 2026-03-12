@@ -6,12 +6,17 @@ Detects patterns like:
 """
 
 from ..scope import build_scope_tree
+from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import deep_copy
 from ..utils.ast_helpers import get_child_keys
 from ..utils.ast_helpers import is_identifier
 from ..utils.ast_helpers import replace_identifiers
 from .base import Transform
+
+
+# Max AST nodes in a proxy function body before we refuse to inline
+_MAX_PROXY_BODY_NODES = 12
 
 
 class ProxyFunctionInliner(Transform):
@@ -46,6 +51,28 @@ class ProxyFunctionInliner(Transform):
             call_sites.append((node, parent, key, index, proxy_fns[name], depth_counter[0]))
 
         traverse(self.ast, {'enter': enter})
+
+        # Skip helper functions: many call sites + conditional body = not a true proxy
+        call_counts = {}
+        for cs in call_sites:
+            fn_id = id(cs[4][0])  # func_node
+            call_counts[fn_id] = call_counts.get(fn_id, 0) + 1
+
+        def _has_conditional(node):
+            found = [False]
+
+            def cb(n, parent):
+                if n.get('type') == 'ConditionalExpression':
+                    found[0] = True
+
+            simple_traverse(node, cb)
+            return found[0]
+
+        helper_fn_ids = set()
+        for name, (func_node, _, _) in proxy_fns.items():
+            if call_counts.get(id(func_node), 0) > 3 and _has_conditional(func_node):
+                helper_fn_ids.add(id(func_node))
+        call_sites = [cs for cs in call_sites if id(cs[4][0]) not in helper_fn_ids]
 
         # Process innermost calls first
         call_sites.sort(key=lambda x: x[5], reverse=True)
@@ -114,7 +141,9 @@ class ProxyFunctionInliner(Transform):
 
         # Arrow function with expression body
         if func_node.get('type') == 'ArrowFunctionExpression' and body.get('type') != 'BlockStatement':
-            return self._is_proxy_value(body)
+            if not self._is_proxy_value(body):
+                return False
+            return self._count_nodes(body) <= _MAX_PROXY_BODY_NODES
 
         # Block with single return
         if body.get('type') == 'BlockStatement':
@@ -127,9 +156,22 @@ class ProxyFunctionInliner(Transform):
             arg = stmt.get('argument')
             if arg is None:
                 return True  # returns undefined
-            return self._is_proxy_value(arg)
+            if not self._is_proxy_value(arg):
+                return False
+            return self._count_nodes(arg) <= _MAX_PROXY_BODY_NODES
 
         return False
+
+    @staticmethod
+    def _count_nodes(node):
+        """Count AST nodes in a subtree."""
+        count = [0]
+
+        def cb(n, parent):
+            count[0] += 1
+
+        simple_traverse(node, cb)
+        return count[0]
 
     _DISALLOWED_PROXY_TYPES = frozenset(
         {

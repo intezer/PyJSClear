@@ -5,28 +5,47 @@ from .parser import parse
 from .transforms.aa_decode import aa_decode
 from .transforms.aa_decode import is_aa_encoded
 from .transforms.anti_tamper import AntiTamperRemover
+from .transforms.class_static_resolver import ClassStaticResolver
+from .transforms.class_string_decoder import ClassStringDecoder
+from .transforms.cleanup import EmptyIfRemover
+from .transforms.cleanup import LetToConst
+from .transforms.cleanup import OptionalCatchBinding
+from .transforms.cleanup import ReturnUndefinedCleanup
+from .transforms.cleanup import TrailingReturnRemover
+from .transforms.cleanup import VarToConst
 from .transforms.constant_prop import ConstantProp
 from .transforms.control_flow import ControlFlowRecoverer
 from .transforms.dead_branch import DeadBranchRemover
+from .transforms.dead_class_props import DeadClassPropRemover
+from .transforms.dead_expressions import DeadExpressionRemover
+from .transforms.dead_object_props import DeadObjectPropRemover
+from .transforms.else_if_flatten import ElseIfFlattener
+from .transforms.enum_resolver import EnumResolver
 from .transforms.eval_unpack import eval_unpack
 from .transforms.eval_unpack import is_eval_packed
 from .transforms.expression_simplifier import ExpressionSimplifier
+from .transforms.global_alias import GlobalAliasInliner
 from .transforms.hex_escapes import HexEscapes
 from .transforms.hex_escapes import decode_hex_escapes_source
-from .transforms.jj_decode import is_jj_encoded
-from .transforms.jj_decode import jj_decode
-from .transforms.jj_decode import jj_decode_via_eval
-from .transforms.jsfuck_decode import is_jsfuck
-from .transforms.jsfuck_decode import jsfuck_decode
+from .transforms.hex_numerics import HexNumerics
 from .transforms.logical_to_if import LogicalToIf
+from .transforms.member_chain_resolver import MemberChainResolver
+from .transforms.noop_calls import NoopCallRemover
+from .transforms.nullish_coalescing import NullishCoalescing
 from .transforms.object_packer import ObjectPacker
 from .transforms.object_simplifier import ObjectSimplifier
+from .transforms.optional_chaining import OptionalChaining
 from .transforms.property_simplifier import PropertySimplifier
 from .transforms.proxy_functions import ProxyFunctionInliner
 from .transforms.reassignment import ReassignmentRemover
+from .transforms.require_inliner import RequireInliner
 from .transforms.sequence_splitter import SequenceSplitter
+from .transforms.single_use_vars import SingleUseVarInliner
 from .transforms.string_revealer import StringRevealer
+from .transforms.unreachable_code import UnreachableCodeRemover
 from .transforms.unused_vars import UnusedVariableRemover
+from .transforms.variable_renamer import VariableRenamer
+from .transforms.xor_string_decode import XorStringDecoder
 from .traverser import simple_traverse
 
 
@@ -36,15 +55,36 @@ from .traverser import simple_traverse
 TRANSFORM_CLASSES = [
     StringRevealer,
     HexEscapes,
+    HexNumerics,
+    ClassStringDecoder,
+    XorStringDecoder,
+    MemberChainResolver,
+    DeadClassPropRemover,
+    ClassStaticResolver,
+    EnumResolver,
+    RequireInliner,
+    GlobalAliasInliner,
     UnusedVariableRemover,
     ConstantProp,
     ReassignmentRemover,
+    SingleUseVarInliner,
     DeadBranchRemover,
+    UnreachableCodeRemover,
+    NoopCallRemover,
+    EmptyIfRemover,
+    DeadObjectPropRemover,
     ObjectPacker,
     ProxyFunctionInliner,
     SequenceSplitter,
+    DeadExpressionRemover,
     ExpressionSimplifier,
+    NullishCoalescing,
+    OptionalChaining,
     LogicalToIf,
+    ElseIfFlattener,
+    OptionalCatchBinding,
+    ReturnUndefinedCleanup,
+    TrailingReturnRemover,
     ControlFlowRecoverer,
     PropertySimplifier,
     AntiTamperRemover,
@@ -87,21 +127,9 @@ class Deobfuscator:
         Returns decoded code if an encoding/packing was detected and decoded,
         or None to continue with the normal AST pipeline.
         """
-        # JSFUCK check (must be first — these are whole-file encodings)
-        if is_jsfuck(code):
-            decoded = jsfuck_decode(code)
-            if decoded:
-                return decoded
-
         # AAEncode check
         if is_aa_encoded(code):
             decoded = aa_decode(code)
-            if decoded:
-                return decoded
-
-        # JJEncode check
-        if is_jj_encoded(code):
-            decoded = jj_decode(code) or jj_decode_via_eval(code)
             if decoded:
                 return decoded
 
@@ -181,6 +209,14 @@ class Deobfuscator:
 
             if not modified:
                 break
+
+        # Post-passes: cosmetic transforms that run once after convergence
+        for post_transform in [VariableRenamer, VarToConst, LetToConst]:
+            try:
+                if post_transform(ast).execute():
+                    any_transform_changed = True
+            except Exception:
+                pass
 
         if not any_transform_changed:
             return self.original_code

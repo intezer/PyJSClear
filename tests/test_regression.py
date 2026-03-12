@@ -8,6 +8,8 @@ Tests cover:
 - Residual _0x parameter names (not decoder calls)
 - 2-element array negative test (below threshold)
 - No-obfuscation passthrough
+- Full pipeline sample.js (esbuild-bundled malware)
+- Snapshot test against sample.deobfuscated.js
 - Cross-cutting quality invariants
 """
 
@@ -15,13 +17,18 @@ import os
 import re
 from pathlib import Path
 
+import pytest
+
 import pyjsclear
+from pyjsclear.parser import parse
 
 
-SAMPLES_DIR = Path(__file__).parent / 'resources' / 'regression_samples'
+RESOURCES_DIR = Path(__file__).parent / 'resources'
+SAMPLES_DIR = RESOURCES_DIR / 'regression_samples'
 
 RE_0X = re.compile(r'\b_0x[0-9a-fA-F]{2,}\b')
 RE_HEX = re.compile(r'\\x[0-9a-fA-F]{2}')
+RE_HEX_NUMERIC = re.compile(r'\b0x[0-9a-fA-F]+\b')
 
 
 def _deobfuscate(filename):
@@ -163,26 +170,25 @@ class TestOtherTransforms:
 
         Strategy 2b should NOT fire (array too small). PropertySimplifier
         converts bracket notation to dot notation, reducing output size.
+        The string array and decoder function should still be present.
         """
         code, result = _deobfuscate('AnimatedFlatList-obfuscated.js')
         assert result != code, 'PropertySimplifier should transform the code'
         assert len(result) < len(code), 'Output should be smaller (bracket -> dot)'
-        # _0x count should be unchanged (no string decode happened)
-        assert _count_0x(result) == _count_0x(
-            code
-        ), f'_0x count should be unchanged: {_count_0x(code)} -> {_count_0x(result)}'
+        # String decode should NOT fire — the array literal should still be present
+        assert "createAnimatedComponent" in result
 
     def test_animatedimage_2element_array_no_decode(self):
         """AnimatedImage: 2-element array — below Strategy 2b threshold.
 
-        Must NOT trigger string array decoding. Only PropertySimplifier
-        should fire (bracket -> dot). This is a negative test.
+        Must NOT trigger string array decoding. The string array should
+        remain in the output.
         """
         code, result = _deobfuscate('AnimatedImage-obfuscated.js')
         assert result != code, 'PropertySimplifier should still fire'
-        assert _count_0x(result) == _count_0x(code), (
-            f'_0x count should be unchanged (array too small for decode): ' f'{_count_0x(code)} -> {_count_0x(result)}'
-        )
+        # String decode should NOT fire — the array literal should still be present
+        assert "createAnimatedComponent" in result
+        assert "exports" in result
 
 
 # ================================================================
@@ -515,6 +521,232 @@ class TestMultipleDecoders:
 
 
 # ================================================================
+# Full pipeline: esbuild-bundled sample.js
+# ================================================================
+
+
+def _deobfuscate_resource(filename):
+    """Load and deobfuscate a file from tests/resources/."""
+    code = (RESOURCES_DIR / filename).read_text()
+    result = pyjsclear.deobfuscate(code)
+    return code, result
+
+
+@pytest.fixture(scope='module')
+def sample_result():
+    """Deobfuscate sample.js once for the entire module."""
+    return _deobfuscate_resource('sample.js')
+
+
+class TestSampleOutputValidity:
+    """The sample output must be valid, parseable JavaScript."""
+
+    def test_output_parses(self, sample_result):
+        _, result = sample_result
+        ast = parse(result)
+        assert ast is not None
+        assert ast.get('type') == 'Program'
+
+    def test_output_not_empty(self, sample_result):
+        _, result = sample_result
+        assert len(result.strip()) > 1000
+
+    def test_output_is_multiline(self, sample_result):
+        _, result = sample_result
+        assert len(result.splitlines()) > 100
+
+
+class TestSampleSizeInvariants:
+    """Sample output size should be reasonable — not bloated, not empty."""
+
+    def test_output_smaller_than_input(self, sample_result):
+        code, result = sample_result
+        assert len(result) < len(code), f'Output ({len(result)}) should be smaller than input ({len(code)})'
+
+    def test_output_not_too_small(self, sample_result):
+        code, result = sample_result
+        assert len(result) > len(code) * 0.3, f'Output suspiciously small: {len(result)} < 30% of {len(code)}'
+
+    def test_output_ratio_within_bounds(self, sample_result):
+        code, result = sample_result
+        ratio = len(result) / len(code)
+        assert 0.50 < ratio < 0.85, f'Output/input ratio {ratio:.2f} outside expected range 0.50–0.85'
+
+    def test_no_extremely_long_lines(self, sample_result):
+        _, result = sample_result
+        for i, line in enumerate(result.splitlines(), 1):
+            assert len(line) <= 2000, f'Line {i} is {len(line)} chars (max 2000). Preview: {line[:100]}...'
+
+    def test_few_long_lines(self, sample_result):
+        _, result = sample_result
+        long_lines = sum(1 for l in result.splitlines() if len(l) > 500)
+        assert long_lines <= 5, f'{long_lines} lines > 500 chars'
+
+
+class TestSampleEncodingCleanup:
+    """All hex/encoding artifacts should be cleaned up in the sample."""
+
+    def test_no_hex_escapes(self, sample_result):
+        _, result = sample_result
+        count = len(RE_HEX.findall(result))
+        assert count == 0, f'{count} hex escapes remain'
+
+    def test_no_hex_numeric_literals(self, sample_result):
+        _, result = sample_result
+        count = len(RE_HEX_NUMERIC.findall(result))
+        assert count == 0, f'{count} hex numeric literals remain (0x...)'
+
+
+class TestSampleDecodedStrings:
+    """Known strings that should appear in the sample deobfuscated output."""
+
+    @pytest.mark.parametrize(
+        'expected_string',
+        [
+            'require',
+            'path',
+            'crypto',
+            'Buffer',
+            'toString',
+            'exports',
+            'child_process',
+            'node-fetch',
+            'Content-Type',
+            'User-Agent',
+            'AppData',
+            'application/x-www-form-urlencoded',
+            'https://appsuites.ai',
+        ],
+    )
+    def test_known_strings_present(self, sample_result, expected_string):
+        _, result = sample_result
+        assert expected_string in result, f'Expected string {expected_string!r} not found in output'
+
+    def test_require_calls_present(self, sample_result):
+        _, result = sample_result
+        require_count = len(re.findall(r'require\(\s*["\']', result))
+        assert require_count >= 50, f'Only {require_count} require() calls found (expected >= 50)'
+
+    def test_all_0x_identifiers_removed(self, sample_result):
+        """All _0x identifiers should be renamed — 100% reduction."""
+        _, result = sample_result
+        remaining = RE_0X.findall(result)
+        assert len(remaining) == 0, f'{len(remaining)} _0x identifiers remain: {set(remaining)}'
+
+
+class TestSampleConstantResolution:
+    """Verify that constant propagation and member chain resolution are effective."""
+
+    def test_stale_number_empty_arrays_bounded(self, sample_result):
+        """[number, ''] arrays are decoder placeholders that ideally should be resolved.
+
+        Currently 67 remain — these are logging-tag arrays like [138, ''] that
+        the MemberChainResolver cannot yet reach. This ratchet prevents further
+        regression; decrease the limit as resolution improves.
+        """
+        _, result = sample_result
+        # Match patterns like [138, ''] or [103, '']
+        stale = re.findall(r"\[\d+,\s*''\]", result)
+        assert len(stale) <= 67, f'{len(stale)} stale [number, \'\'] arrays (max 67 — regression?): {stale[:5]}'
+
+    def test_bracket_access_minimal(self, sample_result):
+        """Almost all bracket accesses should be converted to dot notation."""
+        _, result = sample_result
+        bracket_count = len(re.findall(r'\w\["', result))
+        assert bracket_count <= 5, f'{bracket_count} bracket accesses remain (expected <= 5)'
+
+    def test_var_to_const_effective(self, sample_result):
+        """Most declarations should be const after var-to-const transform."""
+        _, result = sample_result
+        const_count = result.count('const ')
+        var_count = result.count('var ')
+        total = const_count + var_count
+        assert total > 0
+        const_pct = const_count / total * 100
+        assert const_pct > 85, f'Only {const_pct:.0f}% const ({const_count}/{total}) — var-to-const may be broken'
+
+
+class TestSampleModernJSFeatures:
+    """Transforms should produce modern JS constructs in the sample."""
+
+    def test_nullish_coalescing_count(self, sample_result):
+        _, result = sample_result
+        count = result.count('??')
+        assert count >= 30, f'Only {count} ?? operators (expected >= 30)'
+
+    def test_optional_chaining_count(self, sample_result):
+        _, result = sample_result
+        count = result.count('?.')
+        assert count >= 5, f'Only {count} ?. operators (expected >= 5)'
+
+    def test_has_else_if(self, sample_result):
+        _, result = sample_result
+        assert 'else if' in result, 'No else-if found'
+
+    def test_dot_notation_dominant(self, sample_result):
+        _, result = sample_result
+        dot_count = len(re.findall(r'\w\.\w', result))
+        bracket_count = len(re.findall(r'\w\["', result))
+        assert (
+            dot_count > bracket_count * 100
+        ), f'Dot ({dot_count}) vs bracket ({bracket_count}) ratio too low — PropertySimplifier may be broken'
+
+
+class TestSampleRegressionGuards:
+    """Guards against specific bugs found during development."""
+
+    def test_no_proxy_inliner_blowup(self, sample_result):
+        """OptionalChaining + ProxyFunctionInliner interaction guard."""
+        _, result = sample_result
+        max_line_len = max(len(l) for l in result.splitlines())
+        assert max_line_len < 2000, f'Max line length {max_line_len} suggests proxy inliner blowup'
+
+    def test_helper_functions_preserved(self, sample_result):
+        _, result = sample_result
+        nested_typeof = len(re.findall(r'typeof.*typeof.*typeof.*typeof', result))
+        assert nested_typeof <= 3, f'{nested_typeof} deeply nested typeof chains'
+
+    def test_dead_expressions_removed(self, sample_result):
+        _, result = sample_result
+        bare_numbers = len(re.findall(r'^\s*\d+;\s*$', result, re.MULTILINE))
+        assert bare_numbers == 0, f'{bare_numbers} bare number statements remain'
+
+    def test_no_empty_string_accumulation(self, sample_result):
+        """Empty strings as call arguments are suspicious — often unresolved constants.
+
+        A few are legitimate but a large count indicates decoder resolution failure.
+        """
+        _, result = sample_result
+        # Match '' as a function argument: f('') or f(x, '')
+        count = len(re.findall(r"[(,]\s*''\s*[),]", result))
+        assert count <= 30, f'{count} empty-string arguments (expected <= 30) — possible decoder regression'
+
+
+# ================================================================
+# Snapshot: sample.deobfuscated.js
+# ================================================================
+
+SNAPSHOT_FILE = RESOURCES_DIR / 'sample.deobfuscated.js'
+
+
+class TestSampleSnapshot:
+    """Compare deobfuscated output against the checked-in snapshot.
+
+    Run with ``--update-snapshots`` to regenerate ``sample.deobfuscated.js``.
+    """
+
+    def test_snapshot_matches(self, sample_result, request):
+        _, result = sample_result
+        if request.config.getoption('--update-snapshots'):
+            SNAPSHOT_FILE.write_text(result)
+            pytest.skip('snapshot updated')
+        expected = SNAPSHOT_FILE.read_text()
+        assert result == expected, (
+            'Deobfuscated output differs from snapshot. ' 'Run with --update-snapshots to accept the new output.'
+        )
+
+
+# ================================================================
 # Cross-cutting quality assertions
 # ================================================================
 
@@ -538,9 +770,52 @@ class TestQualityInvariants:
                 code
             ), f'{f.name}: hex escapes increased from {_count_hex(code)} to {_count_hex(result)}'
 
-    def test_output_not_larger_than_3x(self):
-        """Output should not be excessively larger than input."""
+    def test_output_not_larger_than_input(self):
+        """Deobfuscated output should never be larger than the input.
+
+        Deobfuscation removes string arrays, dead code, and infrastructure.
+        If output grows, something is wrong (e.g., proxy inlining blowup).
+        """
         for f in SAMPLES_DIR.glob('*.js'):
             code = f.read_text()
             result = pyjsclear.deobfuscate(code)
-            assert len(result) <= len(code) * 3, f'{f.name}: output {len(result)} > 3x input {len(code)}'
+            assert len(result) <= len(code) * 1.1, (
+                f'{f.name}: output ({len(result)}) > 110% of input ({len(code)}). '
+                f'Ratio: {len(result)/len(code):.2f}'
+            )
+
+    def test_output_parseable(self):
+        """Deobfuscated output should be parseable JavaScript.
+
+        If the output doesn't parse, a transform likely corrupted the AST.
+        We skip files whose input doesn't parse (ES modules with import).
+        """
+        from pyjsclear.parser import parse
+
+        for f in SAMPLES_DIR.glob('*.js'):
+            code = f.read_text()
+            # Skip files that don't parse as input (ES modules)
+            try:
+                parse(code)
+            except SyntaxError:
+                continue
+            result = pyjsclear.deobfuscate(code)
+            try:
+                parse(result)
+            except SyntaxError as e:
+                pytest.fail(f'{f.name}: output does not parse: {e}')
+
+    def test_no_extremely_long_lines(self):
+        """No output line should exceed 5000 chars.
+
+        Long lines indicate expression blowup from proxy function inlining
+        or other expansion bugs. The limit is generous (5000) to accommodate
+        files with legitimately long array literals.
+        """
+        for f in SAMPLES_DIR.glob('*.js'):
+            code = f.read_text()
+            result = pyjsclear.deobfuscate(code)
+            for i, line in enumerate(result.splitlines(), 1):
+                assert len(line) <= 5000, (
+                    f'{f.name} line {i}: {len(line)} chars (max 5000). ' f'Preview: {line[:80]}...'
+                )

@@ -70,19 +70,17 @@ def _is_non_reference_identifier(parent, parent_key):
     """Return True if this Identifier usage is not a variable reference."""
     if not parent:
         return False
-    parent_type = parent.get('type')
-    # Property names in member expressions (non-computed)
-    if parent_type == 'MemberExpression' and parent_key == 'property' and not parent.get('computed'):
-        return True
-    # Property keys in object literals (non-computed)
-    if parent_type == 'Property' and parent_key == 'key' and not parent.get('computed'):
-        return True
-    # Function/class names at declaration site
-    if parent_type in ('FunctionDeclaration', 'FunctionExpression', 'ClassDeclaration') and parent_key == 'id':
-        return True
-    # VariableDeclarator id
-    if parent_type == 'VariableDeclarator' and parent_key == 'id':
-        return True
+    match parent.get('type'):
+        case 'MemberExpression' if parent_key == 'property' and not parent.get('computed'):
+            return True
+        case 'Property' if parent_key == 'key' and not parent.get('computed'):
+            return True
+        case 'FunctionDeclaration' | 'FunctionExpression' | 'ClassDeclaration' | 'ClassExpression' if (
+            parent_key == 'id'
+        ):
+            return True
+        case 'VariableDeclarator' if parent_key == 'id':
+            return True
     return False
 
 
@@ -132,76 +130,104 @@ def build_scope_tree(ast):
         if node_type is None:
             return
 
-        # Create new scope for functions
-        if node_type in (
-            'FunctionDeclaration',
-            'FunctionExpression',
-            'ArrowFunctionExpression',
-        ):
-            new_scope = Scope(scope, node, is_function=True)
-            node_scope[id(node)] = new_scope
-            all_scopes.append(new_scope)
+        match node_type:
+            case 'FunctionDeclaration' | 'FunctionExpression' | 'ArrowFunctionExpression':
+                new_scope = Scope(scope, node, is_function=True)
+                node_scope[id(node)] = new_scope
+                all_scopes.append(new_scope)
 
-            # Function name goes in outer scope (for declarations) or inner (for expressions)
-            if node_type == 'FunctionDeclaration' and node.get('id'):
-                scope.add_binding(node['id']['name'], node, 'function')
-            elif node_type == 'FunctionExpression' and node.get('id'):
-                new_scope.add_binding(node['id']['name'], node, 'function')
+                # Function name goes in outer scope (for declarations) or inner (for expressions)
+                if node_type == 'FunctionDeclaration' and node.get('id'):
+                    scope.add_binding(node['id']['name'], node, 'function')
+                elif node_type == 'FunctionExpression' and node.get('id'):
+                    new_scope.add_binding(node['id']['name'], node, 'function')
 
-            # Params go in function scope
-            for param in node.get('params', []):
-                if param.get('type') == 'Identifier':
-                    new_scope.add_binding(param['name'], param, 'param')
-                elif param.get('type') == 'AssignmentPattern' and param.get('left', {}).get('type') == 'Identifier':
-                    new_scope.add_binding(param['left']['name'], param, 'param')
+                # Params go in function scope
+                for param in node.get('params', []):
+                    match param.get('type'):
+                        case 'Identifier':
+                            new_scope.add_binding(param['name'], param, 'param')
+                        case 'AssignmentPattern' if param.get('left', {}).get('type') == 'Identifier':
+                            new_scope.add_binding(param['left']['name'], param, 'param')
+                        case 'RestElement':
+                            arg = param.get('argument')
+                            if arg and arg.get('type') == 'Identifier':
+                                new_scope.add_binding(arg['name'], param, 'param')
 
-            # Body - use the new scope
-            body = node.get('body')
-            if not body:
-                return
-            if isinstance(body, dict) and body.get('type') == 'BlockStatement':
-                node_scope[id(body)] = new_scope
-                for statement in body.get('body', []):
+                # Body - use the new scope
+                body = node.get('body')
+                if not body:
+                    return
+                if isinstance(body, dict) and body.get('type') == 'BlockStatement':
+                    node_scope[id(body)] = new_scope
+                    for statement in body.get('body', []):
+                        _collect_declarations(statement, new_scope)
+                else:
+                    _collect_declarations(body, new_scope)
+
+            case 'ClassExpression' | 'ClassDeclaration':
+                class_id = node.get('id')
+                inner_scope = scope
+                if class_id and class_id.get('type') == 'Identifier':
+                    name = class_id['name']
+                    if node_type == 'ClassDeclaration':
+                        scope.add_binding(name, node, 'function')
+                    else:
+                        inner_scope = Scope(scope, node)
+                        node_scope[id(node)] = inner_scope
+                        all_scopes.append(inner_scope)
+                        inner_scope.add_binding(name, node, 'function')
+                body = node.get('body')
+                if body:
+                    _collect_declarations(body, inner_scope)
+                superclass = node.get('superClass')
+                if superclass:
+                    _collect_declarations(superclass, scope)
+
+            case 'VariableDeclaration':
+                kind = node.get('kind', 'var')
+                target_scope = (_nearest_function_scope(scope) or scope) if kind == 'var' else scope
+                for declaration in node.get('declarations', []):
+                    declaration_id = declaration.get('id')
+                    if declaration_id and declaration_id.get('type') == 'Identifier':
+                        target_scope.add_binding(declaration_id['name'], declaration, kind)
+                    _collect_pattern_names(declaration_id, target_scope, kind, declaration)
+                    init = declaration.get('init')
+                    if init:
+                        _collect_declarations(init, scope)
+
+            case 'BlockStatement' if id(node) not in node_scope:
+                new_scope = Scope(scope, node)
+                node_scope[id(node)] = new_scope
+                all_scopes.append(new_scope)
+                for statement in node.get('body', []):
                     _collect_declarations(statement, new_scope)
-            else:
-                _collect_declarations(body, new_scope)
-            return
 
-        # Variable declarations
-        if node_type == 'VariableDeclaration':
-            kind = node.get('kind', 'var')
-            # var is function-scoped, let/const are block-scoped
-            target_scope = (_nearest_function_scope(scope) or scope) if kind == 'var' else scope
-            for declaration in node.get('declarations', []):
-                declaration_id = declaration.get('id')
-                if declaration_id and declaration_id.get('type') == 'Identifier':
-                    target_scope.add_binding(declaration_id['name'], declaration, kind)
-                # Handle destructuring patterns
-                _collect_pattern_names(declaration_id, target_scope, kind, declaration)
-            return
+            case 'ForStatement':
+                new_scope = Scope(scope, node)
+                node_scope[id(node)] = new_scope
+                all_scopes.append(new_scope)
+                if node.get('init'):
+                    _collect_declarations(node['init'], new_scope)
+                if node.get('body'):
+                    _collect_declarations(node['body'], new_scope)
 
-        # Block scopes (for, if, etc. with block statements)
-        if node_type == 'BlockStatement' and id(node) not in node_scope:
-            # Only create block scope if parent is not a function (handled above)
-            new_scope = Scope(scope, node)
-            node_scope[id(node)] = new_scope
-            all_scopes.append(new_scope)
-            for statement in node.get('body', []):
-                _collect_declarations(statement, new_scope)
-            return
+            case 'CatchClause':
+                catch_body = node.get('body')
+                if catch_body and catch_body.get('type') == 'BlockStatement':
+                    catch_scope = Scope(scope, catch_body)
+                    node_scope[id(catch_body)] = catch_scope
+                    all_scopes.append(catch_scope)
+                    param = node.get('param')
+                    if param and param.get('type') == 'Identifier':
+                        catch_scope.add_binding(param['name'], param, 'param')
+                    for statement in catch_body.get('body', []):
+                        _collect_declarations(statement, catch_scope)
 
-        if node_type == 'ForStatement':
-            new_scope = Scope(scope, node)
-            node_scope[id(node)] = new_scope
-            all_scopes.append(new_scope)
-            if node.get('init'):
-                _collect_declarations(node['init'], new_scope)
-            if node.get('body'):
-                _collect_declarations(node['body'], new_scope)
-            return
-
-        # Recurse into children
-        _recurse_into_children(node, _child_keys_map, lambda child_node: _collect_declarations(child_node, scope))
+            case _:
+                _recurse_into_children(
+                    node, _child_keys_map, lambda child_node: _collect_declarations(child_node, scope)
+                )
 
     def _collect_pattern_names(pattern, scope, kind, declaration):
         """Collect binding names from destructuring patterns."""

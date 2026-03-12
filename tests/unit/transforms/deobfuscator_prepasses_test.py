@@ -6,7 +6,7 @@ from pyjsclear.deobfuscator import _count_nodes
 
 class TestLargeFileOptimization:
     def test_returns_original_on_no_change(self):
-        code = 'var x = 1;'
+        code = 'const x = 1;'
         d = Deobfuscator(code)
         result = d.execute()
         assert result == code

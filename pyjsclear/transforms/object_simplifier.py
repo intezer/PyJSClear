@@ -73,8 +73,8 @@ class ObjectSimplifier(Transform):
 
                 value = prop_map[property_name]
                 if is_literal(value):
-                    self._replace_node(member_expression, deep_copy(value))
-                    self.set_changed()
+                    if self._replace_node(member_expression, deep_copy(value)):
+                        self.set_changed()
                     continue
 
                 if value.get('type') not in (
@@ -111,8 +111,8 @@ class ObjectSimplifier(Transform):
         replacement = self._inline_func(function_value, parent.get('arguments', []))
         if not replacement:
             return
-        self._replace_node(parent, replacement)
-        self.set_changed()
+        if self._replace_node(parent, replacement):
+            self.set_changed()
 
     def _is_proxy_object(self, properties):
         """Check if all properties are literals or simple functions."""
@@ -155,7 +155,7 @@ class ObjectSimplifier(Transform):
         return None
 
     def _replace_node(self, target, replacement):
-        """Replace target node in the AST."""
+        """Replace target node in the AST. Returns True if replaced."""
         result = find_parent(self.ast, target)
         if result:
             parent, key, index = result
@@ -163,6 +163,8 @@ class ObjectSimplifier(Transform):
                 parent[key][index] = replacement
             else:
                 parent[key] = replacement
+            return True
+        return False
 
     def _inline_func(self, func, args):
         """Inline a simple function call."""

@@ -97,6 +97,18 @@ class TestLiterals:
     def test_null(self):
         assert generate(_lit(None, 'null')) == 'null'
 
+    def test_null_no_raw(self):
+        """Null literal without raw field."""
+        assert generate(_lit(None)) == 'null'
+
+    def test_boolean_true_no_raw(self):
+        """Boolean true without raw field."""
+        assert generate(_lit(True)) == 'true'
+
+    def test_boolean_false_no_raw(self):
+        """Boolean false without raw field."""
+        assert generate(_lit(False)) == 'false'
+
     def test_raw_value_used(self):
         # When value is not a string and raw is present, raw takes priority
         assert generate(_lit(10, '0xA')) == '0xA'
@@ -1807,6 +1819,13 @@ class TestExprPrecedenceCases:
         ast = parse('a = b = c;')
         result = generate(ast)
         assert 'a = b = c' in result
+
+    def test_yield_expression_precedence_in_binary(self):
+        """YieldExpression has precedence 2, needs parens in binary context."""
+        from pyjsclear.generator import _expr_precedence
+
+        yield_node = {'type': 'YieldExpression', 'argument': _id('x'), 'delegate': False}
+        assert _expr_precedence(yield_node) == 2
 
     def test_yield_expression_precedence(self):
         ast = parse('function* g() { yield 1; }')

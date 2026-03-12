@@ -1,14 +1,10 @@
 """Eval/packer unpacker.
 
-Handles Dean Edwards packer (eval(function(p,a,c,k,e,d){...})) and
-generic eval(...) wrappers by replacing eval with identity capture.
+Handles Dean Edwards packer (eval(function(p,a,c,k,e,d){...})) by
+replacing eval with identity capture (pure Python).
 """
 
-import os
 import re
-import shutil
-import subprocess
-import tempfile
 
 
 # Dean Edwards packer pattern
@@ -64,13 +60,7 @@ def _dean_edwards_unpack(packed, radix, count, keywords):
 
 def eval_unpack(code):
     """Unpack eval-packed JavaScript. Returns unpacked code or None."""
-    # Try Dean Edwards packer first (pure Python)
-    result = _try_dean_edwards(code)
-    if result:
-        return result
-
-    # Try generic eval via Node.js
-    return _try_node_eval(code)
+    return _try_dean_edwards(code)
 
 
 def _try_dean_edwards(code):
@@ -92,42 +82,3 @@ def _try_dean_edwards(code):
             except Exception:
                 continue
     return None
-
-
-def _try_node_eval(code):
-    """Try to unpack generic eval() by intercepting via Node.js."""
-    stripped = code.strip()
-    if not _EVAL_RE.search(stripped):
-        return None
-
-    node = shutil.which('node')
-    if not node:
-        return None
-
-    # Replace eval with a capture function
-    js_wrapper = (
-        'var _captured = null;\n'
-        'var _origEval = eval;\n'
-        'eval = function(x) { _captured = x; return x; };\n'
-        'try {\n' + stripped + '\n' + '} catch(e) {}\n'
-        'eval = _origEval;\n'
-        'if (_captured && typeof _captured === "string") console.log(_captured);\n'
-    )
-
-    try:
-        fd, tmp_path = tempfile.mkstemp(suffix='.js')
-        try:
-            with os.fdopen(fd, 'w') as f:
-                f.write(js_wrapper)
-            result = subprocess.run(
-                [node, tmp_path],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            output = result.stdout.strip()
-            return output if output else None
-        finally:
-            os.unlink(tmp_path)
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
-        return None

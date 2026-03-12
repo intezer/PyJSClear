@@ -2,13 +2,13 @@
 
 Combines functionality from obfuscator-io-deobfuscator (13 AST transforms)
 and javascript-deobfuscator (3 surface-cleanup modules) into a single
-Python package with no Node.js dependency.
+Python package.
 """
 
 from .deobfuscator import Deobfuscator
 
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
 
 def deobfuscate(code, max_iterations=50):

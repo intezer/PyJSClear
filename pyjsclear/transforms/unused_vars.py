@@ -96,9 +96,10 @@ class UnusedVariableRemover(Transform):
         node_type = node.get('type', '')
         if node_type in _SIDE_EFFECT_TYPES:
             return True
-        if node_type in _PURE_TYPES:
+        if node_type in ('Literal', 'Identifier', 'ThisExpression', 'FunctionExpression', 'ArrowFunctionExpression'):
             return False
-        # For binary/unary/etc, recurse into children
+        # For all other types (including ArrayExpression, ObjectExpression,
+        # BinaryExpression, etc.), recurse into children to check for side effects
         for key in get_child_keys(node):
             child = node.get(key)
             if child is None:

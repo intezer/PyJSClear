@@ -22,14 +22,14 @@ class TestDeobfuscate:
 class TestDeobfuscateFile:
     def test_reads_file_returns_string_no_output(self, tmp_path):
         input_file = tmp_path / 'input.js'
-        input_file.write_text('var x = 1;')
+        input_file.write_text('const x = 1;')
 
         result = deobfuscate_file(str(input_file))
         assert isinstance(result, str)
-        assert result == 'var x = 1;'
+        assert result == 'const x = 1;'
 
     def test_writes_output_file_returns_false_when_unchanged(self, tmp_path):
-        code = 'var x = 1;'
+        code = 'const x = 1;'
         input_file = tmp_path / 'input.js'
         input_file.write_text(code)
         output_file = tmp_path / 'output.js'

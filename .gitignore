@@ -9,8 +9,13 @@ build/
 pyjsclear/**/*.c
 .eggs/
 .DS_Store
-/.nodeenv/
 /.venv/
 /.venv-linux/
 /.idea/
-.gitignore
+/compare_*.py
+/audit_context_check.py
+/run_comparison.py
+/uv.lock
+/tests/resources/jsimplifier
+/tests/resources/obfuscated-javascript-dataset
+/.gitignore
