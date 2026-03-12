@@ -61,6 +61,7 @@ stabilises (default limit: 50 iterations). A final one-shot pass renames
 variables and converts var/let to const.
 
 **Capabilities:**
+- Whole-file encoding detection: JSFuck, JJEncode, AAEncode, eval-packing
 - String array decoding (obfuscator.io basic/base64/RC4, XOR, class-based)
 - Constant propagation & reassignment elimination
 - Dead code / dead branch / unreachable code removal
@@ -86,7 +87,7 @@ pytest tests/ -n auto                   # parallel execution (requires pytest-xd
 - **Optimised for obfuscator.io output.** Other obfuscation tools may only partially deobfuscate.
 - **Large files get reduced treatment.** Files >500 KB or ASTs >50 K nodes skip expensive transforms; files >2 MB use a minimal lite mode.
 - **No minification reversal.** Minified-but-not-obfuscated code won't be reformatted or beautified.
-- **Recursive AST traversal** may hit Python's default recursion limit (~1 000 frames) on extremely deep nesting.
+- **Recursive AST traversal** may hit Python's default recursion limit (~1 000 frames) on extremely deep nesting; the deobfuscator catches this and returns the best partial result.
 
 ## License
 
