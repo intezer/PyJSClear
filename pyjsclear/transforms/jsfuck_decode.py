@@ -192,6 +192,8 @@ class _JSValue:
         if self.type == 'number':
             if key_str == 'constructor':
                 return _NUMBER_CONSTRUCTOR
+            if key_str == 'toString':
+                return _JSValue('toString', 'function')
             return _JSValue(None, 'undefined')
 
         if self.type == 'bool':
@@ -376,18 +378,21 @@ class _Parser:
     def _postfix(self):
         """Parse postfix: primary ('[' expr ']')* ('(' args ')')*"""
         val = self._primary()
+        receiver = None  # Track receiver for method calls
 
         while self.peek() in ('[', '('):
             if self.peek() == '[':
                 self.consume('[')
                 key = self._expression()
                 self.consume(']')
+                receiver = val  # val is the receiver of the property access
                 val = val.get_property(key)
             elif self.peek() == '(':
                 self.consume('(')
                 args = self._arglist()
                 self.consume(')')
-                val = self._call(val, args)
+                val = self._call(val, args, receiver)
+                receiver = None
 
         return val
 
@@ -422,7 +427,7 @@ class _Parser:
         args = [self._expression()]
         return args
 
-    def _call(self, func, args):
+    def _call(self, func, args, receiver=None):
         """Handle function call semantics."""
         # Function constructor: Function(body) returns a new function
         if func.type == 'function' and func.val == 'Function':
@@ -453,10 +458,15 @@ class _Parser:
             if name == 'fontcolor':
                 return _JSValue('<font color="undefined"></font>', 'string')
 
-            # toString with radix
-            if name == 'toString' and args:
-                # Not directly on func, but may be from number.toString(radix)
-                pass
+            # toString with radix — e.g., (10)["toString"](36) → "a"
+            if name == 'toString' and args and receiver is not None:
+                radix = args[0].to_number()
+                if isinstance(radix, (int, float)) and radix == int(radix):
+                    radix = int(radix)
+                    if 2 <= radix <= 36 and receiver.type == 'number':
+                        num = receiver.to_number()
+                        if isinstance(num, (int, float)) and num == int(num):
+                            return _JSValue(_int_to_base(int(num), radix), 'string')
 
         return _JSValue(None, 'undefined')
 
@@ -474,6 +484,22 @@ class _Parser:
         return _JSValue(left.to_number() + right.to_number(), 'number')
 
 
+def _int_to_base(num, base):
+    """Convert integer to string in given base (2-36), matching JS behavior."""
+    if num == 0:
+        return '0'
+    digits = '0123456789abcdefghijklmnopqrstuvwxyz'
+    negative = num < 0
+    num = abs(num)
+    result = []
+    while num:
+        result.append(digits[num % base])
+        num //= base
+    if negative:
+        result.append('-')
+    return ''.join(reversed(result))
+
+
 class _ParseError(Exception):
     pass
 
@@ -488,7 +514,12 @@ def jsfuck_decode(code):
     if not code or not code.strip():
         return None
 
+    import sys
+    old_limit = sys.getrecursionlimit()
     try:
+        # JSFuck can be deeply nested; temporarily raise the limit
+        sys.setrecursionlimit(max(old_limit, 10000))
+
         tokens = _tokenize(code)
         if not tokens:
             return None
@@ -503,3 +534,5 @@ def jsfuck_decode(code):
         return None
     except Exception:
         return None
+    finally:
+        sys.setrecursionlimit(old_limit)

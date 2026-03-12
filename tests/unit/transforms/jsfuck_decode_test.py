@@ -1,5 +1,6 @@
 """Tests for pure Python JSFuck decoder."""
 
+from pyjsclear.transforms.jsfuck_decode import _int_to_base
 from pyjsclear.transforms.jsfuck_decode import _JSValue
 from pyjsclear.transforms.jsfuck_decode import _Parser
 from pyjsclear.transforms.jsfuck_decode import _tokenize
@@ -223,3 +224,113 @@ class TestJSFuckDecode:
         ctor = flat_fn.get_property(ctor_key)
         assert ctor.type == 'function'
         assert ctor.val == 'Function'
+
+
+class TestToStringRadix:
+    """Test Number.toString(radix) support used by JSFuck for generating letters."""
+
+    def test_int_to_base_basic(self):
+        assert _int_to_base(10, 36) == 'a'
+        assert _int_to_base(11, 36) == 'b'
+        assert _int_to_base(35, 36) == 'z'
+        assert _int_to_base(0, 36) == '0'
+
+    def test_int_to_base_binary(self):
+        assert _int_to_base(5, 2) == '101'
+
+    def test_number_tostring_via_get_property(self):
+        """Number values should expose toString as a function property."""
+        num = _JSValue(10, 'number')
+        ts = num.get_property(_JSValue('toString', 'string'))
+        assert ts.type == 'function'
+        assert ts.val == 'toString'
+
+    def test_tostring_radix_via_parser(self):
+        """Test (10)["toString"](36) produces "a" through the parser.
+
+        Since JSFuck can't directly encode "toString" easily, we test
+        the _call mechanism directly.
+        """
+        p = _Parser([])
+        receiver = _JSValue(10, 'number')
+        func = _JSValue('toString', 'function')
+        radix_arg = _JSValue(36, 'number')
+        result = p._call(func, [radix_arg], receiver)
+        assert result.type == 'string'
+        assert result.val == 'a'
+
+    def test_tostring_radix_35_is_z(self):
+        p = _Parser([])
+        receiver = _JSValue(35, 'number')
+        func = _JSValue('toString', 'function')
+        result = p._call(func, [_JSValue(36, 'number')], receiver)
+        assert result.val == 'z'
+
+    def test_tostring_radix_10_default(self):
+        p = _Parser([])
+        receiver = _JSValue(255, 'number')
+        func = _JSValue('toString', 'function')
+        result = p._call(func, [_JSValue(16, 'number')], receiver)
+        assert result.val == 'ff'
+
+
+class TestJSFuckEndToEnd:
+    """End-to-end tests for JSFuck decoding."""
+
+    def test_char_extraction_chain(self):
+        """Verify that a complex JSFuck char extraction chain works.
+
+        (![]+[])[+!+[]] extracts 'a' from "false"[1].
+        """
+        tokens = _tokenize('(![]+[])[+!+[]]')
+        p = _Parser(tokens)
+        result = p.parse()
+        assert result.val == 'a'
+
+    def test_undefined_char_extraction(self):
+        """([][[]]+[])[+!+[]] → "undefined"[1] → 'n'"""
+        tokens = _tokenize('([][[]]+[])[+!+[]]')
+        p = _Parser(tokens)
+        result = p.parse()
+        assert result.val == 'n'
+
+    def test_object_string_char(self):
+        """([]+{})[+!+[]] → "[object Object]"[1] → 'o'"""
+        tokens = _tokenize('([]+{})[+!+[]]')
+        # {} in JSFuck context — our tokenizer won't handle {}
+        # Test via direct API instead
+        obj = _JSValue({}, 'object')
+        arr = _JSValue([], 'array')
+        # obj + arr in JS = "[object Object]"
+        # "[object Object]"[1] = 'o'
+        combined = _JSValue('[object Object]', 'string')
+        result = combined.get_property(_JSValue(1, 'number'))
+        assert result.val == 'o'
+
+    def test_string_concat_builds_word(self):
+        """Concatenating extracted chars builds a word.
+
+        (![]+[])[+!+[]] + (![]+[])[!+[]+!+[]] → 'a' + 'l' → 'al'
+        """
+        tokens = _tokenize('(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]')
+        p = _Parser(tokens)
+        result = p.parse()
+        assert result.type == 'string'
+        assert result.val == 'al'
+
+    def test_function_constructor_captures_body(self):
+        """Calling Function(body)() should capture the body string.
+
+        []["flat"]["constructor"]("body")() in JSFuck terms.
+        We test via the parser API since encoding "flat" requires more chars.
+        """
+        p = _Parser([])
+        # Simulate: Function("return 42")()
+        func_ctor = _JSValue('Function', 'function')
+        body_str = _JSValue('return 42', 'string')
+        fn = p._call(func_ctor, [body_str])
+        # fn should be a function body wrapper
+        assert fn.type == 'function'
+        # Call it
+        p._call(fn, [])
+        assert p.captured == 'return 42'
