@@ -2,7 +2,7 @@
 
 Combines functionality from obfuscator-io-deobfuscator (13 AST transforms)
 and javascript-deobfuscator (3 surface-cleanup modules) into a single
-Python package with no Node.js dependency.
+Python package.
 """
 
 from .deobfuscator import Deobfuscator
