@@ -56,11 +56,12 @@ pyjsclear input.js --max-iterations 20
 
 ## What it does
 
-PyJSClear applies ~40 transforms in a multi-pass loop until the code
-stabilises (default limit: 50 iterations). A final one-shot pass renames
+PyJSClear applies transforms in a multi-pass loop until the code
+stabilizes (default limit: 50 iterations). A final one-shot pass renames
 variables and converts var/let to const.
 
 **Capabilities:**
+- Whole-file encoding detection: JSFuck, JJEncode, AAEncode, eval-packing
 - String array decoding (obfuscator.io basic/base64/RC4, XOR, class-based)
 - Constant propagation & reassignment elimination
 - Dead code / dead branch / unreachable code removal
@@ -73,20 +74,11 @@ variables and converts var/let to const.
 Large files (>500 KB / >50 K AST nodes) automatically use a lite mode
 that skips expensive transforms.
 
-## Testing
-
-```bash
-pytest tests/                           # all tests
-pytest tests/test_regression.py         # regression suite (62 tests across 25 samples)
-pytest tests/ -n auto                   # parallel execution (requires pytest-xdist)
-```
-
 ## Limitations
 
-- **Optimised for obfuscator.io output.** Other obfuscation tools may only partially deobfuscate.
+- **Best results on obfuscator.io output.** JSFuck, JJEncode, AAEncode, and eval-packed code are fully decoded; other obfuscation tools may only partially deobfuscate.
 - **Large files get reduced treatment.** Files >500 KB or ASTs >50 K nodes skip expensive transforms; files >2 MB use a minimal lite mode.
-- **No minification reversal.** Minified-but-not-obfuscated code won't be reformatted or beautified.
-- **Recursive AST traversal** may hit Python's default recursion limit (~1 000 frames) on extremely deep nesting.
+- **Recursive AST traversal** may hit Python's default recursion limit (~1 000 frames) on extremely deep nesting; the deobfuscator catches this and returns the best partial result.
 
 ## License
 
@@ -94,7 +86,13 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 
 This project is a derivative work based on
 [obfuscator-io-deobfuscator](https://github.com/ben-sb/obfuscator-io-deobfuscator)
-(Apache 2.0) and
+(Apache 2.0),
 [javascript-deobfuscator](https://github.com/ben-sb/javascript-deobfuscator)
-(Apache 2.0). See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and
+(Apache 2.0), and
+[webcrack](https://github.com/j4k0xb/webcrack) (MIT).
+See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and
 [NOTICE](NOTICE) for full attribution.
+
+Test samples include obfuscated JavaScript from the
+[JSIMPLIFIER dataset](https://zenodo.org/records/17531662) (GPL-3.0),
+used solely for evaluation purposes.

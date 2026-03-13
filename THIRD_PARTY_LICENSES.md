@@ -237,3 +237,30 @@ https://github.com/ben-sb/javascript-deobfuscator/blob/master/LICENSE).
 **Features derived from this project:** hex escape decoding (`--he`),
 static array unpacking (`--su`), property access transformation (`--tp`).
 
+---
+
+## webcrack
+
+- **Version:** 2.14.1
+- **Author:** j4k0xb
+- **Repository:** https://github.com/j4k0xb/webcrack
+- **License:** MIT
+
+See [licenses/LICENSE-webcrack](licenses/LICENSE-webcrack) for the full license text.
+
+**Features derived from this project:** general deobfuscation transform
+patterns and architecture reference.
+
+---
+
+## Test dataset
+
+- **JSIMPLIFIER dataset**
+- **Author:** Dongchao Zhou
+- **Source:** https://zenodo.org/records/17531662
+- **License:** GPL-3.0
+
+Obfuscated JavaScript samples from this dataset are included in
+`tests/resources/` for evaluation purposes only. They are not part of the
+distributed package and no code from JSIMPLIFIER is incorporated into
+PyJSClear.

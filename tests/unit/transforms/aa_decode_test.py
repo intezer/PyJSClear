@@ -1,107 +1,64 @@
-"""Tests for AAEncode decoder."""
+"""Unit tests for the AAEncode decoder."""
 
-from pyjsclear.transforms.aa_decode import _AA_DETECT_RE
-from pyjsclear.transforms.aa_decode import _UNICODE_MARKER
-from pyjsclear.transforms.aa_decode import aa_decode
+import pytest
+
 from pyjsclear.transforms.aa_decode import is_aa_encoded
+from pyjsclear.transforms.aa_decode import aa_decode
 
 
-# A minimal AAEncode sample encoding "alert(1)"
-AA_SAMPLE = (
-    "\uff9f\u03c9\uff9f\uff89= /\uff40\uff4d\xb4\uff09\uff89 ~\u253b\u2501\u253b   //*\xb4\u2207\uff40*/ ['_'];"
-    " o=(\uff9f\uff70\uff9f)  =_=3;"
-    " c=(\uff9f\u0398\uff9f) =(\uff9f\uff70\uff9f)-(\uff9f\uff70\uff9f);"
-    " (\uff9f\u0414\uff9f) =(\uff9f\u0398\uff9f)= (o^_^o)/ (o^_^o);"
-    "(\uff9f\u0414\uff9f)={\uff9f\u0398\uff9f: '_'"
-    " ,\uff9f\u03c9\uff9f\uff89 : ((\uff9f\u03c9\uff9f\uff89==3) +'_') [\uff9f\u0398\uff9f]"
-    " ,\uff9f\uff70\uff9f\uff89 :(\uff9f\u03c9\uff9f\uff89+ '_')[o^_^o -(\uff9f\u0398\uff9f)]"
-    " ,\uff9f\u0414\uff9f\uff89:((\uff9f\uff70\uff9f==3) +'_')[\uff9f\uff70\uff9f] };"
-    " (\uff9f\u0414\uff9f) [\uff9f\u0398\uff9f] =((\uff9f\u03c9\uff9f\uff89==3) +'_') [c^_^o];"
-    "(\uff9f\u0414\uff9f) ['c'] = ((\uff9f\u0414\uff9f)+'_') [ (\uff9f\uff70\uff9f)+(\uff9f\uff70\uff9f)-(\uff9f\u0398\uff9f) ];"
-    "(\uff9f\u0414\uff9f) ['o'] = ((\uff9f\u0414\uff9f)+'_') [\uff9f\u0398\uff9f];"
-    "(\uff9fo\uff9f)=(\uff9f\u0414\uff9f) ['c']+(\uff9f\u0414\uff9f) ['o']+(\uff9f\u03c9\uff9f\uff89 +'_')[\uff9f\u0398\uff9f]+"
-    " ((\uff9f\u03c9\uff9f\uff89==3) +'_') [\uff9f\uff70\uff9f] +"
-    " ((\uff9f\u0414\uff9f) +'_') [(\uff9f\uff70\uff9f)+(\uff9f\uff70\uff9f)]+"
-    " ((\uff9f\uff70\uff9f==3) +'_') [\uff9f\u0398\uff9f]+"
-    "((\uff9f\uff70\uff9f==3) +'_') [(\uff9f\uff70\uff9f) - (\uff9f\u0398\uff9f)]+"
-    "(\uff9f\u0414\uff9f) ['c']+"
-    "((\uff9f\u0414\uff9f)+'_') [(\uff9f\uff70\uff9f)+(\uff9f\uff70\uff9f)]+"
-    " (\uff9f\u0414\uff9f) ['o']+"
-    "((\uff9f\uff70\uff9f==3) +'_') [\uff9f\u0398\uff9f];"
-    "(\uff9f\u0414\uff9f) ['_'] =(o^_^o) [\uff9fo\uff9f] [\uff9fo\uff9f];"
-    "(\uff9f\u03b5\uff9f)=((\uff9f\uff70\uff9f==3) +'_') [\uff9f\u0398\uff9f]+"
-    " (\uff9f\u0414\uff9f) .\uff9f\u0414\uff9f\uff89+"
-    "((\uff9f\u0414\uff9f)+'_') [(\uff9f\uff70\uff9f) + (\uff9f\uff70\uff9f)]+"
-    "((\uff9f\uff70\uff9f==3) +'_') [o^_^o -\uff9f\u0398\uff9f]+"
-    "((\uff9f\uff70\uff9f==3) +'_') [\uff9f\u0398\uff9f]+"
-    " (\uff9f\u03c9\uff9f\uff89 +'_') [\uff9f\u0398\uff9f];"
-    " (\uff9f\uff70\uff9f)+=(\uff9f\u0398\uff9f);"
-    " (\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]='\\\\';"
-    " (\uff9f\u0414\uff9f).\uff9f\u0398\uff9f\uff89=(\uff9f\u0414\uff9f+ \uff9f\uff70\uff9f)[o^_^o -(\uff9f\u0398\uff9f)];"
-    "(o\uff9f\uff70\uff9fo)=(\uff9f\u03c9\uff9f\uff89 +'_')[c^_^o];"
-    "(\uff9f\u0414\uff9f) [\uff9fo\uff9f]='\"';"
-    "(\uff9f\u0414\uff9f) ['_'] ( (\uff9f\u0414\uff9f) ['_'] (\uff9f\u03b5\uff9f+"
-    "(\uff9f\u0414\uff9f)[\uff9fo\uff9f]+ "
-    "(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+(\uff9f\u0398\uff9f)+ (\uff9f\uff70\uff9f)+ (\uff9f\uff70\uff9f)+ "
-    "(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+(\uff9f\u0398\uff9f)+ ((o^_^o) +(o^_^o))+ ((o^_^o) +(o^_^o))+ "
-    "(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+(\uff9f\u0398\uff9f)+ (\uff9f\uff70\uff9f)+ ((o^_^o) +(o^_^o))+ "
-    "(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+(\uff9f\u0398\uff9f)+ ((ﾟｰﾟ) + (ﾟΘﾟ))+ ((o^_^o) +(o^_^o))+ "
-    "(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+(\uff9f\u0398\uff9f)+ ((\uff9f\uff70\uff9f) + (\uff9f\u0398\uff9f))+ ((o^_^o) - (\uff9f\u0398\uff9f))+ "
-    "(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+((ﾟｰﾟ) + (ﾟΘﾟ))+ (c^_^o)+ "
-    "(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+(\uff9f\uff70\uff9f)+ ((o^_^o) - (\uff9f\u0398\uff9f))+ "
-    "(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+(\uff9f\u0398\uff9f)+ ((\uff9f\uff70\uff9f) + (\uff9f\u0398\uff9f))+ ((\uff9f\uff70\uff9f) + (o^_^o))+ "
-    "(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+((ﾟｰﾟ) + (\uff9f\u0398\uff9f))+ (\uff9f\u0398\uff9f)+ "
-    "(\uff9f\u0414\uff9f)[\uff9fo\uff9f]) (\uff9f\u0398\uff9f)) ('_');"
-)
+class TestIsAAEncoded:
+    """Detection tests."""
 
+    def test_positive(self):
+        code = 'ﾟωﾟﾉ= /｀ｍ´）ﾉ ~┻━┻   //*´∇｀*/ (ﾟДﾟ)[ﾟεﾟ]+something'
+        assert is_aa_encoded(code) is True
 
-class TestAADetection:
-    def test_detects_aa_encoded(self):
-        assert is_aa_encoded(AA_SAMPLE) is True
-
-    def test_rejects_normal_js(self):
+    def test_negative_plain_js(self):
         assert is_aa_encoded('var x = 1;') is False
 
-    def test_rejects_empty(self):
+    def test_negative_empty(self):
         assert is_aa_encoded('') is False
+
+    def test_negative_none(self):
+        assert is_aa_encoded(None) is False
+
+    def test_negative_jsfuck(self):
+        assert is_aa_encoded('[][(![]+[])]') is False
 
 
 class TestAADecode:
-    def test_decode_returns_none_for_normal_js(self):
+    """Decoding tests."""
+
+    def test_empty_returns_none(self):
+        assert aa_decode('') is None
+
+    def test_plain_js_returns_none(self):
         assert aa_decode('var x = 1;') is None
 
-    def test_decode_returns_string(self):
-        # The sample may not decode perfectly without a real AAEncode encoder,
-        # but the function should not crash
-        result = aa_decode(AA_SAMPLE)
-        # At minimum, it should return a string (even if imperfect)
-        assert result is None or isinstance(result, str)
+    def test_none_returns_none(self):
+        assert aa_decode(None) is None
 
-    def test_unicode_marker_path(self):
-        """Test the unicode character marker path (lines 71-74).
+    def test_synthetic_simple(self):
+        """Synthetic AAEncode for 'Hi' (H=110 octal, i=151 octal).
 
-        Build a minimal AAEncoded string with the unicode marker to exercise
-        that code path.
+        This builds a minimal AAEncoded payload that the decoder can parse.
+        Note: real AAEncode uses U+FF70 (\uff70 halfwidth), NOT U+30FC (fullwidth).
         """
-        # We need the detection pattern to match, plus escape-split parts with _UNICODE_MARKER
-        # Build a fake AAEncoded string that the decoder can parse
-        detect = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]'
-        # Create a part that starts with the unicode marker followed by a hex number
-        # chr(0x41) = 'A', so hex_str = '41'
-        escape_split = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+'
-        part_with_unicode = _UNICODE_MARKER + '41'
-        code = detect + escape_split + part_with_unicode
-        result = aa_decode(code)
-        # Should decode the unicode marker part to chr(0x41) = 'A'
-        assert result is not None
-        assert 'A' in result
+        # H = 0x48 = 110 octal, i = 0x69 = 151 octal
+        # Digit 1 = (\uff9f\uff70\uff9f), Digit 0 = (c^_^o),
+        # Digit 5 = ((\uff9f\uff70\uff9f) + (\uff9f\uff70\uff9f) + (\uff9f\u0398\uff9f))
+        sep = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+'
+        h_digits = '(\uff9f\uff70\uff9f)+(\uff9f\uff70\uff9f)+(c^_^o)'  # 1 1 0
+        i_digits = (
+            '(\uff9f\uff70\uff9f)+'
+            '((\uff9f\uff70\uff9f) + (\uff9f\uff70\uff9f) + (\uff9f\u0398\uff9f))+'
+            '(\uff9f\uff70\uff9f)'
+        )  # 1 5 1
 
-    def test_value_error_returns_none(self):
-        """ValueError in decoding returns None (lines 82-83)."""
-        # Build a fake AAEncoded string with invalid octal that triggers ValueError
-        detect = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]'
-        escape_split = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+'
-        invalid_part = 'not_a_number'
-        code = detect + escape_split + invalid_part
+        data = sep + h_digits + sep + i_digits
+        # Add execution wrapper with the signature
+        code = data + "(\uff9f\u0414\uff9f)['_'](\uff9f\u0398\uff9f)"
+
         result = aa_decode(code)
-        assert result is None
+        assert result is not None
+        assert result == 'Hi'

@@ -99,7 +99,7 @@ class TestDeobfuscatorExecute:
     @patch('pyjsclear.deobfuscator.parse')
     @patch('pyjsclear.deobfuscator.generate', return_value='generated code')
     def test_max_iterations_limits_passes(self, mock_generate, mock_parse, mock_transforms):
-        """max_iterations=1 limits transform passes to one iteration."""
+        """max_iterations=1 limits transform passes to one inner iteration per outer cycle."""
         mock_ast = MagicMock()
         mock_parse.return_value = mock_ast
 
@@ -112,8 +112,10 @@ class TestDeobfuscatorExecute:
 
         result = Deobfuscator('var x = 1;', max_iterations=1).execute()
 
-        # With max_iterations=1, the loop runs exactly once
-        assert always_changes.call_count == 1
+        # With max_iterations=1, the inner loop runs once per outer cycle.
+        # Outer cycle 1: 1 call, generates "generated code" (differs from input).
+        # Outer cycle 2: 1 call, generates "generated code" (same as previous) → stops.
+        assert always_changes.call_count == 2
         assert result == 'generated code'
 
     @patch('pyjsclear.deobfuscator.TRANSFORM_CLASSES')
@@ -169,35 +171,47 @@ class TestDeobfuscatorExecute:
 
 
 class TestPrePasses:
-    """Tests for pre-pass encoding detection (lines 91-112)."""
+    """Tests for pre-pass encoding detection."""
 
-    @patch('pyjsclear.deobfuscator.is_aa_encoded', side_effect=[True, False])
-    @patch('pyjsclear.deobfuscator.aa_decode', return_value='var y = 2;')
-    def test_aa_encode_pre_pass(self, mock_decode, mock_detect):
-        """AAEncode pre-pass: detected and decoded."""
-        code = 'some aa encoded stuff'
-        result = Deobfuscator(code).execute()
-        mock_decode.assert_called_once_with(code)
-        assert 'var' in result or 'y' in result
-
-    @patch('pyjsclear.deobfuscator.is_aa_encoded', return_value=False)
     @patch('pyjsclear.deobfuscator.is_eval_packed', side_effect=[True, False])
     @patch('pyjsclear.deobfuscator.eval_unpack', return_value='var w = 4;')
-    def test_eval_packer_pre_pass(self, mock_decode, mock_detect, mock_aa):
+    def test_eval_packer_pre_pass(self, mock_decode, mock_detect):
         """Eval packer pre-pass: detected and decoded."""
         code = 'eval("var w = 4;")'
         result = Deobfuscator(code).execute()
         mock_decode.assert_called_once_with(code)
         assert 'var' in result or 'w' in result
 
+    @patch('pyjsclear.deobfuscator.is_jsfuck', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_aa_encoded', side_effect=[True, False])
+    @patch('pyjsclear.deobfuscator.aa_decode', return_value='var a = 1;')
+    def test_aa_encode_pre_pass(self, mock_decode, mock_detect, mock_jsfuck):
+        """AAEncode pre-pass: detected and decoded."""
+        code = '\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f] fake aa'
+        result = Deobfuscator(code).execute()
+        mock_decode.assert_called_once_with(code)
+        assert 'a' in result
+
+    @patch('pyjsclear.deobfuscator.is_jsfuck', return_value=False)
     @patch('pyjsclear.deobfuscator.is_aa_encoded', side_effect=[True, False])
     @patch('pyjsclear.deobfuscator.aa_decode', return_value='var decoded = "\\x48\\x65\\x6c\\x6c\\x6f";')
-    def test_recursive_deobfuscation(self, mock_decode, mock_detect):
+    def test_recursive_deobfuscation(self, mock_decode, mock_detect, mock_jsfuck):
         """Pre-pass decoded result goes through full pipeline."""
-        code = 'some aa encoded stuff'
+        code = '\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f] fake aa'
         result = Deobfuscator(code).execute()
         # The decoded result has hex escapes, which should be further deobfuscated
         assert 'Hello' in result
+
+    @patch('pyjsclear.deobfuscator.is_jsfuck', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_aa_encoded', return_value=False)
+    @patch('pyjsclear.deobfuscator.is_jj_encoded', side_effect=[True, False])
+    @patch('pyjsclear.deobfuscator.jj_decode', return_value='var b = 2;')
+    def test_jj_encode_pre_pass(self, mock_decode, mock_detect, mock_aa, mock_jsfuck):
+        """JJEncode pre-pass: detected and decoded."""
+        code = '$=~[];$={};'
+        result = Deobfuscator(code).execute()
+        mock_decode.assert_called_once_with(code)
+        assert 'b' in result
 
 
 class TestLargeFileHandling:
@@ -216,21 +230,27 @@ class TestLargeFileHandling:
     @patch('pyjsclear.deobfuscator._count_nodes', return_value=150_000)
     @patch('pyjsclear.deobfuscator.TRANSFORM_CLASSES')
     def test_very_large_ast_reduces_to_3_iterations(self, mock_transforms, mock_count, mock_parse):
-        """Very large AST (>100k nodes) reduces to 3 iterations (line 149)."""
+        """Very large AST (>100k nodes) reduces to 3 iterations per outer cycle."""
         mock_ast = MagicMock()
         mock_parse.return_value = mock_ast
 
-        # Transform that always changes
-        instance = MagicMock()
-        instance.execute.return_value = True
-        always_changes = MagicMock(return_value=instance)
-        mock_transforms.__iter__ = lambda self: iter([always_changes])
+        # Generate must also return a large string so the iteration limit
+        # applies on subsequent outer cycles too.
+        large_generated = 'y' * (_LARGE_FILE_SIZE + 1)
+        with patch('pyjsclear.deobfuscator.generate', return_value=large_generated):
+            # Transform that always changes
+            instance = MagicMock()
+            instance.execute.return_value = True
+            always_changes = MagicMock(return_value=instance)
+            mock_transforms.__iter__ = lambda self: iter([always_changes])
 
-        # Code > _LARGE_FILE_SIZE to trigger node counting
-        code = 'x' * (_LARGE_FILE_SIZE + 1)
-        result = Deobfuscator(code).execute()
-        # With 150k nodes, max iterations should be min(10, 3) = 3
-        assert always_changes.call_count == 3
+            # Code > _LARGE_FILE_SIZE to trigger node counting
+            code = 'x' * (_LARGE_FILE_SIZE + 1)
+            result = Deobfuscator(code).execute()
+            # With 150k nodes, max iterations = min(10, 3) = 3 per outer cycle.
+            # Outer cycle 1: 3 calls, generates large_generated (differs from input).
+            # Outer cycle 2: 3 calls, generates large_generated (same) → stops.
+            assert always_changes.call_count == 6
 
     @patch('pyjsclear.deobfuscator.parse')
     @patch('pyjsclear.deobfuscator._count_nodes', return_value=0)
