@@ -359,7 +359,10 @@ class VariableRenamer(Transform):
     rebuild_scope = True
 
     def execute(self) -> bool:
-        scope_tree, _ = build_scope_tree(self.ast)
+        if self.scope_tree is not None:
+            scope_tree = self.scope_tree
+        else:
+            scope_tree, _ = build_scope_tree(self.ast)
 
         # Collect all non-obfuscated names across the entire tree to avoid conflicts
         reserved = set(_JS_RESERVED)

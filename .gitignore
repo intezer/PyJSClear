@@ -19,3 +19,5 @@ pyjsclear/**/*.c
 /tests/resources/jsimplifier
 /tests/resources/obfuscated-javascript-dataset
 /.gitignore
+/.nodeenv
+/.emdash.json

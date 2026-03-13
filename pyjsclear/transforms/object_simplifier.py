@@ -5,7 +5,6 @@ Replaces: ... 1 ... "hello" ...
 """
 
 from ..scope import build_scope_tree
-from ..traverser import find_parent
 from ..utils.ast_helpers import deep_copy
 from ..utils.ast_helpers import is_literal
 from ..utils.ast_helpers import is_string_literal
@@ -19,7 +18,10 @@ class ObjectSimplifier(Transform):
     rebuild_scope = True
 
     def execute(self) -> bool:
-        scope_tree, _ = build_scope_tree(self.ast)
+        if self.scope_tree is not None:
+            scope_tree = self.scope_tree
+        else:
+            scope_tree, _ = build_scope_tree(self.ast)
         self._process_scope(scope_tree)
         return self.has_changed()
 
@@ -92,7 +94,7 @@ class ObjectSimplifier(Transform):
         for reference_node, reference_parent, ref_key, ref_index in binding.references:
             if not (reference_parent and reference_parent.get('type') == 'MemberExpression' and ref_key == 'object'):
                 continue
-            member_expression_parent_info = find_parent(self.ast, reference_parent)
+            member_expression_parent_info = self.find_parent(reference_parent)
             if not member_expression_parent_info:
                 continue
             parent, key, _ = member_expression_parent_info
@@ -102,7 +104,7 @@ class ObjectSimplifier(Transform):
 
     def _try_inline_function_call(self, member_expression, function_value) -> None:
         """Try to inline a function call at a MemberExpression site."""
-        member_expression_parent_info = find_parent(self.ast, member_expression)
+        member_expression_parent_info = self.find_parent(member_expression)
         if not member_expression_parent_info:
             return
         parent, key, _ = member_expression_parent_info
@@ -156,13 +158,14 @@ class ObjectSimplifier(Transform):
 
     def _replace_node(self, target, replacement) -> bool:
         """Replace target node in the AST. Returns True if replaced."""
-        result = find_parent(self.ast, target)
+        result = self.find_parent(target)
         if result:
             parent, key, index = result
             if index is not None:
                 parent[key][index] = replacement
             else:
                 parent[key] = replacement
+            self.invalidate_parent_map()
             return True
         return False
 

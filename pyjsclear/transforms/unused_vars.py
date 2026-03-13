@@ -34,7 +34,10 @@ class UnusedVariableRemover(Transform):
     rebuild_scope = True
 
     def execute(self) -> bool:
-        scope_tree, _ = build_scope_tree(self.ast)
+        if self.scope_tree is not None:
+            scope_tree = self.scope_tree
+        else:
+            scope_tree, _ = build_scope_tree(self.ast)
         declarators_to_remove: set[int] = set()
         functions_to_remove: set[int] = set()
         self._collect_unused(scope_tree, declarators_to_remove, functions_to_remove)

@@ -59,7 +59,10 @@ class ReassignmentRemover(Transform):
     rebuild_scope = True
 
     def execute(self) -> bool:
-        scope_tree, _ = build_scope_tree(self.ast)
+        if self.scope_tree is not None:
+            scope_tree = self.scope_tree
+        else:
+            scope_tree, _ = build_scope_tree(self.ast)
         self._process_scope(scope_tree)
         self._inline_assignment_aliases(scope_tree)
         return self.has_changed()

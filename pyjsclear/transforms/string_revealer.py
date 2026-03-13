@@ -7,7 +7,6 @@ from typing import Any
 from ..generator import generate
 from ..scope import build_scope_tree
 from ..traverser import REMOVE
-from ..traverser import find_parent
 from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
@@ -208,7 +207,10 @@ class StringRevealer(Transform):
     _rotation_locals = {}
 
     def execute(self) -> bool:
-        scope_tree, node_scope = build_scope_tree(self.ast)
+        if self.scope_tree is not None:
+            scope_tree, node_scope = self.scope_tree, self.node_scope
+        else:
+            scope_tree, node_scope = build_scope_tree(self.ast)
 
         # Strategy 1: Direct string array declarations (var arr = ["a","b","c"])
         self._process_direct_arrays(scope_tree)
@@ -1252,13 +1254,14 @@ class StringRevealer(Transform):
 
     def _replace_node_in_ast(self, target: dict, replacement: dict) -> None:
         """Replace a node in the AST with a replacement."""
-        result = find_parent(self.ast, target)
+        result = self.find_parent(target)
         if result:
             parent, key, index = result
             if index is not None:
                 parent[key][index] = replacement
             else:
                 parent[key] = replacement
+            self.invalidate_parent_map()
 
     # ================================================================
     # Strategy 3: Simple static array unpacking

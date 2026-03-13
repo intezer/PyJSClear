@@ -21,7 +21,6 @@ from typing import TYPE_CHECKING
 
 from ..scope import build_scope_tree
 from ..traverser import REMOVE
-from ..traverser import find_parent
 from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import deep_copy
@@ -53,7 +52,10 @@ class SingleUseVarInliner(Transform):
     _MAX_INIT_NODES = 15
 
     def execute(self) -> bool:
-        scope_tree, _ = build_scope_tree(self.ast)
+        if self.scope_tree is not None:
+            scope_tree = self.scope_tree
+        else:
+            scope_tree, _ = build_scope_tree(self.ast)
         inlined = self._process_scope(scope_tree)
         if not inlined:
             return False
@@ -133,7 +135,7 @@ class SingleUseVarInliner(Transform):
         if ref_key != 'object':
             return False
         # Now check if this MemberExpression is an assignment target
-        parent_info = find_parent(self.ast, ref_parent)
+        parent_info = self.find_parent(ref_parent)
         if not parent_info:
             return False
         grandparent, grandparent_key, _ = parent_info

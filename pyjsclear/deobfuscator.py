@@ -2,6 +2,9 @@
 
 from .generator import generate
 from .parser import parse
+from .scope import build_scope_tree
+from .transforms.aa_decode import aa_decode
+from .transforms.aa_decode import is_aa_encoded
 from .transforms.anti_tamper import AntiTamperRemover
 from .transforms.class_static_resolver import ClassStaticResolver
 from .transforms.class_string_decoder import ClassStringDecoder
@@ -26,8 +29,6 @@ from .transforms.global_alias import GlobalAliasInliner
 from .transforms.hex_escapes import HexEscapes
 from .transforms.hex_escapes import decode_hex_escapes_source
 from .transforms.hex_numerics import HexNumerics
-from .transforms.aa_decode import aa_decode
-from .transforms.aa_decode import is_aa_encoded
 from .transforms.jj_decode import is_jj_encoded
 from .transforms.jj_decode import jj_decode
 from .transforms.jsfuck_decode import is_jsfuck
@@ -52,6 +53,22 @@ from .transforms.variable_renamer import VariableRenamer
 from .transforms.xor_string_decode import XorStringDecoder
 from .traverser import simple_traverse
 
+
+# Transforms that use build_scope_tree and benefit from cached scope
+_SCOPE_TRANSFORMS = frozenset(
+    {
+        ConstantProp,
+        SingleUseVarInliner,
+        ReassignmentRemover,
+        ProxyFunctionInliner,
+        UnusedVariableRemover,
+        ObjectSimplifier,
+        StringRevealer,
+        VariableRenamer,
+        VarToConst,
+        LetToConst,
+    }
+)
 
 # StringRevealer runs first to handle string arrays before other transforms
 # modify the wrapper function structure.
@@ -259,6 +276,12 @@ class Deobfuscator:
         # Track which transforms are no longer productive
         skip_transforms = set()
 
+        # Cache scope tree across transforms — only rebuild when a transform
+        # that modifies bindings returns changed=True
+        scope_tree = None
+        node_scope = None
+        scope_dirty = True  # Start dirty to build on first use
+
         # Multi-pass transform loop
         any_transform_changed = False
         for iteration in range(max_iterations):
@@ -267,13 +290,23 @@ class Deobfuscator:
                 if transform_class in skip_transforms:
                     continue
                 try:
-                    transform = transform_class(ast)
+                    # Build scope tree lazily when needed by a scope-using transform
+                    if transform_class in _SCOPE_TRANSFORMS and scope_dirty:
+                        scope_tree, node_scope = build_scope_tree(ast)
+                        scope_dirty = False
+
+                    if transform_class in _SCOPE_TRANSFORMS:
+                        transform = transform_class(ast, scope_tree=scope_tree, node_scope=node_scope)
+                    else:
+                        transform = transform_class(ast)
                     result = transform.execute()
                 except Exception:
                     continue
                 if result:
                     modified = True
                     any_transform_changed = True
+                    # Any AST change invalidates the cached scope tree
+                    scope_dirty = True
                 elif iteration > 0:
                     # Skip transforms that haven't changed anything after the first pass
                     skip_transforms.add(transform_class)

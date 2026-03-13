@@ -25,7 +25,10 @@ class ProxyFunctionInliner(Transform):
     rebuild_scope = True
 
     def execute(self):
-        scope_tree, node_scope = build_scope_tree(self.ast)
+        if self.scope_tree is not None:
+            scope_tree, node_scope = self.scope_tree, self.node_scope
+        else:
+            scope_tree, node_scope = build_scope_tree(self.ast)
 
         # Find proxy functions
         proxy_functions = {}  # name -> (func_node, scope, binding)

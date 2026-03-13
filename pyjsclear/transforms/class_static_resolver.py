@@ -11,7 +11,6 @@ Handles two patterns common in esbuild-bundled obfuscated code:
      ... C.id(expr) ...   →   ... expr ...
 """
 
-from ..traverser import find_parent
 from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import deep_copy
@@ -180,7 +179,7 @@ class ClassStaticResolver(Transform):
 
     def _try_inline_identity(self, member_expr: dict, method_node: dict) -> None:
         """Inline Class.identity(arg) → arg."""
-        result = find_parent(self.ast, member_expr)
+        result = self.find_parent(member_expr)
         if not result:
             return
         call_parent, call_key, call_index = result
@@ -191,7 +190,7 @@ class ClassStaticResolver(Transform):
             return
         replacement = deep_copy(args[0])
         # Replace the CallExpression with the argument
-        grandparent_result = find_parent(self.ast, call_parent)
+        grandparent_result = self.find_parent(call_parent)
         if not grandparent_result:
             return
         grandparent, grandparent_key, grandparent_index = grandparent_result
@@ -204,3 +203,4 @@ class ClassStaticResolver(Transform):
             parent[key][index] = replacement
         else:
             parent[key] = replacement
+        self.invalidate_parent_map()

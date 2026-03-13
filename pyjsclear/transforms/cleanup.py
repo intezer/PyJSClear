@@ -162,7 +162,10 @@ class LetToConst(Transform):
     """
 
     def execute(self) -> bool:
-        scope_tree, _ = build_scope_tree(self.ast)
+        if self.scope_tree is not None:
+            scope_tree = self.scope_tree
+        else:
+            scope_tree, _ = build_scope_tree(self.ast)
         safe_declarators: set[int] = set()
         self._collect_let_const_candidates(scope_tree, safe_declarators)
 
@@ -212,7 +215,10 @@ class VarToConst(Transform):
     """
 
     def execute(self) -> bool:
-        scope_tree, _ = build_scope_tree(self.ast)
+        if self.scope_tree is not None:
+            scope_tree = self.scope_tree
+        else:
+            scope_tree, _ = build_scope_tree(self.ast)
         safe_declarators: set[int] = set()
         self._collect_const_candidates(scope_tree, safe_declarators, in_function=True)
 
