@@ -54,64 +54,75 @@ class GlobalAliasInliner(Transform):
     of mangled variable names is extremely unlikely.
     """
 
-    def execute(self):
-        aliases = {}
+    def _find_var_aliases(self, node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
+        """Collect `var alias = GLOBAL` patterns into self._aliases."""
+        if node.get('type') != 'VariableDeclarator':
+            return
+        declaration_id = node.get('id')
+        initializer = node.get('init')
+        if not is_identifier(declaration_id) or not is_identifier(initializer):
+            return
+        if initializer['name'] in _WELL_KNOWN_GLOBALS:
+            self._aliases[declaration_id['name']] = initializer['name']
 
-        # Phase 1: Find `var X = GLOBAL` patterns
-        def find_aliases(node, parent, key, index):
-            if node.get('type') != 'VariableDeclarator':
-                return
-            decl_id = node.get('id')
-            init = node.get('init')
-            if not is_identifier(decl_id) or not is_identifier(init):
-                return
-            if init['name'] in _WELL_KNOWN_GLOBALS:
-                aliases[decl_id['name']] = init['name']
+    def _find_assignment_aliases(self, node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
+        """Collect `alias = GLOBAL` assignment patterns into self._aliases."""
+        if node.get('type') != 'AssignmentExpression':
+            return
+        if node.get('operator') != '=':
+            return
+        left_node = node.get('left')
+        right_node = node.get('right')
+        if not is_identifier(left_node) or not is_identifier(right_node):
+            return
+        if right_node['name'] in _WELL_KNOWN_GLOBALS:
+            self._aliases[left_node['name']] = right_node['name']
 
-        traverse(self.ast, {'enter': find_aliases})
+    def _is_non_reference_position(self, parent: dict | None, key: str | None) -> bool:
+        """Return True if the identifier is in a non-reference (definition/key) position."""
+        if not parent:
+            return False
+        parent_type = parent.get('type')
+        # Non-computed property name
+        if parent_type == 'MemberExpression' and key == 'property' and not parent.get('computed'):
+            return True
+        # Variable declaration target
+        if parent_type == 'VariableDeclarator' and key == 'id':
+            return True
+        # Assignment left-hand side
+        if parent_type == 'AssignmentExpression' and key == 'left':
+            return True
+        # Function/method name
+        if parent_type in ('FunctionDeclaration', 'FunctionExpression') and key == 'id':
+            return True
+        # Non-computed property key
+        if parent_type == 'Property' and key == 'key' and not parent.get('computed'):
+            return True
+        return False
 
-        if not aliases:
+    def _replace_alias_refs(self, node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
+        """Replace aliased identifier references with the global name."""
+        if not is_identifier(node):
+            return None
+        if self._is_non_reference_position(parent, key):
+            return None
+        name = node.get('name')
+        if name in self._aliases:
+            self.set_changed()
+            return make_identifier(self._aliases[name])
+        return None
+
+    def execute(self) -> bool:
+        self._aliases: dict[str, str] = {}
+
+        # Phase 1: collect `var X = GLOBAL` and `X = GLOBAL` patterns
+        traverse(self.ast, {'enter': self._find_var_aliases})
+
+        if not self._aliases:
             return False
 
-        # Also find assignment aliases: X = GLOBAL (not just var X = GLOBAL)
-        def find_assignment_aliases(node, parent, key, index):
-            if node.get('type') != 'AssignmentExpression':
-                return
-            if node.get('operator') != '=':
-                return
-            left = node.get('left')
-            right = node.get('right')
-            if not is_identifier(left) or not is_identifier(right):
-                return
-            if right['name'] in _WELL_KNOWN_GLOBALS:
-                aliases[left['name']] = right['name']
+        traverse(self.ast, {'enter': self._find_assignment_aliases})
 
-        traverse(self.ast, {'enter': find_assignment_aliases})
-
-        # Phase 2: Replace all references
-        def replace_refs(node, parent, key, index):
-            if not is_identifier(node):
-                return
-            # Skip non-computed property names
-            if parent and parent.get('type') == 'MemberExpression' and key == 'property' and not parent.get('computed'):
-                return
-            # Skip declaration targets
-            if parent and parent.get('type') == 'VariableDeclarator' and key == 'id':
-                return
-            # Skip assignment left-hand sides
-            if parent and parent.get('type') == 'AssignmentExpression' and key == 'left':
-                return
-            # Skip function/method names
-            if parent and parent.get('type') in ('FunctionDeclaration', 'FunctionExpression') and key == 'id':
-                return
-            # Skip property keys
-            if parent and parent.get('type') == 'Property' and key == 'key' and not parent.get('computed'):
-                return
-
-            name = node.get('name')
-            if name in aliases:
-                self.set_changed()
-                return make_identifier(aliases[name])
-
-        traverse(self.ast, {'enter': replace_refs})
+        # Phase 2: replace all alias references
+        traverse(self.ast, {'enter': self._replace_alias_refs})
         return self.has_changed()

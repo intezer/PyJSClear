@@ -4,42 +4,42 @@ import copy
 import re
 
 
-def deep_copy(node):
+def deep_copy(node: dict) -> dict:
     """Deep copy an AST node."""
     return copy.deepcopy(node)
 
 
-def is_literal(node):
+def is_literal(node: object) -> bool:
     """Check if node is a Literal."""
     return isinstance(node, dict) and node.get('type') == 'Literal'
 
 
-def is_identifier(node):
+def is_identifier(node: object) -> bool:
     """Check if node is an Identifier."""
     return isinstance(node, dict) and node.get('type') == 'Identifier'
 
 
-def is_string_literal(node):
+def is_string_literal(node: object) -> bool:
     """Check if node is a string Literal."""
     return is_literal(node) and isinstance(node.get('value'), str)
 
 
-def is_numeric_literal(node):
+def is_numeric_literal(node: object) -> bool:
     """Check if node is a numeric Literal."""
     return is_literal(node) and isinstance(node.get('value'), (int, float))
 
 
-def is_boolean_literal(node):
+def is_boolean_literal(node: object) -> bool:
     """Check if node is a boolean-ish literal (true/false or !0/!1)."""
     return is_literal(node) and isinstance(node.get('value'), bool)
 
 
-def is_null_literal(node):
+def is_null_literal(node: object) -> bool:
     """Check if node is null literal."""
     return is_literal(node) and node.get('value') is None and node.get('raw') == 'null'
 
 
-def is_undefined(node):
+def is_undefined(node: object) -> bool:
     """Check if node represents undefined (identifier or ``void 0``)."""
     if is_identifier(node) and node.get('name') == 'undefined':
         return True
@@ -55,14 +55,14 @@ def is_undefined(node):
     return False
 
 
-def get_literal_value(node):
+def get_literal_value(node: object) -> tuple:
     """Extract the value from a literal node. Returns (value, True) or (None, False)."""
     if not is_literal(node):
         return None, False
     return node.get('value'), True
 
 
-def make_literal(value, raw=None):
+def make_literal(value: object, raw: str | None = None) -> dict:
     """Create a Literal AST node."""
     if raw is not None:
         return {'type': 'Literal', 'value': value, 'raw': raw}
@@ -90,22 +90,22 @@ def make_literal(value, raw=None):
     return {'type': 'Literal', 'value': value, 'raw': raw}
 
 
-def make_identifier(name):
+def make_identifier(name: str) -> dict:
     """Create an Identifier AST node."""
     return {'type': 'Identifier', 'name': name}
 
 
-def make_expression_statement(expr):
+def make_expression_statement(expr: dict) -> dict:
     """Wrap an expression in an ExpressionStatement."""
     return {'type': 'ExpressionStatement', 'expression': expr}
 
 
-def make_block_statement(body):
+def make_block_statement(body: list) -> dict:
     """Create a BlockStatement."""
     return {'type': 'BlockStatement', 'body': body}
 
 
-def make_var_declaration(name, init=None, kind='var'):
+def make_var_declaration(name: str, init: dict | None = None, kind: str = 'var') -> dict:
     """Create a VariableDeclaration with a single declarator."""
     return {
         'type': 'VariableDeclaration',
@@ -117,7 +117,7 @@ def make_var_declaration(name, init=None, kind='var'):
 _IDENT_RE = re.compile(r'^[a-zA-Z_$][a-zA-Z0-9_$]*$')
 
 
-def is_valid_identifier(name):
+def is_valid_identifier(name: object) -> bool:
     """Check if a string is a valid JS identifier (for obj.prop access)."""
     if not isinstance(name, str) or not name:
         return False
@@ -207,7 +207,7 @@ _SKIP_KEYS = frozenset(
 )
 
 
-def get_child_keys(node):
+def get_child_keys(node: object) -> tuple | list:
     """Get keys of a node that may contain child nodes/arrays."""
     if not isinstance(node, dict) or 'type' not in node:
         return ()
@@ -217,15 +217,15 @@ def get_child_keys(node):
         return keys
     # Fallback: return all keys that look like they might contain nodes
     return [
-        k
-        for k, v in node.items()
-        if k not in _SKIP_KEYS
-        and not (k == 'expression' and node_type != 'ExpressionStatement')
-        and isinstance(v, (dict, list))
+        key
+        for key, value in node.items()
+        if key not in _SKIP_KEYS
+        and not (key == 'expression' and node_type != 'ExpressionStatement')
+        and isinstance(value, (dict, list))
     ]
 
 
-def replace_identifiers(node, param_map):
+def replace_identifiers(node: dict, param_map: dict) -> None:
     """Replace Identifier nodes whose names are in param_map with deep copies.
 
     Skips non-computed property names in MemberExpressions.
@@ -238,10 +238,10 @@ def replace_identifiers(node, param_map):
             continue
         is_noncomputed_prop = key == 'property' and node.get('type') == 'MemberExpression' and not node.get('computed')
         if isinstance(child, list):
-            for i, item in enumerate(child):
+            for index, item in enumerate(child):
                 if isinstance(item, dict) and item.get('type') == 'Identifier':
                     if not is_noncomputed_prop and item.get('name', '') in param_map:
-                        child[i] = copy.deepcopy(param_map[item['name']])
+                        child[index] = copy.deepcopy(param_map[item['name']])
                 elif isinstance(item, dict) and 'type' in item:
                     replace_identifiers(item, param_map)
         elif isinstance(child, dict):
@@ -252,12 +252,12 @@ def replace_identifiers(node, param_map):
                 replace_identifiers(child, param_map)
 
 
-def identifiers_match(a, b):
+def identifiers_match(node_a: object, node_b: object) -> bool:
     """Check if two nodes are the same identifier."""
-    return is_identifier(a) and is_identifier(b) and a.get('name') == b.get('name')
+    return is_identifier(node_a) and is_identifier(node_b) and node_a.get('name') == node_b.get('name')
 
 
-def is_side_effect_free(node):
+def is_side_effect_free(node: object) -> bool:
     """Check if an expression node is side-effect-free (safe to discard)."""
     if not isinstance(node, dict):
         return False
@@ -288,7 +288,7 @@ def is_side_effect_free(node):
     return False
 
 
-def get_member_names(node):
+def get_member_names(node: object) -> tuple[str, str] | tuple[None, None]:
     """Extract (object_name, property_name) from a MemberExpression.
 
     Handles both computed (obj["prop"]) and non-computed (obj.prop) forms.
@@ -311,17 +311,17 @@ def get_member_names(node):
     return None, None
 
 
-def nodes_equal(a, b):
+def nodes_equal(node_a: object, node_b: object) -> bool:
     """Check if two AST nodes are structurally equal (ignoring position info)."""
-    if type(a) != type(b):
+    if type(node_a) != type(node_b):
         return False
-    match a:
+    match node_a:
         case dict():
-            keys_a = {k for k in a if k not in ('start', 'end', 'loc', 'range')}
-            keys_b = {k for k in b if k not in ('start', 'end', 'loc', 'range')}
+            keys_a = {key for key in node_a if key not in ('start', 'end', 'loc', 'range')}
+            keys_b = {key for key in node_b if key not in ('start', 'end', 'loc', 'range')}
             if keys_a != keys_b:
                 return False
-            return all(nodes_equal(a[k], b[k]) for k in keys_a)
+            return all(nodes_equal(node_a[key], node_b[key]) for key in keys_a)
         case list():
-            return len(a) == len(b) and all(nodes_equal(x, y) for x, y in zip(a, b))
-    return a == b
+            return len(node_a) == len(node_b) and all(nodes_equal(x, y) for x, y in zip(node_a, node_b))
+    return node_a == node_b

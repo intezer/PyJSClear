@@ -28,10 +28,10 @@ class ProxyFunctionInliner(Transform):
         scope_tree, node_scope = build_scope_tree(self.ast)
 
         # Find proxy functions
-        proxy_fns = {}  # name -> (func_node, scope, binding)
-        self._find_proxy_functions(scope_tree, proxy_fns)
+        proxy_functions = {}  # name -> (func_node, scope, binding)
+        self._find_proxy_functions(scope_tree, proxy_functions)
 
-        if not proxy_fns:
+        if not proxy_functions:
             return False
 
         # Collect call sites with depth info
@@ -46,33 +46,33 @@ class ProxyFunctionInliner(Transform):
             if not is_identifier(callee):
                 return
             name = callee.get('name', '')
-            if name not in proxy_fns:
+            if name not in proxy_functions:
                 return
-            call_sites.append((node, parent, key, index, proxy_fns[name], depth_counter[0]))
+            call_sites.append((node, parent, key, index, proxy_functions[name], depth_counter[0]))
 
         traverse(self.ast, {'enter': enter})
 
         # Skip helper functions: many call sites + conditional body = not a true proxy
         call_counts = {}
-        for cs in call_sites:
-            fn_id = id(cs[4][0])  # func_node
-            call_counts[fn_id] = call_counts.get(fn_id, 0) + 1
+        for call_site in call_sites:
+            function_node_id = id(call_site[4][0])  # func_node
+            call_counts[function_node_id] = call_counts.get(function_node_id, 0) + 1
 
         def _has_conditional(node):
             found = [False]
 
-            def cb(n, parent):
+            def check_node(n, parent):
                 if n.get('type') == 'ConditionalExpression':
                     found[0] = True
 
-            simple_traverse(node, cb)
+            simple_traverse(node, check_node)
             return found[0]
 
-        helper_fn_ids = set()
-        for name, (func_node, _, _) in proxy_fns.items():
+        helper_function_ids = set()
+        for name, (func_node, _, _) in proxy_functions.items():
             if call_counts.get(id(func_node), 0) > 3 and _has_conditional(func_node):
-                helper_fn_ids.add(id(func_node))
-        call_sites = [cs for cs in call_sites if id(cs[4][0]) not in helper_fn_ids]
+                helper_function_ids.add(id(func_node))
+        call_sites = [call_site for call_site in call_sites if id(call_site[4][0]) not in helper_function_ids]
 
         # Process innermost calls first
         call_sites.sort(key=lambda x: x[5], reverse=True)
@@ -147,18 +147,18 @@ class ProxyFunctionInliner(Transform):
 
         # Block with single return
         if body.get('type') == 'BlockStatement':
-            stmts = body.get('body', [])
-            if len(stmts) != 1:
+            statements = body.get('body', [])
+            if len(statements) != 1:
                 return False
-            stmt = stmts[0]
+            stmt = statements[0]
             if stmt.get('type') != 'ReturnStatement':
                 return False
-            arg = stmt.get('argument')
-            if arg is None:
+            argument = stmt.get('argument')
+            if argument is None:
                 return True  # returns undefined
-            if not self._is_proxy_value(arg):
+            if not self._is_proxy_value(argument):
                 return False
-            return self._count_nodes(arg) <= _MAX_PROXY_BODY_NODES
+            return self._count_nodes(argument) <= _MAX_PROXY_BODY_NODES
 
         return False
 
@@ -167,10 +167,10 @@ class ProxyFunctionInliner(Transform):
         """Count AST nodes in a subtree."""
         count = [0]
 
-        def cb(n, parent):
+        def increment_count(n, parent):
             count[0] += 1
 
-        simple_traverse(node, cb)
+        simple_traverse(node, increment_count)
         return count[0]
 
     _DISALLOWED_PROXY_TYPES = frozenset(
@@ -211,25 +211,25 @@ class ProxyFunctionInliner(Transform):
         if func_node.get('type') == 'ArrowFunctionExpression' and body.get('type') != 'BlockStatement':
             expr = deep_copy(body)
         elif body.get('type') == 'BlockStatement':
-            stmts = body.get('body', [])
-            if not stmts or stmts[0].get('type') != 'ReturnStatement':
+            statements = body.get('body', [])
+            if not statements or statements[0].get('type') != 'ReturnStatement':
                 return None
-            arg = stmts[0].get('argument')
-            if arg is None:
+            argument = statements[0].get('argument')
+            if argument is None:
                 return {'type': 'Identifier', 'name': 'undefined'}
-            expr = deep_copy(arg)
+            expr = deep_copy(argument)
         else:
             return None
 
         # Build parameter map
         params = func_node.get('params', [])
-        param_map = {}
-        for i, parameter in enumerate(params):
+        parameter_map = {}
+        for index, parameter in enumerate(params):
             if parameter.get('type') == 'Identifier':
-                if i < len(args):
-                    param_map[parameter['name']] = args[i]
+                if index < len(args):
+                    parameter_map[parameter['name']] = args[index]
                 else:
-                    param_map[parameter['name']] = {'type': 'Identifier', 'name': 'undefined'}
+                    parameter_map[parameter['name']] = {'type': 'Identifier', 'name': 'undefined'}
 
-        replace_identifiers(expr, param_map)
+        replace_identifiers(expr, parameter_map)
         return expr

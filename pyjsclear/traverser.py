@@ -1,5 +1,8 @@
 """ESTree AST traversal with visitor pattern."""
 
+from collections.abc import Callable
+from typing import Any
+
 from .utils.ast_helpers import _CHILD_KEYS
 from .utils.ast_helpers import get_child_keys
 
@@ -15,7 +18,7 @@ _list = list
 _isinstance = isinstance
 
 
-def traverse(node, visitor):
+def traverse(node: dict, visitor: dict | object) -> None:
     """Traverse an ESTree AST calling visitor callbacks.
 
     visitor should be a dict or object with optional 'enter' and 'exit' callables.
@@ -36,7 +39,7 @@ def traverse(node, visitor):
     _REMOVE = REMOVE
     _SKIP = SKIP
 
-    def _visit(current_node, parent, key, index):
+    def _visit(current_node: dict, parent: dict | None, key: str | None, index: int | None) -> Any:
         node_type = current_node.get('type')
         if node_type is None:
             return current_node
@@ -72,17 +75,17 @@ def traverse(node, visitor):
             if child is None:
                 continue
             if _isinstance(child, _list):
-                i = 0
-                while i < len(child):
-                    item = child[i]
+                child_index = 0
+                while child_index < len(child):
+                    item = child[child_index]
                     if _isinstance(item, _dict) and 'type' in item:
-                        result = _visit(item, current_node, child_key, i)
+                        result = _visit(item, current_node, child_key, child_index)
                         if result is _REMOVE:
-                            child.pop(i)
+                            child.pop(child_index)
                             continue
                         elif result is not item:
-                            child[i] = result
-                    i += 1
+                            child[child_index] = result
+                    child_index += 1
             elif _isinstance(child, _dict) and 'type' in child:
                 result = _visit(child, current_node, child_key, None)
                 if result is _REMOVE:
@@ -103,13 +106,13 @@ def traverse(node, visitor):
     _visit(node, None, None, None)
 
 
-def simple_traverse(node, callback):
+def simple_traverse(node: dict, callback: Callable) -> None:
     """Simple traversal that calls callback(node, parent) for every node.
     No replacement support - just visiting.
     """
     child_keys_map = _CHILD_KEYS
 
-    def _visit(current_node, parent):
+    def _visit(current_node: dict, parent: dict | None) -> None:
         node_type = current_node.get('type')
         if node_type is None:
             return
@@ -117,8 +120,8 @@ def simple_traverse(node, callback):
         child_keys = child_keys_map.get(node_type)
         if child_keys is None:
             child_keys = get_child_keys(current_node)
-        for key in child_keys:
-            child = current_node.get(key)
+        for child_key in child_keys:
+            child = current_node.get(child_key)
             if child is None:
                 continue
             if _isinstance(child, _list):
@@ -131,16 +134,16 @@ def simple_traverse(node, callback):
     _visit(node, None)
 
 
-def collect_nodes(ast, node_type):
+def collect_nodes(ast: dict, node_type: str) -> list[dict]:
     """Collect all nodes of a given type."""
-    result = []
+    collected = []
 
-    def cb(node, parent):
+    def collect_callback(node: dict, parent: dict | None) -> None:
         if node.get('type') == node_type:
-            result.append(node)
+            collected.append(node)
 
-    simple_traverse(ast, cb)
-    return result
+    simple_traverse(ast, collect_callback)
+    return collected
 
 
 class _FoundParent(Exception):
@@ -148,14 +151,14 @@ class _FoundParent(Exception):
 
     __slots__ = ('value',)
 
-    def __init__(self, value):
+    def __init__(self, value: tuple) -> None:
         self.value = value
 
 
-def find_parent(ast, target_node):
+def find_parent(ast: dict, target_node: dict) -> tuple | None:
     """Find the parent of a node in the AST. Returns (parent, key, index) or None."""
 
-    def _visit(node):
+    def _visit(node: dict) -> None:
         if not isinstance(node, dict) or 'type' not in node:
             return
         for child_key in get_child_keys(node):
@@ -163,9 +166,9 @@ def find_parent(ast, target_node):
             if child is None:
                 continue
             if isinstance(child, list):
-                for i, item in enumerate(child):
+                for child_index, item in enumerate(child):
                     if item is target_node:
-                        raise _FoundParent((node, child_key, i))
+                        raise _FoundParent((node, child_key, child_index))
                     _visit(item)
             elif isinstance(child, dict):
                 if child is target_node:
@@ -174,12 +177,12 @@ def find_parent(ast, target_node):
 
     try:
         _visit(ast)
-    except _FoundParent as found:
-        return found.value
+    except _FoundParent as found_parent:
+        return found_parent.value
     return None
 
 
-def replace_in_parent(parent, key, index, new_node):
+def replace_in_parent(parent: dict, key: str, index: int | None, new_node: dict) -> None:
     """Replace a node within its parent."""
     if index is not None:
         parent[key][index] = new_node
@@ -187,7 +190,7 @@ def replace_in_parent(parent, key, index, new_node):
         parent[key] = new_node
 
 
-def remove_from_parent(parent, key, index):
+def remove_from_parent(parent: dict, key: str, index: int | None) -> None:
     """Remove a node from its parent."""
     if index is not None:
         parent[key].pop(index)

@@ -6,7 +6,7 @@ import sys
 from . import deobfuscate
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description='Deobfuscate JavaScript files.')
     parser.add_argument('input', help='Input JS file (use - for stdin)')
     parser.add_argument('-o', '--output', help='Output file (default: stdout)')
@@ -29,8 +29,9 @@ def main():
     if args.output:
         with open(args.output, 'w') as output_file:
             output_file.write(result)
-    else:
-        sys.stdout.write(result)
+        return
+
+    sys.stdout.write(result)
 
 
 if __name__ == '__main__':

@@ -22,9 +22,9 @@ class EmptyIfRemover(Transform):
     - ``if (expr) {} else { body }`` → ``if (!expr) { body }``
     """
 
-    def execute(self):
+    def execute(self) -> bool:
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> object:
             if node.get('type') != 'IfStatement':
                 return
             consequent = node.get('consequent')
@@ -52,14 +52,14 @@ class EmptyIfRemover(Transform):
         return self.has_changed()
 
     @staticmethod
-    def _is_empty_block(node):
+    def _is_empty_block(node: object) -> bool:
         """Check if a node is an empty block statement ``{}``."""
         if not isinstance(node, dict):
             return False
         if node.get('type') != 'BlockStatement':
             return False
         body = node.get('body')
-        return not body or len(body) == 0
+        return not body
 
 
 class TrailingReturnRemover(Transform):
@@ -71,20 +71,24 @@ class TrailingReturnRemover(Transform):
 
     _FUNC_TYPES = frozenset({'FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'})
 
-    def execute(self):
+    def execute(self) -> bool:
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') not in self._FUNC_TYPES:
                 return
             body = node.get('body')
             if not isinstance(body, dict) or body.get('type') != 'BlockStatement':
                 return
-            stmts = body.get('body')
-            if not stmts or not isinstance(stmts, list):
+            statements = body.get('body')
+            if not statements or not isinstance(statements, list):
                 return
-            last = stmts[-1]
-            if isinstance(last, dict) and last.get('type') == 'ReturnStatement' and last.get('argument') is None:
-                stmts.pop()
+            last_statement = statements[-1]
+            if (
+                isinstance(last_statement, dict)
+                and last_statement.get('type') == 'ReturnStatement'
+                and last_statement.get('argument') is None
+            ):
+                statements.pop()
                 self.set_changed()
 
         traverse(self.ast, {'enter': enter})
@@ -94,9 +98,9 @@ class TrailingReturnRemover(Transform):
 class OptionalCatchBinding(Transform):
     """Remove unused catch clause parameters (ES2019 optional catch binding)."""
 
-    def execute(self):
+    def execute(self) -> bool:
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'CatchClause':
                 return
             param = node.get('param')
@@ -114,32 +118,33 @@ class OptionalCatchBinding(Transform):
         traverse(self.ast, {'enter': enter})
         return self.has_changed()
 
-    def _is_name_used(self, body, name):
+    def _is_name_used(self, body: dict, name: str) -> bool:
         """Check if an identifier name is used anywhere in the subtree."""
-        found = [False]
+        found = False
 
-        def cb(node, parent):
-            if found[0]:
+        def callback(node: dict, parent: dict | None) -> None:
+            nonlocal found
+            if found:
                 return
             if is_identifier(node) and node.get('name') == name:
-                found[0] = True
+                found = True
 
-        simple_traverse(body, cb)
-        return found[0]
+        simple_traverse(body, callback)
+        return found
 
 
 class ReturnUndefinedCleanup(Transform):
     """Simplify `return undefined;` to `return;`."""
 
-    def execute(self):
+    def execute(self) -> bool:
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'ReturnStatement':
                 return
-            arg = node.get('argument')
-            if not arg:
+            argument = node.get('argument')
+            if not argument:
                 return
-            if is_identifier(arg) and arg.get('name') == 'undefined':
+            if is_identifier(argument) and argument.get('name') == 'undefined':
                 node['argument'] = None
                 self.set_changed()
 
@@ -156,28 +161,28 @@ class LetToConst(Transform):
     - The binding has no assignments after declaration
     """
 
-    def execute(self):
+    def execute(self) -> bool:
         scope_tree, _ = build_scope_tree(self.ast)
-        safe_declarators = set()
+        safe_declarators: set[int] = set()
         self._collect_let_const_candidates(scope_tree, safe_declarators)
 
         if not safe_declarators:
             return False
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'VariableDeclaration':
                 return
             if node.get('kind') != 'let':
                 return
-            decls = node.get('declarations', [])
-            if len(decls) == 1 and id(decls[0]) in safe_declarators:
+            declarations = node.get('declarations', [])
+            if len(declarations) == 1 and id(declarations[0]) in safe_declarators:
                 node['kind'] = 'const'
                 self.set_changed()
 
         traverse(self.ast, {'enter': enter})
         return self.has_changed()
 
-    def _collect_let_const_candidates(self, scope, safe_declarators):
+    def _collect_let_const_candidates(self, scope: object, safe_declarators: set[int]) -> None:
         """Find let bindings that are never reassigned and have initializers."""
         for name, binding in scope.bindings.items():
             if binding.kind != 'let':
@@ -206,19 +211,19 @@ class VarToConst(Transform):
       but const is block-scoped
     """
 
-    def execute(self):
+    def execute(self) -> bool:
         scope_tree, _ = build_scope_tree(self.ast)
-        safe_declarators = set()
+        safe_declarators: set[int] = set()
         self._collect_const_candidates(scope_tree, safe_declarators, in_function=True)
 
         if not safe_declarators:
             return False
 
         # Track which BlockStatements are direct function bodies
-        func_body_ids = set()
+        func_body_ids: set[int] = set()
         self._collect_func_bodies(self.ast, func_body_ids)
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'VariableDeclaration':
                 return
             if node.get('kind') != 'var':
@@ -234,26 +239,26 @@ class VarToConst(Transform):
                     return  # Inside a nested block — unsafe
             else:
                 return
-            decls = node.get('declarations', [])
-            if len(decls) == 1 and id(decls[0]) in safe_declarators:
+            declarations = node.get('declarations', [])
+            if len(declarations) == 1 and id(declarations[0]) in safe_declarators:
                 node['kind'] = 'const'
                 self.set_changed()
 
         traverse(self.ast, {'enter': enter})
         return self.has_changed()
 
-    def _collect_func_bodies(self, ast, func_body_ids):
+    def _collect_func_bodies(self, ast: dict, func_body_ids: set[int]) -> None:
         """Collect ids of BlockStatements that are direct function bodies."""
 
-        def cb(node, parent):
+        def callback(node: dict, parent: dict | None) -> None:
             if node.get('type') in ('FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'):
                 body = node.get('body')
                 if body and body.get('type') == 'BlockStatement':
                     func_body_ids.add(id(body))
 
-        simple_traverse(ast, cb)
+        simple_traverse(ast, callback)
 
-    def _collect_const_candidates(self, scope, safe_declarators, in_function=False):
+    def _collect_const_candidates(self, scope: object, safe_declarators: set[int], in_function: bool = False) -> None:
         """Find var bindings that are never reassigned and have initializers."""
         if in_function:
             for name, binding in scope.bindings.items():

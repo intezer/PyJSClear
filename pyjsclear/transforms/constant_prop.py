@@ -1,5 +1,7 @@
 """Constant propagation — replace references to constant variables with their literal values."""
 
+from ..scope import Binding
+from ..scope import Scope
 from ..scope import build_scope_tree
 from ..traverser import REMOVE
 from ..traverser import SKIP
@@ -9,16 +11,16 @@ from ..utils.ast_helpers import is_literal
 from .base import Transform
 
 
-def _should_skip_reference(ref_parent, ref_key):
+def _should_skip_reference(reference_parent: dict | None, reference_key: str | None) -> bool:
     """Return True if this reference should not be replaced with its literal value."""
-    if not ref_parent:
+    if not reference_parent:
         return True
-    match ref_parent.get('type'):
-        case 'AssignmentExpression' if ref_key == 'left':
+    match reference_parent.get('type'):
+        case 'AssignmentExpression' if reference_key == 'left':
             return True
         case 'UpdateExpression':
             return True
-        case 'VariableDeclarator' if ref_key == 'id':
+        case 'VariableDeclarator' if reference_key == 'id':
             return True
     return False
 
@@ -28,7 +30,7 @@ class ConstantProp(Transform):
 
     rebuild_scope = True
 
-    def execute(self):
+    def execute(self) -> bool:
         scope_tree, node_scope = build_scope_tree(self.ast)
 
         replacements = dict(self._iter_constant_bindings(scope_tree))
@@ -39,7 +41,9 @@ class ConstantProp(Transform):
         self._remove_fully_propagated(replacements, bindings_replaced)
         return self.has_changed()
 
-    def _iter_constant_bindings(self, scope):
+    def _iter_constant_bindings(
+        self, scope: Scope
+    ) -> list[tuple[int, tuple[Binding, dict]]]:
         """Yield (binding_id, (binding, literal)) for constant bindings with literal values."""
         for name, binding in scope.bindings.items():
             if not binding.is_constant:
@@ -47,56 +51,58 @@ class ConstantProp(Transform):
             node = binding.node
             if not isinstance(node, dict) or node.get('type') != 'VariableDeclarator':
                 continue
-            init_val = node.get('init')
-            if not init_val or not is_literal(init_val):
+            init_value = node.get('init')
+            if not init_value or not is_literal(init_value):
                 continue
-            yield id(binding), (binding, init_val)
+            yield id(binding), (binding, init_value)
 
         for child in scope.children:
             yield from self._iter_constant_bindings(child)
 
-    def _replace_references(self, replacements):
+    def _replace_references(self, replacements: dict[int, tuple[Binding, dict]]) -> set[int]:
         """Replace all qualifying references with their literal values."""
         bindings_replaced = set()
-        for bind_id, (binding, literal) in replacements.items():
-            for ref_node, ref_parent, ref_key, ref_index in binding.references:
-                if _should_skip_reference(ref_parent, ref_key):
+        for binding_id, (binding, literal) in replacements.items():
+            for reference_node, reference_parent, reference_key, reference_index in binding.references:
+                if _should_skip_reference(reference_parent, reference_key):
                     continue
                 new_node = deep_copy(literal)
-                if ref_index is not None:
-                    ref_parent[ref_key][ref_index] = new_node
+                if reference_index is not None:
+                    reference_parent[reference_key][reference_index] = new_node
                 else:
-                    ref_parent[ref_key] = new_node
+                    reference_parent[reference_key] = new_node
                 self.set_changed()
-                bindings_replaced.add(bind_id)
+                bindings_replaced.add(binding_id)
         return bindings_replaced
 
-    def _remove_fully_propagated(self, replacements, bindings_replaced):
+    def _remove_fully_propagated(
+        self, replacements: dict[int, tuple[Binding, dict]], bindings_replaced: set[int]
+    ) -> None:
         """Remove declarations whose bindings were fully propagated."""
-        for bind_id in bindings_replaced:
-            binding = replacements[bind_id][0]
+        for binding_id in bindings_replaced:
+            binding = replacements[binding_id][0]
             if binding.assignments:
                 continue
-            decl_node = binding.node
-            if not isinstance(decl_node, dict):
+            declarator_node = binding.node
+            if not isinstance(declarator_node, dict):
                 continue
-            if decl_node.get('type') != 'VariableDeclarator':
+            if declarator_node.get('type') != 'VariableDeclarator':
                 continue
-            self._remove_declarator(decl_node)
+            self._remove_declarator(declarator_node)
 
-    def _remove_declarator(self, declarator_node):
+    def _remove_declarator(self, declarator_node: dict) -> None:
         """Remove a VariableDeclarator from its parent VariableDeclaration."""
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None):
             if node.get('type') != 'VariableDeclaration':
                 return
-            decls = node.get('declarations', [])
-            for i, declaration in enumerate(decls):
+            declarations = node.get('declarations', [])
+            for i, declaration in enumerate(declarations):
                 if declaration is not declarator_node:
                     continue
-                decls.pop(i)
+                declarations.pop(i)
                 self.set_changed()
-                if not decls:
+                if not declarations:
                     return REMOVE
                 return SKIP
 

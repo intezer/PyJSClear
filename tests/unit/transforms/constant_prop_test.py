@@ -3,6 +3,7 @@
 import pytest
 
 from pyjsclear.transforms.constant_prop import ConstantProp
+from pyjsclear.transforms.constant_prop import _should_skip_reference
 from tests.unit.conftest import normalize
 from tests.unit.conftest import roundtrip
 
@@ -60,8 +61,7 @@ class TestConstantPropSkipConditions:
         """Line 20: Reference used as update target should be skipped."""
         code = 'var x = 5; x++;'
         result, changed = roundtrip(code, ConstantProp)
-        # x++ should not become 5++
-        # x has writes (x++) so it's not constant, so no propagation
+        # x++ should not become 5++; x has writes so it's not constant
         assert changed is False
 
     def test_skip_declarator_id(self):
@@ -112,42 +112,30 @@ class TestConstantPropSkipReferenceEdgeCases:
 
     def test_ref_parent_is_none(self):
         """Line 15: ref_parent is None → return True (skip)."""
-        from pyjsclear.transforms.constant_prop import _should_skip_reference
-
         assert _should_skip_reference(None, 'left') is True
 
     def test_update_expression_parent(self):
         """Line 20: UpdateExpression parent → return True."""
-        from pyjsclear.transforms.constant_prop import _should_skip_reference
-
         parent = {'type': 'UpdateExpression', 'operator': '++', 'argument': {}}
         assert _should_skip_reference(parent, 'argument') is True
 
     def test_variable_declarator_id(self):
         """Line 22: VariableDeclarator id parent → return True."""
-        from pyjsclear.transforms.constant_prop import _should_skip_reference
-
         parent = {'type': 'VariableDeclarator', 'id': {}, 'init': None}
         assert _should_skip_reference(parent, 'id') is True
 
     def test_variable_declarator_init_not_skipped(self):
         """VariableDeclarator with key='init' should NOT be skipped."""
-        from pyjsclear.transforms.constant_prop import _should_skip_reference
-
         parent = {'type': 'VariableDeclarator', 'id': {}, 'init': {}}
         assert _should_skip_reference(parent, 'init') is False
 
     def test_assignment_expression_right_not_skipped(self):
         """AssignmentExpression with key='right' should NOT be skipped."""
-        from pyjsclear.transforms.constant_prop import _should_skip_reference
-
         parent = {'type': 'AssignmentExpression', 'operator': '=', 'left': {}, 'right': {}}
         assert _should_skip_reference(parent, 'right') is False
 
     def test_normal_parent_not_skipped(self):
         """Normal parent (e.g., CallExpression) should NOT be skipped."""
-        from pyjsclear.transforms.constant_prop import _should_skip_reference
-
         parent = {'type': 'CallExpression', 'callee': {}, 'arguments': []}
         assert _should_skip_reference(parent, 'arguments') is False
 
@@ -163,10 +151,7 @@ class TestConstantPropDeclaratorEdgeCases:
         assert changed is False
 
     def test_non_dict_decl_node_skip(self):
-        """Line 82: decl_node not a dict — should be skipped."""
-        from pyjsclear.transforms.constant_prop import _should_skip_reference
-
-        # This is a defensive check; test it doesn't crash in normal flow
+        """Line 82: decl_node not a dict — defensive check doesn't crash."""
         code = 'const a = 1; y(a);'
         result, changed = roundtrip(code, ConstantProp)
         assert changed is True

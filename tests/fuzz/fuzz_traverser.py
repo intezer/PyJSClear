@@ -9,7 +9,7 @@ import os
 import sys
 
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from conftest_fuzz import SAFE_EXCEPTIONS
 from conftest_fuzz import FuzzedDataProvider
@@ -25,7 +25,7 @@ from pyjsclear.traverser import traverse
 MAX_VISITED = 10_000
 
 
-def TestOneInput(data):
+def TestOneInput(data: bytes) -> None:
     if len(data) < 8:
         return
 
@@ -36,55 +36,53 @@ def TestOneInput(data):
 
     visited = 0
 
-    if mode == 0:
-        # traverse with enter that sometimes returns SKIP
-        action_byte = remaining[0] if remaining else 0
+    match mode:
+        case 0:
+            action_byte = remaining[0] if remaining else 0
 
-        def enter(node, parent, key, index):
-            nonlocal visited
-            visited += 1
-            if visited > MAX_VISITED:
-                return SKIP
-            if isinstance(node, dict) and node.get("type") == "Literal" and action_byte % 3 == 0:
-                return SKIP
-            return None
+            def enter(node, parent, key, index):
+                nonlocal visited
+                visited += 1
+                if visited > MAX_VISITED:
+                    return SKIP
+                if isinstance(node, dict) and node.get('type') == 'Literal' and action_byte % 3 == 0:
+                    return SKIP
+                return None
 
-        try:
-            traverse(ast, {"enter": enter})
-        except SAFE_EXCEPTIONS:
-            return
+            try:
+                traverse(ast, {'enter': enter})
+            except SAFE_EXCEPTIONS:
+                return
 
-    elif mode == 1:
-        # traverse with enter that returns REMOVE for some nodes
-        action_byte = remaining[1] if len(remaining) > 1 else 0
+        case 1:
+            action_byte = remaining[1] if len(remaining) > 1 else 0
 
-        def enter(node, parent, key, index):
-            nonlocal visited
-            visited += 1
-            if visited > MAX_VISITED:
-                return SKIP
-            if isinstance(node, dict) and node.get("type") == "EmptyStatement" and action_byte % 2 == 0:
-                return REMOVE
-            return None
+            def enter(node, parent, key, index):
+                nonlocal visited
+                visited += 1
+                if visited > MAX_VISITED:
+                    return SKIP
+                if isinstance(node, dict) and node.get('type') == 'EmptyStatement' and action_byte % 2 == 0:
+                    return REMOVE
+                return None
 
-        try:
-            traverse(ast, {"enter": enter})
-        except SAFE_EXCEPTIONS:
-            return
+            try:
+                traverse(ast, {'enter': enter})
+            except SAFE_EXCEPTIONS:
+                return
 
-    elif mode == 2:
-        # simple_traverse - just visit all nodes
-        def callback(node, parent):
-            nonlocal visited
-            visited += 1
-            if visited > MAX_VISITED:
-                raise StopIteration("too many nodes")
+        case 2:
+            def callback(node, parent):
+                nonlocal visited
+                visited += 1
+                if visited > MAX_VISITED:
+                    raise StopIteration('too many nodes')
 
-        try:
-            simple_traverse(ast, callback)
-        except (StopIteration, SAFE_EXCEPTIONS[0]):
-            return
+            try:
+                simple_traverse(ast, callback)
+            except (StopIteration, SAFE_EXCEPTIONS[0]):
+                return
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     run_fuzzer(TestOneInput)

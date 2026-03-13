@@ -33,17 +33,17 @@ class UnusedVariableRemover(Transform):
 
     rebuild_scope = True
 
-    def execute(self):
+    def execute(self) -> bool:
         scope_tree, _ = build_scope_tree(self.ast)
-        declarators_to_remove = set()
-        functions_to_remove = set()
+        declarators_to_remove: set[int] = set()
+        functions_to_remove: set[int] = set()
         self._collect_unused(scope_tree, declarators_to_remove, functions_to_remove)
         if not declarators_to_remove and not functions_to_remove:
             return False
         self._batch_remove(declarators_to_remove, functions_to_remove)
         return self.has_changed()
 
-    def _collect_unused(self, scope, declarators, functions):
+    def _collect_unused(self, scope: object, declarators: set[int], functions: set[int]) -> None:
         skip_global = scope.parent is None
 
         for name, binding in scope.bindings.items():
@@ -66,30 +66,31 @@ class UnusedVariableRemover(Transform):
         for child in scope.children:
             self._collect_unused(child, declarators, functions)
 
-    def _batch_remove(self, declarators_to_remove, functions_to_remove):
+    def _batch_remove(self, declarators_to_remove: set[int], functions_to_remove: set[int]) -> None:
         """Remove all collected unused declarations in a single traversal."""
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> object:
             node_type = node.get('type')
             if node_type == 'FunctionDeclaration' and id(node) in functions_to_remove:
                 self.set_changed()
                 return REMOVE
             if node_type != 'VariableDeclaration':
-                return
-            decls = node.get('declarations')
-            if not decls:
-                return
-            new_decls = [d for d in decls if id(d) not in declarators_to_remove]
-            if len(new_decls) == len(decls):
-                return
+                return None
+            declarations = node.get('declarations')
+            if not declarations:
+                return None
+            filtered_declarations = [declarator for declarator in declarations if id(declarator) not in declarators_to_remove]
+            if len(filtered_declarations) == len(declarations):
+                return None
             self.set_changed()
-            if not new_decls:
+            if not filtered_declarations:
                 return REMOVE
-            node['declarations'] = new_decls
+            node['declarations'] = filtered_declarations
+            return None
 
         traverse(self.ast, {'enter': enter})
 
-    def _has_side_effects(self, node):
+    def _has_side_effects(self, node: dict) -> bool:
         """Conservative check for side effects in an expression."""
         if not isinstance(node, dict):
             return False
@@ -98,8 +99,7 @@ class UnusedVariableRemover(Transform):
             return True
         if node_type in ('Literal', 'Identifier', 'ThisExpression', 'FunctionExpression', 'ArrowFunctionExpression'):
             return False
-        # For all other types (including ArrayExpression, ObjectExpression,
-        # BinaryExpression, etc.), recurse into children to check for side effects
+        # Recurse into children (handles ArrayExpression, ObjectExpression, BinaryExpression, etc.)
         for key in get_child_keys(node):
             child = node.get(key)
             if child is None:

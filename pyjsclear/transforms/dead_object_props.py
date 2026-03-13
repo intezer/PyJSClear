@@ -46,61 +46,60 @@ _GLOBAL_OBJECTS = frozenset(
 class DeadObjectPropRemover(Transform):
     """Remove object property assignments where the property is never read."""
 
-    def execute(self):
+    def execute(self) -> bool:
         # Phase 1: Find all obj.PROP = value statements and all obj.PROP reads.
         # Also track which objects "escape" (are assigned to external refs, passed as
         # function arguments, or returned) — their properties may be read externally.
-        writes = {}  # (obj_name, prop_name) -> count
-        reads = set()  # set of (obj_name, prop_name)
-        escaped = set()  # set of obj_name that escape
+        writes: dict[tuple[str, str], int] = {}  # (obj_name, prop_name) -> count
+        reads: set[tuple[str, str]] = set()  # set of (obj_name, prop_name)
+        escaped: set[str] = set()  # set of obj_name that escape
 
         # Phase 0: Collect locally declared variable names (var/let/const).
         # Only properties on locally declared objects are candidates for removal.
-        local_vars = set()
+        local_vars: set[str] = set()
 
-        def collect_locals(node, parent):
+        def collect_locals(node: dict, parent: dict | None) -> None:
             if not isinstance(node, dict):
                 return
-            t = node.get('type')
-            if t == 'VariableDeclarator':
-                vid = node.get('id')
-                if vid and is_identifier(vid):
-                    local_vars.add(vid['name'])
+            node_type = node.get('type')
+            if node_type == 'VariableDeclarator':
+                variable_id = node.get('id')
+                if variable_id and is_identifier(variable_id):
+                    local_vars.add(variable_id['name'])
             # Function/arrow params are externally provided — mark as escaped
-            if t in ('FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'):
+            if node_type in ('FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'):
                 for param in node.get('params', []):
                     if is_identifier(param):
                         escaped.add(param['name'])
 
         simple_traverse(self.ast, collect_locals)
 
-        def collect(node, parent):
+        def collect(node: dict, parent: dict | None) -> None:
             if not isinstance(node, dict):
                 return
-            t = node.get('type')
+            node_type = node.get('type')
 
             # Track identifiers that escape
-            if t == 'Identifier' and parent:
+            if node_type == 'Identifier' and parent:
                 name = node.get('name', '')
                 if name in _GLOBAL_OBJECTS:
                     escaped.add(name)
-                pt = parent.get('type')
+                parent_type = parent.get('type')
                 # RHS of assignment to a member (e.g., r.exports = obj)
-                if pt == 'AssignmentExpression' and node is parent.get('right'):
+                if parent_type == 'AssignmentExpression' and node is parent.get('right'):
                     left = parent.get('left')
                     if left and left.get('type') == 'MemberExpression':
                         escaped.add(name)
                 # Function/method argument
-                if pt == 'CallExpression' or pt == 'NewExpression':
-                    args = parent.get('arguments', [])
-                    if node in args:
+                if parent_type in ('CallExpression', 'NewExpression'):
+                    if node in parent.get('arguments', []):
                         escaped.add(name)
                 # Return value
-                if pt == 'ReturnStatement':
+                if parent_type == 'ReturnStatement':
                     escaped.add(name)
 
             # Track member access patterns
-            if t != 'MemberExpression':
+            if node_type != 'MemberExpression':
                 return
             if node.get('computed'):
                 return
@@ -125,7 +124,7 @@ class DeadObjectPropRemover(Transform):
             return False
 
         # Phase 2: Remove dead assignment statements
-        def remove_dead(node, parent, key, index):
+        def remove_dead(node: dict, parent: dict | None, key: str | None, index: int | None) -> object:
             if node.get('type') != 'ExpressionStatement':
                 return
             expr = node.get('expression')
@@ -139,12 +138,13 @@ class DeadObjectPropRemover(Transform):
             if not obj or not is_identifier(obj) or not prop or not is_identifier(prop):
                 return
             pair = (obj['name'], prop['name'])
-            if pair in dead_props:
-                # Only remove if the RHS is side-effect-free
-                rhs = expr.get('right')
-                if is_side_effect_free(rhs):
-                    self.set_changed()
-                    return REMOVE
+            if pair not in dead_props:
+                return
+            # Only remove if the RHS is side-effect-free
+            rhs = expr.get('right')
+            if is_side_effect_free(rhs):
+                self.set_changed()
+                return REMOVE
 
         traverse(self.ast, {'enter': remove_dead})
         return self.has_changed()

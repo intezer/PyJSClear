@@ -7,8 +7,8 @@ from tests.unit.conftest import normalize
 from tests.unit.conftest import roundtrip
 
 
-def rt(js_code):
-    """Shorthand roundtrip for ControlFlowRecoverer."""
+def roundtrip_cff(js_code: str) -> tuple[str, bool]:
+    """Run a roundtrip through ControlFlowRecoverer and normalize output."""
     code, changed = roundtrip(js_code, ControlFlowRecoverer)
     return normalize(code), changed
 
@@ -161,50 +161,50 @@ class TestIsSplitCall:
     """Test the _is_split_call detection method."""
 
     def setup_method(self):
-        self.t = ControlFlowRecoverer(_program([]))
+        self.transform = ControlFlowRecoverer(_program([]))
 
     def test_valid_split_call(self):
         node = _split_call('1|0|3|2')
-        assert self.t._is_split_call(node) is True
+        assert self.transform._is_split_call(node) is True
 
     def test_non_dict_returns_false(self):
-        assert self.t._is_split_call(None) is False
-        assert self.t._is_split_call('string') is False
+        assert self.transform._is_split_call(None) is False
+        assert self.transform._is_split_call('string') is False
 
     def test_non_call_expression(self):
-        assert self.t._is_split_call({'type': 'Identifier', 'name': 'x'}) is False
+        assert self.transform._is_split_call({'type': 'Identifier', 'name': 'x'}) is False
 
     def test_callee_not_member_expression(self):
         node = _call_expr(_identifier('split'), [_literal('|')])
-        assert self.t._is_split_call(node) is False
+        assert self.transform._is_split_call(node) is False
 
     def test_object_not_string_literal(self):
         node = _call_expr(
             callee=_member_expr(_identifier('arr'), _identifier('split')),
             arguments=[_literal('|')],
         )
-        assert self.t._is_split_call(node) is False
+        assert self.transform._is_split_call(node) is False
 
     def test_property_not_split(self):
         node = _call_expr(
             callee=_member_expr(_literal('1|2'), _identifier('join')),
             arguments=[_literal('|')],
         )
-        assert self.t._is_split_call(node) is False
+        assert self.transform._is_split_call(node) is False
 
     def test_no_arguments(self):
         node = _call_expr(
             callee=_member_expr(_literal('1|2'), _identifier('split')),
             arguments=[],
         )
-        assert self.t._is_split_call(node) is False
+        assert self.transform._is_split_call(node) is False
 
     def test_argument_not_string(self):
         node = _call_expr(
             callee=_member_expr(_literal('1|2'), _identifier('split')),
             arguments=[_literal(1)],
         )
-        assert self.t._is_split_call(node) is False
+        assert self.transform._is_split_call(node) is False
 
 
 # ---------------------------------------------------------------------------
@@ -216,23 +216,23 @@ class TestExtractSplitStates:
     """Test the _extract_split_states method."""
 
     def setup_method(self):
-        self.t = ControlFlowRecoverer(_program([]))
+        self.transform = ControlFlowRecoverer(_program([]))
 
     def test_basic_extraction(self):
         node = _split_call('1|0|3|2')
-        assert self.t._extract_split_states(node) == ['1', '0', '3', '2']
+        assert self.transform._extract_split_states(node) == ['1', '0', '3', '2']
 
     def test_single_state(self):
         node = _split_call('0')
-        assert self.t._extract_split_states(node) == ['0']
+        assert self.transform._extract_split_states(node) == ['0']
 
     def test_five_states(self):
         node = _split_call('4|2|0|1|3')
-        assert self.t._extract_split_states(node) == ['4', '2', '0', '1', '3']
+        assert self.transform._extract_split_states(node) == ['4', '2', '0', '1', '3']
 
     def test_custom_separator(self):
         node = _split_call('a-b-c', separator='-')
-        assert self.t._extract_split_states(node) == ['a', 'b', 'c']
+        assert self.transform._extract_split_states(node) == ['a', 'b', 'c']
 
 
 # ---------------------------------------------------------------------------
@@ -250,8 +250,8 @@ class TestBasicCFFRecovery:
             '1': [_expr_stmt(_call_expr(_identifier('a'), []))],
         }
         ast = _make_cff_ast_var_pattern('1|0', '_a', '_i', cases)
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
 
         assert changed is True
         body = ast['body']
@@ -270,8 +270,8 @@ class TestBasicCFFRecovery:
             '2': [_expr_stmt(_call_expr(_identifier('c'), []))],
         }
         ast = _make_cff_ast_var_pattern('2|0|1', '_a', '_i', cases)
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
 
         assert changed is True
         body = ast['body']
@@ -288,8 +288,8 @@ class TestBasicCFFRecovery:
             '2': [_expr_stmt(_call_expr(_identifier('c'), []))],
         }
         ast = _make_cff_ast_var_pattern('0|1|2', '_a', '_i', cases)
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
 
         assert changed is True
         body = ast['body']
@@ -304,8 +304,8 @@ class TestBasicCFFRecovery:
             '0': [_expr_stmt(_call_expr(_identifier('a'), []))],
         }
         ast = _make_cff_ast_var_pattern('0', '_a', '_i', cases)
-        t = ControlFlowRecoverer(ast)
-        t.execute()
+        transform = ControlFlowRecoverer(ast)
+        transform.execute()
 
         body = ast['body']
         for stmt in body:
@@ -318,8 +318,8 @@ class TestBasicCFFRecovery:
             '1': [_return_stmt(_literal(42))],
         }
         ast = _make_cff_ast_var_pattern('0|1', '_a', '_i', cases)
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
 
         assert changed is True
         body = ast['body']
@@ -344,8 +344,8 @@ class TestExpressionPattern:
             '1': [_expr_stmt(_call_expr(_identifier('a'), []))],
         }
         ast = _make_cff_ast_expr_pattern('1|0', '_a', '_i', cases)
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
 
         assert changed is True
         body = ast['body']
@@ -360,8 +360,8 @@ class TestExpressionPattern:
             '2': [_expr_stmt(_call_expr(_identifier('z'), []))],
         }
         ast = _make_cff_ast_expr_pattern('2|1|0', '_arr', '_idx', cases)
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
 
         assert changed is True
         body = ast['body']
@@ -386,8 +386,8 @@ class TestNoCFFPattern:
                 _expr_stmt(_call_expr(_identifier('bar'), [])),
             ]
         )
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
 
         assert changed is False
         assert len(ast['body']) == 2
@@ -395,16 +395,16 @@ class TestNoCFFPattern:
     def test_while_without_switch_unchanged(self):
         loop = _while_true([_expr_stmt(_call_expr(_identifier('doStuff'), []))])
         ast = _program([loop])
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
 
         assert changed is False
 
     def test_var_decl_without_split_unchanged(self):
         decl = _var_declaration([_var_declarator('x', _literal(10))])
         ast = _program([decl])
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
 
         assert changed is False
 
@@ -424,7 +424,7 @@ class TestRoundtrip:
             ' switch (_a[_i++]) { case "0": b(); continue; case "1": a(); continue; }'
             ' break; }'
         )
-        code, changed = rt(js)
+        code, changed = roundtrip_cff(js)
         assert changed is True
         assert 'a();' in code
         assert 'b();' in code
@@ -438,7 +438,7 @@ class TestRoundtrip:
             ' switch (_s[_c++]) { case "0": first(); continue; case "1": second(); continue; case "2": third(); continue; }'
             ' break; }'
         )
-        code, changed = rt(js)
+        code, changed = roundtrip_cff(js)
         assert changed is True
         # Order: "2|0|1" => third, first, second
         assert code.index('third()') < code.index('first()')
@@ -495,35 +495,35 @@ class TestIsTruthy:
     """Test the _is_truthy helper method."""
 
     def setup_method(self):
-        self.t = ControlFlowRecoverer(_program([]))
+        self.transform = ControlFlowRecoverer(_program([]))
 
     def test_literal_true(self):
-        assert self.t._is_truthy(_literal(True)) is True
+        assert self.transform._is_truthy(_literal(True)) is True
 
     def test_literal_1(self):
-        assert self.t._is_truthy(_literal(1)) is True
+        assert self.transform._is_truthy(_literal(1)) is True
 
     def test_literal_false(self):
-        assert self.t._is_truthy(_literal(False)) is False
+        assert self.transform._is_truthy(_literal(False)) is False
 
     def test_literal_0(self):
-        assert self.t._is_truthy(_literal(0)) is False
+        assert self.transform._is_truthy(_literal(0)) is False
 
     def test_not_zero_is_truthy(self):
         """!0 should be recognized as truthy."""
         node = {'type': 'UnaryExpression', 'operator': '!', 'argument': _literal(0), 'prefix': True}
-        assert self.t._is_truthy(node) is True
+        assert self.transform._is_truthy(node) is True
 
     def test_not_dict(self):
-        assert self.t._is_truthy(None) is False
-        assert self.t._is_truthy('string') is False
+        assert self.transform._is_truthy(None) is False
+        assert self.transform._is_truthy('string') is False
 
     def test_double_not_array_is_truthy(self):
         """!![] should be truthy."""
         inner = {'type': 'ArrayExpression', 'elements': []}
         not_inner = {'type': 'UnaryExpression', 'operator': '!', 'argument': inner, 'prefix': True}
         double_not = {'type': 'UnaryExpression', 'operator': '!', 'argument': not_inner, 'prefix': True}
-        assert self.t._is_truthy(double_not) is True
+        assert self.transform._is_truthy(double_not) is True
 
 
 # ---------------------------------------------------------------------------
@@ -537,8 +537,8 @@ class TestNonDictInBody:
     def test_non_dict_in_body_skipped(self):
         """Non-dict items in body should be skipped without crashing."""
         ast = _program([None, 'not_a_dict', _expr_stmt(_call_expr(_identifier('a'), []))])
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
         assert changed is False
 
 
@@ -553,8 +553,8 @@ class TestExpressionPatternCounterInit:
                 _while_true([_break_stmt()]),
             ]
         )
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
         assert changed is False
 
     def test_expression_pattern_missing_loop(self):
@@ -563,8 +563,8 @@ class TestExpressionPatternCounterInit:
         counter_stmt = _expr_stmt(_assignment('_i', _literal(0)))
         # No loop after counter, just ends
         ast = _program([assign_stmt, counter_stmt])
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
         assert changed is False
 
 
@@ -572,28 +572,28 @@ class TestFindCounterInit:
     """Lines 175-183, 194: _find_counter_init with VariableDeclaration and ExpressionStatement."""
 
     def setup_method(self):
-        self.t = ControlFlowRecoverer(_program([]))
+        self.transform = ControlFlowRecoverer(_program([]))
 
     def test_variable_declaration_counter(self):
         stmt = _var_declaration([_var_declarator('_i', _literal(0))])
-        result = self.t._find_counter_init(stmt)
+        result = self.transform._find_counter_init(stmt)
         assert result == '_i'
 
     def test_expression_statement_counter(self):
         stmt = _expr_stmt(_assignment('_i', _literal(0)))
-        result = self.t._find_counter_init(stmt)
+        result = self.transform._find_counter_init(stmt)
         assert result == '_i'
 
     def test_non_numeric_init_ignored(self):
         stmt = _var_declaration([_var_declarator('_i', _literal('hello'))])
-        result = self.t._find_counter_init(stmt)
+        result = self.transform._find_counter_init(stmt)
         assert result is None
 
     def test_non_dict_returns_none(self):
-        result = self.t._find_counter_init(None)
+        result = self.transform._find_counter_init(None)
         assert result is None
 
-        result = self.t._find_counter_init('not a dict')
+        result = self.transform._find_counter_init('not a dict')
         assert result is None
 
 
@@ -608,7 +608,7 @@ class TestForStatementPattern:
             ' switch (_a[_j++]) { case "0": b(); continue; case "1": a(); continue; }'
             ' break; }'
         )
-        code, changed = rt(js)
+        code, changed = roundtrip_cff(js)
         assert changed is True
         assert 'a()' in code
         assert 'b()' in code
@@ -655,25 +655,25 @@ class TestExtractSwitchFromLoopBody:
     """Lines 302, 308-310: _extract_switch_from_loop_body edge cases."""
 
     def setup_method(self):
-        self.t = ControlFlowRecoverer(_program([]))
+        self.transform = ControlFlowRecoverer(_program([]))
 
     def test_non_block_statement(self):
         """Non-BlockStatement body returns None."""
-        result = self.t._extract_switch_from_loop_body(_expr_stmt(_call_expr(_identifier('a'), [])))
+        result = self.transform._extract_switch_from_loop_body(_expr_stmt(_call_expr(_identifier('a'), [])))
         assert result is None
 
     def test_switch_directly_as_body(self):
         """SwitchStatement directly as loop body."""
         switch = _switch_stmt(_identifier('x'), [])
-        result = self.t._extract_switch_from_loop_body(switch)
+        result = self.transform._extract_switch_from_loop_body(switch)
         assert result is not None
         assert result['type'] == 'SwitchStatement'
 
     def test_non_dict_body(self):
-        result = self.t._extract_switch_from_loop_body(None)
+        result = self.transform._extract_switch_from_loop_body(None)
         assert result is None
 
-        result = self.t._extract_switch_from_loop_body('not a dict')
+        result = self.transform._extract_switch_from_loop_body('not a dict')
         assert result is None
 
 
@@ -688,7 +688,7 @@ class TestWhileTruthyPatterns:
             ' switch(_a[_i++]) { case "0": b(); continue; case "1": a(); continue; }'
             ' break; }'
         )
-        result, changed = rt(code)
+        result, changed = roundtrip_cff(code)
         assert changed
         assert 'a()' in result
         assert 'b()' in result
@@ -701,7 +701,7 @@ class TestWhileTruthyPatterns:
             ' switch(_a[_i++]) { case "0": a(); continue; case "1": b(); continue; }'
             ' break; }'
         )
-        result, changed = rt(code)
+        result, changed = roundtrip_cff(code)
         assert changed
         assert 'a()' in result
         assert 'b()' in result
@@ -714,27 +714,27 @@ class TestWhileTruthyPatterns:
             ' while(true) { switch(_a[_i++]) { case "0": a(); continue; case "1": return b(); } break; }'
             ' }'
         )
-        result, changed = rt(code)
+        result, changed = roundtrip_cff(code)
         assert changed
         assert 'return' in result
 
     def test_is_truthy_not_array_is_false(self):
         """![] is falsy (line 324)."""
-        t = ControlFlowRecoverer(_program([]))
+        transform = ControlFlowRecoverer(_program([]))
         node = {
             'type': 'UnaryExpression',
             'operator': '!',
             'argument': {'type': 'ArrayExpression', 'elements': []},
             'prefix': True,
         }
-        assert t._is_truthy(node) is False
+        assert transform._is_truthy(node) is False
 
     def test_is_truthy_literal_non_bool(self):
         """Literal with non-bool truthy value (line 317)."""
-        t = ControlFlowRecoverer(_program([]))
-        assert t._is_truthy(_literal(42)) is True
-        assert t._is_truthy(_literal('')) is False
-        assert t._is_truthy(_literal('hello')) is True
+        transform = ControlFlowRecoverer(_program([]))
+        assert transform._is_truthy(_literal(42)) is True
+        assert transform._is_truthy(_literal('')) is False
+        assert transform._is_truthy(_literal('hello')) is True
 
     def test_visited_set_dedup(self):
         """Lines 36-37: visited set prevents re-processing the same node."""
@@ -742,8 +742,8 @@ class TestWhileTruthyPatterns:
         shared = _expr_stmt(_call_expr(_identifier('a'), []))
         block = {'type': 'BlockStatement', 'body': [shared]}
         ast = _program([block])
-        t = ControlFlowRecoverer(ast)
-        changed = t.execute()
+        transform = ControlFlowRecoverer(ast)
+        changed = transform.execute()
         assert changed is False
 
 

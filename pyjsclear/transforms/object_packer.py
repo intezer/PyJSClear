@@ -12,11 +12,11 @@ from .base import Transform
 class ObjectPacker(Transform):
     """Pack sequential property assignments into object initializers."""
 
-    def execute(self):
+    def execute(self) -> bool:
         self._process_bodies(self.ast)
         return self.has_changed()
 
-    def _process_bodies(self, node):
+    def _process_bodies(self, node: dict) -> None:
         """Recursively find body arrays and try packing."""
         if not isinstance(node, dict):
             return
@@ -30,7 +30,7 @@ class ObjectPacker(Transform):
                 self._process_bodies(child)
 
     @staticmethod
-    def _find_empty_object_declaration(stmt):
+    def _find_empty_object_declaration(stmt: dict) -> tuple[str, dict, dict] | None:
         """Find an empty object literal in a VariableDeclaration.
 
         Returns (name, declarator, object_expression) or None.
@@ -48,7 +48,7 @@ class ObjectPacker(Transform):
                 return declaration['id']['name'], declaration, initializer
         return None
 
-    def _try_pack_body(self, body):
+    def _try_pack_body(self, body: list) -> None:
         """Find empty object declarations followed by property assignments and pack them."""
         i = 0
         while i < len(body):
@@ -62,7 +62,7 @@ class ObjectPacker(Transform):
                 i += 1
                 continue
 
-            obj_name, obj_decl, obj_expr = found
+            object_name, obj_decl, obj_expr = found
 
             # Collect consecutive property assignments
             assignments = []
@@ -78,18 +78,16 @@ class ObjectPacker(Transform):
                 if not left or left.get('type') != 'MemberExpression':
                     break
                 object_reference = left.get('object')
-                if not is_identifier(object_reference) or object_reference.get('name') != obj_name:
+                if not is_identifier(object_reference) or object_reference.get('name') != object_name:
                     break
                 property_node = left.get('property')
                 right = expr.get('right')
-                # Get property key
                 if property_node is None:
                     break
-                # Support both computed and non-computed property keys
                 property_key = property_node
 
                 # Don't pack self-referential assignments (o.x = o.y)
-                if self._references_name(right, obj_name):
+                if self._references_name(right, object_name):
                     break
 
                 computed = left.get('computed', False)
@@ -99,7 +97,7 @@ class ObjectPacker(Transform):
             if assignments:
                 # Pack into the object literal
                 for property_key, value, computed in assignments:
-                    property_node = {
+                    new_property = {
                         'type': 'Property',
                         'key': property_key,
                         'value': value,
@@ -108,14 +106,14 @@ class ObjectPacker(Transform):
                         'shorthand': False,
                         'computed': computed,
                     }
-                    obj_expr['properties'].append(property_node)
+                    obj_expr['properties'].append(new_property)
                 # Remove the assignment statements
-                del body[i + 1 : j]
+                del body[i + 1:j]
                 self.set_changed()
 
             i += 1
 
-    def _references_name(self, node, name):
+    def _references_name(self, node: dict, name: str) -> bool:
         """Check if a node references a given identifier name."""
         if not isinstance(node, dict) or 'type' not in node:
             return False

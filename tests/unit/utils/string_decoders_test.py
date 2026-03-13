@@ -16,19 +16,19 @@ from pyjsclear.utils.string_decoders import base64_transform
 
 
 class TestDecoderType:
-    def test_basic_value(self):
+    def test_basic_value(self) -> None:
         assert DecoderType.BASIC.value == 'basic'
 
-    def test_base64_value(self):
+    def test_base64_value(self) -> None:
         assert DecoderType.BASE_64.value == 'base64'
 
-    def test_rc4_value(self):
+    def test_rc4_value(self) -> None:
         assert DecoderType.RC4.value == 'rc4'
 
-    def test_enum_members(self):
+    def test_enum_members(self) -> None:
         assert set(DecoderType) == {DecoderType.BASIC, DecoderType.BASE_64, DecoderType.RC4}
 
-    def test_lookup_by_value(self):
+    def test_lookup_by_value(self) -> None:
         assert DecoderType('basic') is DecoderType.BASIC
         assert DecoderType('base64') is DecoderType.BASE_64
         assert DecoderType('rc4') is DecoderType.RC4
@@ -40,44 +40,44 @@ class TestDecoderType:
 
 
 class TestBase64Transform:
-    def test_empty_string(self):
+    def test_empty_string(self) -> None:
         assert base64_transform('') == ''
 
-    def test_non_standard_alphabet(self):
+    def test_non_standard_alphabet(self) -> None:
         """Standard base64 'aGVsbG8=' decodes to 'hello', but the custom
         alphabet reverses case mapping so the result must differ."""
         result = base64_transform('aGVsbG8=')
         assert result != 'hello'
 
-    def test_decode_known_4char_group(self):
+    def test_decode_known_4char_group(self) -> None:
         # 'abcd' -> indices 0,1,2,3 in custom alphabet -> bytes [0, 16, 131]
         assert [ord(c) for c in base64_transform('abcd')] == [0, 16, 131]
 
-    def test_decode_uppercase_group(self):
+    def test_decode_uppercase_group(self) -> None:
         # 'ABCD' -> indices 26,27,28,29 -> bytes [105, 183, 29]
         result = base64_transform('ABCD')
         assert [ord(c) for c in result] == [105, 183, 29]
 
-    def test_decode_mixed_case(self):
+    def test_decode_mixed_case(self) -> None:
         assert [ord(c) for c in base64_transform('aBcD')] == [1, 176, 157]
 
-    def test_decode_two_groups(self):
+    def test_decode_two_groups(self) -> None:
         # 8 chars = two 4-char groups = 6 decoded bytes
         assert [ord(c) for c in base64_transform('abcdefgh')] == [0, 16, 131, 16, 81, 135]
 
-    def test_padding_double_equals(self):
+    def test_padding_double_equals(self) -> None:
         # 'ab==' has one meaningful 6-bit pair
         assert [ord(c) for c in base64_transform('ab==')] == [0, 32, 64]
 
-    def test_padding_single_equals(self):
+    def test_padding_single_equals(self) -> None:
         assert [ord(c) for c in base64_transform('abc=')] == [0, 16, 192]
 
-    def test_invalid_chars_are_skipped(self):
+    def test_invalid_chars_are_skipped(self) -> None:
         """Characters not in the alphabet should be silently ignored."""
         # '$' and '!' are not in the alphabet
         assert base64_transform('$ab!cd') == base64_transform('abcd')
 
-    def test_returns_string(self):
+    def test_returns_string(self) -> None:
         result = base64_transform('abcd')
         assert isinstance(result, str)
 
@@ -88,24 +88,24 @@ class TestBase64Transform:
 
 
 class TestStringDecoder:
-    def test_get_string_raises_not_implemented(self):
+    def test_get_string_raises_not_implemented(self) -> None:
         decoder = StringDecoder(['a', 'b'], 0)
         with pytest.raises(NotImplementedError):
             decoder.get_string(0)
 
-    def test_get_string_for_rotation_raises_on_first_call(self):
+    def test_get_string_for_rotation_raises_on_first_call(self) -> None:
         decoder = BasicStringDecoder(['hello'], 0)
         with pytest.raises(RuntimeError, match='First call'):
             decoder.get_string_for_rotation(0)
 
-    def test_get_string_for_rotation_works_on_second_call(self):
+    def test_get_string_for_rotation_works_on_second_call(self) -> None:
         decoder = BasicStringDecoder(['hello', 'world'], 0)
         with pytest.raises(RuntimeError):
             decoder.get_string_for_rotation(0)
         # Second call should succeed
         assert decoder.get_string_for_rotation(0) == 'hello'
 
-    def test_get_string_for_rotation_passes_args(self):
+    def test_get_string_for_rotation_passes_args(self) -> None:
         decoder = BasicStringDecoder(['hello', 'world'], 0)
         # Exhaust first-call guard
         with pytest.raises(RuntimeError):
@@ -113,7 +113,7 @@ class TestStringDecoder:
         # Second call with index 1
         assert decoder.get_string_for_rotation(1) == 'world'
 
-    def test_is_first_call_flag(self):
+    def test_is_first_call_flag(self) -> None:
         decoder = BasicStringDecoder(['x'], 0)
         assert decoder.is_first_call is True
         with pytest.raises(RuntimeError):
@@ -127,58 +127,58 @@ class TestStringDecoder:
 
 
 class TestBasicStringDecoder:
-    def test_type_property(self):
+    def test_type_property(self) -> None:
         decoder = BasicStringDecoder(['a'], 0)
         assert decoder.type == DecoderType.BASIC
 
-    def test_zero_offset(self):
+    def test_zero_offset(self) -> None:
         arr = ['alpha', 'beta', 'gamma']
         decoder = BasicStringDecoder(arr, 0)
         assert decoder.get_string(0) == 'alpha'
         assert decoder.get_string(1) == 'beta'
         assert decoder.get_string(2) == 'gamma'
 
-    def test_positive_offset(self):
+    def test_positive_offset(self) -> None:
         arr = ['a', 'b', 'c', 'd']
         decoder = BasicStringDecoder(arr, 2)
         # index 0 -> array[0+2] = 'c'
         assert decoder.get_string(0) == 'c'
         assert decoder.get_string(1) == 'd'
 
-    def test_negative_offset(self):
+    def test_negative_offset(self) -> None:
         arr = ['a', 'b', 'c', 'd']
         decoder = BasicStringDecoder(arr, -2)
         # index 2 -> array[2-2] = 'a'
         assert decoder.get_string(2) == 'a'
         assert decoder.get_string(3) == 'b'
 
-    def test_out_of_bounds_positive(self):
+    def test_out_of_bounds_positive(self) -> None:
         arr = ['a', 'b']
         decoder = BasicStringDecoder(arr, 0)
         assert decoder.get_string(5) is None
 
-    def test_out_of_bounds_negative(self):
+    def test_out_of_bounds_negative(self) -> None:
         arr = ['a', 'b']
         decoder = BasicStringDecoder(arr, -5)
         assert decoder.get_string(0) is None
 
-    def test_exact_boundary(self):
+    def test_exact_boundary(self) -> None:
         arr = ['a', 'b', 'c']
         decoder = BasicStringDecoder(arr, 0)
         assert decoder.get_string(2) == 'c'  # last valid index
         assert decoder.get_string(3) is None  # one past end
 
-    def test_negative_index_yields_negative_array_index(self):
+    def test_negative_index_yields_negative_array_index(self) -> None:
         arr = ['a', 'b']
         decoder = BasicStringDecoder(arr, 0)
         # index -1 -> array[-1] which is < 0 -> returns None
         assert decoder.get_string(-1) is None
 
-    def test_empty_array(self):
+    def test_empty_array(self) -> None:
         decoder = BasicStringDecoder([], 0)
         assert decoder.get_string(0) is None
 
-    def test_extra_args_are_ignored(self):
+    def test_extra_args_are_ignored(self) -> None:
         decoder = BasicStringDecoder(['x'], 0)
         assert decoder.get_string(0, 'extra', 'args') == 'x'
 
@@ -189,24 +189,24 @@ class TestBasicStringDecoder:
 
 
 class TestBase64StringDecoder:
-    def test_type_property(self):
+    def test_type_property(self) -> None:
         decoder = Base64StringDecoder(['x'], 0)
         assert decoder.type == DecoderType.BASE_64
 
-    def test_decodes_value(self):
+    def test_decodes_value(self) -> None:
         decoder = Base64StringDecoder(['abcd'], 0)
         assert decoder.get_string(0) == base64_transform('abcd')
 
-    def test_with_offset(self):
+    def test_with_offset(self) -> None:
         decoder = Base64StringDecoder(['SKIP', 'abcd'], 1)
         # index 0 -> array[0+1] = 'abcd'
         assert decoder.get_string(0) == base64_transform('abcd')
 
-    def test_out_of_bounds_returns_none(self):
+    def test_out_of_bounds_returns_none(self) -> None:
         decoder = Base64StringDecoder(['abcd'], 0)
         assert decoder.get_string(5) is None
 
-    def test_caching(self):
+    def test_caching(self) -> None:
         decoder = Base64StringDecoder(['abcd'], 0)
         result1 = decoder.get_string(0)
         result2 = decoder.get_string(0)
@@ -215,7 +215,7 @@ class TestBase64StringDecoder:
         assert 0 in decoder._cache
         assert decoder._cache[0] == result1
 
-    def test_multiple_indices(self):
+    def test_multiple_indices(self) -> None:
         decoder = Base64StringDecoder(['abcd', 'ABCD'], 0)
         r0 = decoder.get_string(0)
         r1 = decoder.get_string(1)
@@ -223,11 +223,11 @@ class TestBase64StringDecoder:
         assert r1 == base64_transform('ABCD')
         assert r0 != r1
 
-    def test_empty_encoded_string(self):
+    def test_empty_encoded_string(self) -> None:
         decoder = Base64StringDecoder([''], 0)
         assert decoder.get_string(0) == ''
 
-    def test_get_string_for_rotation(self):
+    def test_get_string_for_rotation(self) -> None:
         decoder = Base64StringDecoder(['abcd'], 0)
         with pytest.raises(RuntimeError):
             decoder.get_string_for_rotation(0)
@@ -241,36 +241,36 @@ class TestBase64StringDecoder:
 
 
 class TestRc4StringDecoder:
-    def test_type_property(self):
+    def test_type_property(self) -> None:
         decoder = Rc4StringDecoder(['x'], 0)
         assert decoder.type == DecoderType.RC4
 
-    def test_key_none_returns_none(self):
+    def test_key_none_returns_none(self) -> None:
         decoder = Rc4StringDecoder(['abcd'], 0)
         assert decoder.get_string(0) is None
 
-    def test_key_none_explicit(self):
+    def test_key_none_explicit(self) -> None:
         decoder = Rc4StringDecoder(['abcd'], 0)
         assert decoder.get_string(0, key=None) is None
 
-    def test_out_of_bounds_returns_none(self):
+    def test_out_of_bounds_returns_none(self) -> None:
         decoder = Rc4StringDecoder(['abcd'], 0)
         assert decoder.get_string(5, key='k') is None
 
-    def test_decodes_with_key(self):
+    def test_decodes_with_key(self) -> None:
         decoder = Rc4StringDecoder(['abcd'], 0)
         result = decoder.get_string(0, key='k')
         assert result is not None
         assert isinstance(result, str)
         assert len(result) == 3
 
-    def test_different_keys_give_different_results(self):
+    def test_different_keys_give_different_results(self) -> None:
         decoder = Rc4StringDecoder(['abcd'], 0)
         r1 = decoder.get_string(0, key='testkey')
         r2 = decoder.get_string(0, key='otherkey')
         assert r1 != r2
 
-    def test_caching_with_same_key(self):
+    def test_caching_with_same_key(self) -> None:
         decoder = Rc4StringDecoder(['abcd'], 0)
         r1 = decoder.get_string(0, key='mykey')
         r2 = decoder.get_string(0, key='mykey')
@@ -278,7 +278,7 @@ class TestRc4StringDecoder:
         assert r1 is r2  # same cached object
         assert (0, 'mykey') in decoder._cache
 
-    def test_cache_keyed_by_index_and_key(self):
+    def test_cache_keyed_by_index_and_key(self) -> None:
         decoder = Rc4StringDecoder(['abcd', 'ABCD'], 0)
         r1 = decoder.get_string(0, key='k')
         r2 = decoder.get_string(1, key='k')
@@ -286,25 +286,25 @@ class TestRc4StringDecoder:
         assert (1, 'k') in decoder._cache
         assert r1 != r2
 
-    def test_with_offset(self):
+    def test_with_offset(self) -> None:
         decoder = Rc4StringDecoder(['SKIP', 'abcd'], 1)
         result = decoder.get_string(0, key='k')
         assert result is not None
 
-    def test_same_input_same_key_deterministic(self):
+    def test_same_input_same_key_deterministic(self) -> None:
         """Same input and key always produce the same output."""
         dec1 = Rc4StringDecoder(['abcd'], 0)
         dec2 = Rc4StringDecoder(['abcd'], 0)
         assert dec1.get_string(0, key='k') == dec2.get_string(0, key='k')
 
-    def test_get_string_for_rotation(self):
+    def test_get_string_for_rotation(self) -> None:
         decoder = Rc4StringDecoder(['abcd'], 0)
         with pytest.raises(RuntimeError):
             decoder.get_string_for_rotation(0, key='k')
         result = decoder.get_string_for_rotation(0, key='k')
         assert result is not None
 
-    def test_empty_array(self):
+    def test_empty_array(self) -> None:
         decoder = Rc4StringDecoder([], 0)
         assert decoder.get_string(0, key='k') is None
 
@@ -315,7 +315,7 @@ class TestRc4StringDecoder:
 
 
 class TestCrossDecoder:
-    def test_basic_does_not_decode(self):
+    def test_basic_does_not_decode(self) -> None:
         """BasicStringDecoder returns the raw string, not decoded."""
         arr = ['abcd']
         basic = BasicStringDecoder(arr, 0)

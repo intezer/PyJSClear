@@ -11,7 +11,7 @@ from .deobfuscator import Deobfuscator
 __version__ = '0.1.3'
 
 
-def deobfuscate(code, max_iterations=50):
+def deobfuscate(code: str, max_iterations: int = 50) -> str:
     """Deobfuscate JavaScript code. Returns cleaned source.
 
     Args:
@@ -24,7 +24,7 @@ def deobfuscate(code, max_iterations=50):
     return Deobfuscator(code, max_iterations=max_iterations).execute()
 
 
-def deobfuscate_file(input_path, output_path=None, max_iterations=50):
+def deobfuscate_file(input_path: str, output_path: str | None = None, max_iterations: int = 50) -> str | bool:
     """Deobfuscate a JavaScript file.
 
     Args:
@@ -35,13 +35,13 @@ def deobfuscate_file(input_path, output_path=None, max_iterations=50):
     Returns:
         True if content changed (when output_path given), or the deobfuscated string.
     """
-    with open(input_path, 'r', errors='replace') as f:
-        code = f.read()
+    with open(input_path, 'r', errors='replace') as input_file:
+        code = input_file.read()
 
     result = deobfuscate(code, max_iterations=max_iterations)
 
     if output_path:
-        with open(output_path, 'w') as f:
-            f.write(result)
+        with open(output_path, 'w') as output_file:
+            output_file.write(result)
         return result != code
     return result

@@ -2,6 +2,7 @@
 
 import pytest
 
+from pyjsclear.parser import parse
 from pyjsclear.transforms.anti_tamper import AntiTamperRemover
 from tests.unit.conftest import normalize
 from tests.unit.conftest import roundtrip
@@ -101,10 +102,10 @@ class TestAntiTamperRemover:
         code = 'var a = 1;(function() { console["log"] = function(){}; })();var b = 2;'
         result, changed = roundtrip(code, AntiTamperRemover)
         assert changed is True
-        norm = normalize(result)
-        assert 'var a = 1' in norm
-        assert 'var b = 2' in norm
-        assert 'console' not in norm
+        normalized = normalize(result)
+        assert 'var a = 1' in normalized
+        assert 'var b = 2' in normalized
+        assert 'console' not in normalized
 
 
 class TestAntiTamperRemoverEdgeCases:
@@ -139,8 +140,7 @@ class TestAntiTamperRemoverEdgeCases:
 
     def test_exception_during_generate(self):
         """Lines 87-88: Exception during generate() should be caught gracefully."""
-        # This is hard to trigger directly via roundtrip since we'd need a malformed AST.
-        # We test indirectly that normal IIFE processing doesn't crash.
+        # Hard to trigger directly; test that normal IIFE processing doesn't crash
         code = '(function() { var x = 1; var y = 2; })();'
         result, changed = roundtrip(code, AntiTamperRemover)
         assert changed is False
@@ -154,32 +154,26 @@ class TestAntiTamperRemoverEdgeCases:
 
     def test_expression_statement_no_expression(self):
         """Line 70: ExpressionStatement with expression set to None."""
-        from pyjsclear.parser import parse
-
         ast = parse('a();')
         # Manually set expression to None to trigger early return
         ast['body'][0]['expression'] = None
-        t = AntiTamperRemover(ast)
-        changed = t.execute()
+        transform = AntiTamperRemover(ast)
+        changed = transform.execute()
         assert changed is False
 
-    def test_call_without_callee(self):
+    def test_call_without_callee_ast(self):
         """Line 78: Call node without callee."""
-        from pyjsclear.parser import parse
-
         ast = parse('(function() { x(); })();')
         # Find the outer CallExpression and remove its callee
         call = ast['body'][0]['expression']
         if call.get('type') == 'CallExpression':
             call['callee'] = None
-        t = AntiTamperRemover(ast)
-        changed = t.execute()
+        transform = AntiTamperRemover(ast)
+        changed = transform.execute()
         assert changed is False
 
     def test_exception_during_generate_malformed_callee(self):
         """Lines 87-88: Exception during generate() with malformed AST."""
-        from pyjsclear.parser import parse
-
         ast = parse('(function() { x(); })();')
         # Find the IIFE callee (FunctionExpression) and corrupt its body
         call = ast['body'][0]['expression']
@@ -188,7 +182,7 @@ class TestAntiTamperRemoverEdgeCases:
             if callee and callee.get('type') == 'FunctionExpression':
                 # Corrupt the body to make generate() raise
                 callee['body'] = 'not_a_valid_body'
-        t = AntiTamperRemover(ast)
-        changed = t.execute()
+        transform = AntiTamperRemover(ast)
+        changed = transform.execute()
         # Should not crash, just skip the node
         assert changed is False

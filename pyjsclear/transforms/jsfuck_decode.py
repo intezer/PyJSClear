@@ -6,7 +6,20 @@ This decoder evaluates the JSFuck expression subset and captures the
 string passed to Function().
 """
 
-def is_jsfuck(code):
+from enum import StrEnum
+
+
+class _JSType(StrEnum):
+    ARRAY = 'array'
+    BOOL = 'bool'
+    NUMBER = 'number'
+    STRING = 'string'
+    UNDEFINED = 'undefined'
+    OBJECT = 'object'
+    FUNCTION = 'function'
+
+
+def is_jsfuck(code: str) -> bool:
     """Check if code is JSFuck-encoded.
 
     JSFuck code consists only of []()!+ characters (with optional whitespace/semicolons).
@@ -18,7 +31,7 @@ def is_jsfuck(code):
     # Only count the six JSFuck operator characters — whitespace and
     # semicolons are not distinctive and inflate the ratio on minified JS.
     jsfuck_chars = set('[]()!+')
-    jsfuck_count = sum(1 for c in stripped if c in jsfuck_chars)
+    jsfuck_count = sum(1 for character in stripped if character in jsfuck_chars)
     return jsfuck_count / len(stripped) > 0.95
 
 
@@ -32,45 +45,45 @@ class _JSValue:
 
     __slots__ = ('val', 'type')
 
-    def __init__(self, val, typ):
+    def __init__(self, val: object, js_type: _JSType | str) -> None:
         self.val = val
-        self.type = typ  # 'array', 'bool', 'number', 'string', 'undefined', 'object', 'function'
+        self.type = js_type
 
     # -- coercion helpers ---------------------------------------------------
 
-    def to_number(self):
+    def to_number(self) -> int | float:
         match self.type:
-            case 'number':
+            case _JSType.NUMBER:
                 return self.val
-            case 'bool':
+            case _JSType.BOOL:
                 return 1 if self.val else 0
-            case 'string':
-                s = self.val.strip()
-                if s == '':
+            case _JSType.STRING:
+                stripped = self.val.strip()
+                if stripped == '':
                     return 0
                 try:
-                    return int(s)
+                    return int(stripped)
                 except ValueError:
                     try:
-                        return float(s)
+                        return float(stripped)
                     except ValueError:
                         return float('nan')
-            case 'array':
+            case _JSType.ARRAY:
                 if len(self.val) == 0:
                     return 0
                 if len(self.val) == 1:
                     return _JSValue(self.val[0], _guess_type(self.val[0])).to_number()
                 return float('nan')
-            case 'undefined':
+            case _JSType.UNDEFINED:
                 return float('nan')
             case _:
                 return float('nan')
 
-    def to_string(self):
+    def to_string(self) -> str:
         match self.type:
-            case 'string':
+            case _JSType.STRING:
                 return self.val
-            case 'number':
+            case _JSType.NUMBER:
                 if isinstance(self.val, float):
                     if self.val != self.val:  # NaN
                         return 'NaN'
@@ -82,9 +95,9 @@ class _JSValue:
                         return str(int(self.val))
                     return str(self.val)
                 return str(self.val)
-            case 'bool':
+            case _JSType.BOOL:
                 return 'true' if self.val else 'false'
-            case 'array':
+            case _JSType.ARRAY:
                 parts = []
                 for item in self.val:
                     if item is None:
@@ -94,139 +107,143 @@ class _JSValue:
                     else:
                         parts.append(_JSValue(item, _guess_type(item)).to_string())
                 return ','.join(parts)
-            case 'undefined':
+            case _JSType.UNDEFINED:
                 return 'undefined'
-            case 'object':
+            case _JSType.OBJECT:
                 return '[object Object]'
             case _:
                 return str(self.val)
 
-    def to_bool(self):
+    def to_bool(self) -> bool:
         match self.type:
-            case 'bool':
+            case _JSType.BOOL:
                 return self.val
-            case 'number':
+            case _JSType.NUMBER:
                 return self.val != 0 and self.val == self.val  # 0 and NaN are falsy
-            case 'string':
+            case _JSType.STRING:
                 return len(self.val) > 0
-            case 'array':
+            case _JSType.ARRAY:
                 return True  # arrays are always truthy in JS
-            case 'undefined':
+            case _JSType.UNDEFINED:
                 return False
-            case 'object':
+            case _JSType.OBJECT:
                 return True
             case _:
                 return bool(self.val)
 
-    def get_property(self, key):
+    def get_property(self, key: '_JSValue') -> '_JSValue':
         """Property access: self[key]."""
-        key_str = key.to_string() if isinstance(key, _JSValue) else str(key)
+        key_string = key.to_string() if isinstance(key, _JSValue) else str(key)
 
-        if self.type == 'string':
-            # String indexing
-            try:
-                idx = int(key_str)
-                if 0 <= idx < len(self.val):
-                    return _JSValue(self.val[idx], 'string')
-            except (ValueError, IndexError):
-                pass
-            # String properties
-            if key_str == 'length':
-                return _JSValue(len(self.val), 'number')
-            if key_str == 'constructor':
-                return _STRING_CONSTRUCTOR
-            # String.prototype methods
-            return _get_string_method(self, key_str)
+        match self.type:
+            case _JSType.STRING:
+                return _get_string_property(self, key_string)
+            case _JSType.ARRAY:
+                return _get_array_property(self, key_string)
+            case _JSType.NUMBER:
+                if key_string == 'constructor':
+                    return _NUMBER_CONSTRUCTOR
+                if key_string == 'toString':
+                    return _JSValue('toString', _JSType.FUNCTION)
+                return _JSValue(None, _JSType.UNDEFINED)
+            case _JSType.BOOL:
+                if key_string == 'constructor':
+                    return _BOOLEAN_CONSTRUCTOR
+                return _JSValue(None, _JSType.UNDEFINED)
+            case _JSType.FUNCTION:
+                if key_string == 'constructor':
+                    return _FUNCTION_CONSTRUCTOR
+                return _JSValue(None, _JSType.UNDEFINED)
+            case _JSType.OBJECT:
+                if key_string == 'constructor':
+                    return _OBJECT_CONSTRUCTOR
+                return _JSValue(None, _JSType.UNDEFINED)
+            case _:
+                return _JSValue(None, _JSType.UNDEFINED)
 
-        if self.type == 'array':
-            try:
-                idx = int(key_str)
-                if 0 <= idx < len(self.val):
-                    item = self.val[idx]
-                    if isinstance(item, _JSValue):
-                        return item
-                    return _JSValue(item, _guess_type(item))
-            except (ValueError, IndexError):
-                pass
-            if key_str == 'length':
-                return _JSValue(len(self.val), 'number')
-            if key_str == 'constructor':
-                return _ARRAY_CONSTRUCTOR
-            # Array methods that JSFuck commonly accesses
-            if key_str in (
-                'flat',
-                'fill',
-                'find',
-                'filter',
-                'entries',
-                'concat',
-                'join',
-                'sort',
-                'reverse',
-                'slice',
-                'map',
-                'forEach',
-                'reduce',
-                'some',
-                'every',
-                'indexOf',
-                'includes',
-                'keys',
-                'values',
-                'at',
-                'pop',
-                'push',
-                'shift',
-                'unshift',
-                'splice',
-                'toString',
-                'valueOf',
-            ):
-                return _JSValue(key_str, 'function')
-
-        if self.type == 'number':
-            if key_str == 'constructor':
-                return _NUMBER_CONSTRUCTOR
-            if key_str == 'toString':
-                return _JSValue('toString', 'function')
-            return _JSValue(None, 'undefined')
-
-        if self.type == 'bool':
-            if key_str == 'constructor':
-                return _BOOLEAN_CONSTRUCTOR
-            return _JSValue(None, 'undefined')
-
-        if self.type == 'function':
-            if key_str == 'constructor':
-                return _FUNCTION_CONSTRUCTOR
-            return _JSValue(None, 'undefined')
-
-        if self.type == 'object':
-            if key_str == 'constructor':
-                return _OBJECT_CONSTRUCTOR
-            return _JSValue(None, 'undefined')
-
-        return _JSValue(None, 'undefined')
-
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'_JSValue({self.val!r}, {self.type!r})'
 
 
-def _guess_type(val):
-    if isinstance(val, bool):
-        return 'bool'
-    if isinstance(val, (int, float)):
-        return 'number'
-    if isinstance(val, str):
-        return 'string'
-    if isinstance(val, list):
-        return 'array'
-    if val is None:
-        return 'undefined'
-    return 'object'
+def _get_string_property(string_value: '_JSValue', key_string: str) -> '_JSValue':
+    """Return the result of property access on a string value."""
+    try:
+        index = int(key_string)
+        if 0 <= index < len(string_value.val):
+            return _JSValue(string_value.val[index], _JSType.STRING)
+    except (ValueError, IndexError):
+        pass
+    if key_string == 'length':
+        return _JSValue(len(string_value.val), _JSType.NUMBER)
+    if key_string == 'constructor':
+        return _STRING_CONSTRUCTOR
+    return _get_string_method(key_string)
 
 
-def _get_string_method(string_val, method_name):
+def _get_array_property(array_value: '_JSValue', key_string: str) -> '_JSValue':
+    """Return the result of property access on an array value."""
+    try:
+        index = int(key_string)
+        if 0 <= index < len(array_value.val):
+            item = array_value.val[index]
+            if isinstance(item, _JSValue):
+                return item
+            return _JSValue(item, _guess_type(item))
+    except (ValueError, IndexError):
+        pass
+    if key_string == 'length':
+        return _JSValue(len(array_value.val), _JSType.NUMBER)
+    if key_string == 'constructor':
+        return _ARRAY_CONSTRUCTOR
+    # Array methods that JSFuck commonly accesses
+    if key_string in (
+        'flat',
+        'fill',
+        'find',
+        'filter',
+        'entries',
+        'concat',
+        'join',
+        'sort',
+        'reverse',
+        'slice',
+        'map',
+        'forEach',
+        'reduce',
+        'some',
+        'every',
+        'indexOf',
+        'includes',
+        'keys',
+        'values',
+        'at',
+        'pop',
+        'push',
+        'shift',
+        'unshift',
+        'splice',
+        'toString',
+        'valueOf',
+    ):
+        return _JSValue(key_string, _JSType.FUNCTION)
+    return _JSValue(None, _JSType.UNDEFINED)
+
+
+def _guess_type(value: object) -> _JSType:
+    if isinstance(value, bool):
+        return _JSType.BOOL
+    if isinstance(value, (int, float)):
+        return _JSType.NUMBER
+    if isinstance(value, str):
+        return _JSType.STRING
+    if isinstance(value, list):
+        return _JSType.ARRAY
+    if value is None:
+        return _JSType.UNDEFINED
+    return _JSType.OBJECT
+
+
+def _get_string_method(method_name: str) -> '_JSValue':
     """Return a callable _JSValue wrapping a string method."""
     if method_name in (
         'italics',
@@ -265,17 +282,17 @@ def _get_string_method(string_val, method_name):
         'normalize',
         'flat',
     ):
-        return _JSValue(method_name, 'function')
-    return _JSValue(None, 'undefined')
+        return _JSValue(method_name, _JSType.FUNCTION)
+    return _JSValue(None, _JSType.UNDEFINED)
 
 
 # Sentinel constructors for property chain resolution
-_STRING_CONSTRUCTOR = _JSValue('String', 'function')
-_NUMBER_CONSTRUCTOR = _JSValue('Number', 'function')
-_BOOLEAN_CONSTRUCTOR = _JSValue('Boolean', 'function')
-_ARRAY_CONSTRUCTOR = _JSValue('Array', 'function')
-_OBJECT_CONSTRUCTOR = _JSValue('Object', 'function')
-_FUNCTION_CONSTRUCTOR = _JSValue('Function', 'function')
+_STRING_CONSTRUCTOR = _JSValue('String', _JSType.FUNCTION)
+_NUMBER_CONSTRUCTOR = _JSValue('Number', _JSType.FUNCTION)
+_BOOLEAN_CONSTRUCTOR = _JSValue('Boolean', _JSType.FUNCTION)
+_ARRAY_CONSTRUCTOR = _JSValue('Array', _JSType.FUNCTION)
+_OBJECT_CONSTRUCTOR = _JSValue('Object', _JSType.FUNCTION)
+_FUNCTION_CONSTRUCTOR = _JSValue('Function', _JSType.FUNCTION)
 
 # Known constructor-of-constructor chain results
 _CONSTRUCTOR_MAP = {
@@ -293,12 +310,12 @@ _CONSTRUCTOR_MAP = {
 # ---------------------------------------------------------------------------
 
 
-def _tokenize(code):
+def _tokenize(code: str) -> list[str]:
     """Tokenize JSFuck code into a list of characters/tokens."""
     tokens = []
-    for ch in code:
-        if ch in '[]()!+':
-            tokens.append(ch)
+    for character in code:
+        if character in '[]()!+':
+            tokens.append(character)
         # Skip whitespace, semicolons
     return tokens
 
@@ -334,166 +351,166 @@ class _Parser:
     arbitrarily deep nesting never overflows the Python call stack.
     """
 
-    def __init__(self, tokens):
+    def __init__(self, tokens: list[str]) -> None:
         self.tokens = tokens
         self.pos = 0
-        self.captured = None  # Result from Function(body)()
+        self.captured: str | None = None  # Result from Function(body)()
 
-    def peek(self):
+    def peek(self) -> str | None:
         if self.pos < len(self.tokens):
             return self.tokens[self.pos]
         return None
 
-    def consume(self, expected=None):
+    def consume(self, expected: str | None = None) -> str:
         if self.pos >= len(self.tokens):
             raise _ParseError('Unexpected end of input')
-        tok = self.tokens[self.pos]
-        if expected is not None and tok != expected:
-            raise _ParseError(f'Expected {expected!r}, got {tok!r}')
+        token = self.tokens[self.pos]
+        if expected is not None and token != expected:
+            raise _ParseError(f'Expected {expected!r}, got {token!r}')
         self.pos += 1
-        return tok
+        return token
 
     # ------------------------------------------------------------------
 
-    def parse(self):
+    def parse(self) -> _JSValue:
         """Parse and evaluate the full expression (iterative)."""
-        val_stack = []
-        cont = [(_K_DONE,)]
+        value_stack: list[_JSValue] = []
+        continuation: list[tuple] = [(_K_DONE,)]
         state = _S_EXPR
 
         while True:
             if state == _S_EXPR:
                 # expression = unary ('+' unary)*
-                cont.append((_K_EXPR_LOOP,))
+                continuation.append((_K_EXPR_LOOP,))
                 state = _S_UNARY
 
             elif state == _S_UNARY:
                 # Collect prefix operators, then parse postfix
-                ops = []
+                operators = []
                 while self.peek() in ('!', '+'):
-                    ops.append(self.consume())
-                cont.append((_K_UNARY_APPLY, ops))
+                    operators.append(self.consume())
+                continuation.append((_K_UNARY_APPLY, operators))
                 state = _S_POSTFIX
 
             elif state == _S_POSTFIX:
                 # Parse primary, then handle postfix [ ] and ( )
-                cont.append((_K_POSTFIX_LOOP, None))  # receiver=None
+                continuation.append((_K_POSTFIX_LOOP, None))  # receiver=None
                 state = _S_PRIMARY
 
             elif state == _S_PRIMARY:
-                tok = self.peek()
-                if tok == '(':
+                token = self.peek()
+                if token == '(':
                     self.consume('(')
-                    cont.append((_K_PAREN_CLOSE,))
+                    continuation.append((_K_PAREN_CLOSE,))
                     state = _S_EXPR
-                elif tok == '[':
+                elif token == '[':
                     self.consume('[')
                     if self.peek() == ']':
                         self.consume(']')
-                        val_stack.append(_JSValue([], 'array'))
+                        value_stack.append(_JSValue([], _JSType.ARRAY))
                         state = _S_RESUME
                     else:
-                        cont.append((_K_ARRAY_ELEM, []))
+                        continuation.append((_K_ARRAY_ELEM, []))
                         state = _S_EXPR
                 else:
                     raise _ParseError(
-                        f'Unexpected token: {tok!r} at pos {self.pos}')
+                        f'Unexpected token: {token!r} at pos {self.pos}')
 
             elif state == _S_RESUME:
-                k = cont.pop()
-                ktype = k[0]
+                continuation_frame = continuation.pop()
+                continuation_type = continuation_frame[0]
 
-                if ktype == _K_DONE:
-                    return val_stack.pop()
+                if continuation_type == _K_DONE:
+                    return value_stack.pop()
 
-                elif ktype == _K_PAREN_CLOSE:
+                elif continuation_type == _K_PAREN_CLOSE:
                     self.consume(')')
                     state = _S_RESUME
 
-                elif ktype == _K_ARRAY_ELEM:
-                    elements = k[1]
-                    elements.append(val_stack.pop())
+                elif continuation_type == _K_ARRAY_ELEM:
+                    elements = continuation_frame[1]
+                    elements.append(value_stack.pop())
                     if self.peek() not in (']', None):
-                        cont.append((_K_ARRAY_ELEM, elements))
+                        continuation.append((_K_ARRAY_ELEM, elements))
                         state = _S_EXPR
                     else:
                         self.consume(']')
-                        val_stack.append(_JSValue(elements, 'array'))
+                        value_stack.append(_JSValue(elements, _JSType.ARRAY))
                         state = _S_RESUME
 
-                elif ktype == _K_POSTFIX_LOOP:
-                    receiver = k[1]
-                    val = val_stack[-1]
+                elif continuation_type == _K_POSTFIX_LOOP:
+                    receiver = continuation_frame[1]
+                    current_value = value_stack[-1]
                     if self.peek() == '[':
                         self.consume('[')
-                        val_stack.pop()
-                        cont.append((_K_POSTFIX_BRACKET, val))
+                        value_stack.pop()
+                        continuation.append((_K_POSTFIX_BRACKET, current_value))
                         state = _S_EXPR
                     elif self.peek() == '(':
                         self.consume('(')
                         if self.peek() == ')':
                             self.consume(')')
-                            val_stack.pop()
-                            result = self._call(val, [], receiver)
-                            val_stack.append(result)
-                            cont.append((_K_POSTFIX_LOOP, None))
+                            value_stack.pop()
+                            result = self._call(current_value, [], receiver)
+                            value_stack.append(result)
+                            continuation.append((_K_POSTFIX_LOOP, None))
                             state = _S_RESUME
                         else:
-                            val_stack.pop()
-                            cont.append((_K_POSTFIX_ARGDONE, val, receiver))
+                            value_stack.pop()
+                            continuation.append((_K_POSTFIX_ARGDONE, current_value, receiver))
                             state = _S_EXPR
                     else:
                         # No more postfix ops
                         state = _S_RESUME
 
-                elif ktype == _K_POSTFIX_BRACKET:
-                    parent_val = k[1]
-                    key = val_stack.pop()
+                elif continuation_type == _K_POSTFIX_BRACKET:
+                    parent_value = continuation_frame[1]
+                    key = value_stack.pop()
                     self.consume(']')
-                    val_stack.append(parent_val.get_property(key))
-                    cont.append((_K_POSTFIX_LOOP, parent_val))
+                    value_stack.append(parent_value.get_property(key))
+                    continuation.append((_K_POSTFIX_LOOP, parent_value))
                     state = _S_RESUME
 
-                elif ktype == _K_POSTFIX_ARGDONE:
-                    func = k[1]
-                    receiver = k[2]
-                    arg = val_stack.pop()
+                elif continuation_type == _K_POSTFIX_ARGDONE:
+                    func = continuation_frame[1]
+                    receiver = continuation_frame[2]
+                    argument = value_stack.pop()
                     self.consume(')')
-                    result = self._call(func, [arg], receiver)
-                    val_stack.append(result)
-                    cont.append((_K_POSTFIX_LOOP, None))
+                    result = self._call(func, [argument], receiver)
+                    value_stack.append(result)
+                    continuation.append((_K_POSTFIX_LOOP, None))
                     state = _S_RESUME
 
-                elif ktype == _K_UNARY_APPLY:
-                    ops = k[1]
-                    val = val_stack.pop()
-                    for op in reversed(ops):
-                        if op == '!':
-                            val = _JSValue(not val.to_bool(), 'bool')
-                        elif op == '+':
-                            val = _JSValue(val.to_number(), 'number')
-                    val_stack.append(val)
+                elif continuation_type == _K_UNARY_APPLY:
+                    operators = continuation_frame[1]
+                    current_value = value_stack.pop()
+                    for operator in reversed(operators):
+                        if operator == '!':
+                            current_value = _JSValue(not current_value.to_bool(), _JSType.BOOL)
+                        elif operator == '+':
+                            current_value = _JSValue(current_value.to_number(), _JSType.NUMBER)
+                    value_stack.append(current_value)
                     state = _S_RESUME
 
-                elif ktype == _K_EXPR_LOOP:
+                elif continuation_type == _K_EXPR_LOOP:
                     if self.peek() == '+':
                         self.consume('+')
-                        left = val_stack.pop()
-                        cont.append((_K_EXPR_ADD, left))
+                        left = value_stack.pop()
+                        continuation.append((_K_EXPR_ADD, left))
                         state = _S_UNARY
                     else:
                         state = _S_RESUME
 
-                elif ktype == _K_EXPR_ADD:
-                    left = k[1]
-                    right = val_stack.pop()
-                    val_stack.append(_js_add(left, right))
-                    cont.append((_K_EXPR_LOOP,))
+                elif continuation_type == _K_EXPR_ADD:
+                    left = continuation_frame[1]
+                    right = value_stack.pop()
+                    value_stack.append(_js_add(left, right))
+                    continuation.append((_K_EXPR_LOOP,))
                     state = _S_RESUME
 
     # ------------------------------------------------------------------
 
-    def _call(self, func, args, receiver=None):
+    def _call(self, func: _JSValue, args: list[_JSValue], receiver: _JSValue | None = None) -> _JSValue:
         """Handle function call semantics.
 
         Only single-argument calls are supported (e.g. Function(body),
@@ -501,53 +518,53 @@ class _Parser:
         emits multi-argument calls.
         """
         # Function constructor: Function(body) returns a new function
-        if func.type == 'function' and func.val == 'Function':
+        if func.type == _JSType.FUNCTION and func.val == 'Function':
             if args:
                 body = args[-1].to_string()
-                return _JSValue(('__function_body__', body), 'function')
+                return _JSValue(('__function_body__', body), _JSType.FUNCTION)
 
         # Calling a function created by Function(body)
-        if func.type == 'function' and isinstance(func.val, tuple):
+        if func.type == _JSType.FUNCTION and isinstance(func.val, tuple):
             if func.val[0] == '__function_body__':
                 self.captured = func.val[1]
-                return _JSValue(None, 'undefined')
+                return _JSValue(None, _JSType.UNDEFINED)
 
         # Constructor property access — e.g., []["flat"]["constructor"]
-        if func.type == 'function' and isinstance(func.val, str):
+        if func.type == _JSType.FUNCTION and isinstance(func.val, str):
             name = func.val
             if name in _CONSTRUCTOR_MAP:
                 if args:
-                    return _JSValue(args[0].to_string(), 'string')
-                return _JSValue('', 'string')
+                    return _JSValue(args[0].to_string(), _JSType.STRING)
+                return _JSValue('', _JSType.STRING)
 
             if name == 'italics':
-                return _JSValue('<i></i>', 'string')
+                return _JSValue('<i></i>', _JSType.STRING)
             if name == 'fontcolor':
-                return _JSValue('<font color="undefined"></font>', 'string')
+                return _JSValue('<font color="undefined"></font>', _JSType.STRING)
 
             # toString with radix — e.g., (10)["toString"](36) → "a"
             if name == 'toString' and args and receiver is not None:
                 radix = args[0].to_number()
                 if isinstance(radix, (int, float)) and radix == int(radix):
                     radix = int(radix)
-                    if 2 <= radix <= 36 and receiver.type == 'number':
+                    if 2 <= radix <= 36 and receiver.type == _JSType.NUMBER:
                         num = receiver.to_number()
                         if isinstance(num, (int, float)) and num == int(num):
-                            return _JSValue(_int_to_base(int(num), radix), 'string')
+                            return _JSValue(_int_to_base(int(num), radix), _JSType.STRING)
 
-        return _JSValue(None, 'undefined')
+        return _JSValue(None, _JSType.UNDEFINED)
 
 
-def _js_add(left, right):
+def _js_add(left: _JSValue, right: _JSValue) -> _JSValue:
     """JS + operator with type coercion."""
-    if left.type == 'string' or right.type == 'string':
-        return _JSValue(left.to_string() + right.to_string(), 'string')
-    if left.type in ('array', 'object') or right.type in ('array', 'object'):
-        return _JSValue(left.to_string() + right.to_string(), 'string')
-    return _JSValue(left.to_number() + right.to_number(), 'number')
+    if left.type == _JSType.STRING or right.type == _JSType.STRING:
+        return _JSValue(left.to_string() + right.to_string(), _JSType.STRING)
+    if left.type in (_JSType.ARRAY, _JSType.OBJECT) or right.type in (_JSType.ARRAY, _JSType.OBJECT):
+        return _JSValue(left.to_string() + right.to_string(), _JSType.STRING)
+    return _JSValue(left.to_number() + right.to_number(), _JSType.NUMBER)
 
 
-def _int_to_base(num, base):
+def _int_to_base(num: int, base: int) -> str:
     """Convert integer to string in given base (2-36), matching JS behavior."""
     if num == 0:
         return '0'
@@ -572,7 +589,7 @@ class _ParseError(Exception):
 # ---------------------------------------------------------------------------
 
 
-def jsfuck_decode(code):
+def jsfuck_decode(code: str) -> str | None:
     """Decode JSFuck-encoded JavaScript. Returns decoded string or None."""
     if not code or not code.strip():
         return None

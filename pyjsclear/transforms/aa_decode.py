@@ -42,7 +42,7 @@ _REPLACEMENTS = [
 ]
 
 
-def is_aa_encoded(code):
+def is_aa_encoded(code: str) -> bool:
     """Check if *code* looks like AAEncoded JavaScript.
 
     Returns True when the characteristic execution pattern is found.
@@ -52,7 +52,7 @@ def is_aa_encoded(code):
     return _SIGNATURE in code
 
 
-def aa_decode(code):
+def aa_decode(code: str) -> str | None:
     """Decode AAEncoded JavaScript.
 
     Returns the decoded source string, or ``None`` on any failure.
@@ -72,7 +72,7 @@ def aa_decode(code):
 # ---------------------------------------------------------------------------
 
 
-def _decode_impl(code):
+def _decode_impl(code: str) -> str | None:
     """Core decoding logic."""
     # 1. Isolate the data section.
     #    AAEncode wraps data inside an execution pattern.  The encoded payload
@@ -84,8 +84,8 @@ def _decode_impl(code):
     # Find the data region: everything after the initial variable setup and
     # before the trailing execution portion.
     # The data starts at the first separator token.
-    sep_idx = code.find(_SEPARATOR)
-    if sep_idx == -1:
+    separator_index = code.find(_SEPARATOR)
+    if separator_index == -1:
         return None
 
     # The trailing execution wrapper varies but typically looks like:
@@ -95,16 +95,16 @@ def _decode_impl(code):
         "(\uff9f\u0414\uff9f)['_']",
         '(\uff9f\u0414\uff9f)["_"]',
     ]
-    data = code[sep_idx:]
-    for pat in tail_patterns:
-        tail_pos = data.rfind(pat)
-        if tail_pos != -1:
-            data = data[:tail_pos]
+    data = code[separator_index:]
+    for tail_pattern in tail_patterns:
+        tail_position = data.rfind(tail_pattern)
+        if tail_position != -1:
+            data = data[:tail_position]
             break
 
     # 2. Apply emoticon-to-digit replacements.
-    for old, new in _REPLACEMENTS:
-        data = data.replace(old, new)
+    for original, replacement in _REPLACEMENTS:
+        data = data.replace(original, replacement)
 
     # 3. Split on the separator to get individual character segments.
     segments = data.split(_SEPARATOR)

@@ -1,5 +1,7 @@
 """Tests for the HexNumerics transform."""
 
+from pyjsclear.generator import generate
+from pyjsclear.parser import parse
 from pyjsclear.transforms.hex_numerics import HexNumerics
 from tests.unit.conftest import roundtrip
 
@@ -47,9 +49,6 @@ class TestNoTransform:
 
     def test_no_raw_field_unchanged(self):
         """Numeric literal without a raw field should not be transformed."""
-        from pyjsclear.generator import generate
-        from pyjsclear.parser import parse
-
         ast = parse('var x = 1;')
         # Manually remove raw to simulate a synthetic node
         for stmt in ast['body']:
@@ -62,9 +61,6 @@ class TestNoTransform:
 
     def test_negative_hex_value(self):
         """Hex literal with negative value uses plain str() path (line 26)."""
-        from pyjsclear.generator import generate
-        from pyjsclear.parser import parse
-
         ast = parse('var x = 0x1;')
         # Manually set the value to a negative to test the else branch
         decl = ast['body'][0]['declarations'][0]

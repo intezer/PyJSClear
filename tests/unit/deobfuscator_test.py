@@ -10,6 +10,9 @@ from pyjsclear.deobfuscator import _MAX_CODE_SIZE
 from pyjsclear.deobfuscator import TRANSFORM_CLASSES
 from pyjsclear.deobfuscator import Deobfuscator
 from pyjsclear.deobfuscator import _count_nodes
+from pyjsclear.transforms.control_flow import ControlFlowRecoverer
+from pyjsclear.transforms.proxy_functions import ProxyFunctionInliner
+from pyjsclear.transforms.string_revealer import StringRevealer
 
 
 class TestTransformClasses:
@@ -20,14 +23,10 @@ class TestTransformClasses:
         assert len(TRANSFORM_CLASSES) == 37
 
     def test_string_revealer_appears_twice(self):
-        from pyjsclear.transforms.string_revealer import StringRevealer
-
         occurrences = [cls for cls in TRANSFORM_CLASSES if cls is StringRevealer]
         assert len(occurrences) == 2
 
     def test_string_revealer_is_first_and_last(self):
-        from pyjsclear.transforms.string_revealer import StringRevealer
-
         assert TRANSFORM_CLASSES[0] is StringRevealer
         assert TRANSFORM_CLASSES[-1] is StringRevealer
 
@@ -261,8 +260,6 @@ class TestLargeFileHandling:
         mock_ast = MagicMock()
         mock_parse.return_value = mock_ast
 
-        from pyjsclear.transforms.control_flow import ControlFlowRecoverer
-
         # One cheap transform that changes, one expensive that should be skipped
         cheap_instance = MagicMock()
         cheap_instance.execute.return_value = False
@@ -291,8 +288,6 @@ class TestLargeFileHandling:
         cheap_instance = MagicMock()
         cheap_instance.execute.return_value = False
         cheap_transform = MagicMock(return_value=cheap_instance)
-
-        from pyjsclear.transforms.proxy_functions import ProxyFunctionInliner
 
         mock_transforms.__iter__ = lambda self: iter([cheap_transform, ProxyFunctionInliner])
 

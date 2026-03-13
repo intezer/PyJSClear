@@ -9,7 +9,7 @@ import os
 import sys
 
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from conftest_fuzz import SAFE_EXCEPTIONS
 from conftest_fuzz import bytes_to_js
@@ -18,7 +18,7 @@ from conftest_fuzz import run_fuzzer
 from pyjsclear import deobfuscate
 
 
-def TestOneInput(data):
+def TestOneInput(data: bytes) -> None:
     if len(data) < 2:
         return
 
@@ -29,11 +29,9 @@ def TestOneInput(data):
     except SAFE_EXCEPTIONS:
         return
 
-    # Core safety guarantee: result must never be None
-    assert result is not None, "deobfuscate() returned None"
-    # Result must be a string
-    assert isinstance(result, str), f"deobfuscate() returned {type(result)}, expected str"
+    assert result is not None, 'deobfuscate() returned None'
+    assert isinstance(result, str), f'deobfuscate() returned {type(result)}, expected str'
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     run_fuzzer(TestOneInput)

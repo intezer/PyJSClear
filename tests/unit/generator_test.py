@@ -2,6 +2,9 @@
 
 import pytest
 
+from pyjsclear.generator import _expr_precedence
+from pyjsclear.generator import _gen_property
+from pyjsclear.generator import _gen_stmt
 from pyjsclear.generator import generate
 from pyjsclear.parser import parse
 
@@ -1497,8 +1500,6 @@ class TestGenStmtNoneNode:
     """Line 113: _gen_stmt with None node returns ''."""
 
     def test_gen_stmt_none(self):
-        from pyjsclear.generator import _gen_stmt
-
         assert _gen_stmt(None, 0) == ''
 
 
@@ -1509,8 +1510,6 @@ class TestGenStmtDoubleEndingSemicolon:
         # EmptyStatement generates ';' and is in _NO_SEMI_TYPES,
         # but we can construct a node whose generate() output ends with ';'
         # that is NOT in _NO_SEMI_TYPES. Use a manual approach.
-        from pyjsclear.generator import _gen_stmt
-
         # Create a fake node type that generates code ending with ';'
         # A VariableDeclaration ending with ';' (by appending manually)
         # Actually, let's just test the path: _gen_stmt appends ';' only if code doesn't already end with it
@@ -1625,8 +1624,6 @@ class TestRestElementInProperty:
 
     def test_gen_property_rest_element(self):
         # _gen_property generates key: value for a Property node
-        from pyjsclear.generator import _gen_property
-
         node = {
             'type': 'Property',
             'key': {'type': 'Identifier', 'name': 'a'},
@@ -1822,8 +1819,6 @@ class TestExprPrecedenceCases:
 
     def test_yield_expression_precedence_in_binary(self):
         """YieldExpression has precedence 2, needs parens in binary context."""
-        from pyjsclear.generator import _expr_precedence
-
         yield_node = {'type': 'YieldExpression', 'argument': _id('x'), 'delegate': False}
         assert _expr_precedence(yield_node) == 2
 
@@ -1849,19 +1844,13 @@ class TestExprPrecedenceCases:
         assert 'x = a ? b : c' in result
 
     def test_arrow_function_precedence(self):
-        from pyjsclear.generator import _expr_precedence
-
         arrow_node = {'type': 'ArrowFunctionExpression'}
         assert _expr_precedence(arrow_node) == 3
 
     def test_unknown_type_precedence(self):
-        from pyjsclear.generator import _expr_precedence
-
         node = {'type': 'SomeUnknownExpression'}
         assert _expr_precedence(node) == 0
 
     def test_non_dict_precedence(self):
-        from pyjsclear.generator import _expr_precedence
-
         assert _expr_precedence(42) == 20
         assert _expr_precedence('str') == 20

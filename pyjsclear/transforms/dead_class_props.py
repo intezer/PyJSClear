@@ -26,73 +26,73 @@ from .base import Transform
 class DeadClassPropRemover(Transform):
     """Remove dead property assignments on class variables."""
 
-    def execute(self):
+    def execute(self) -> bool:
         # Step 1: Find class variable names, aliases, and class-id-to-name mapping
         # in a single traversal
-        class_vars = set()
-        class_aliases = {}  # inner_name -> outer_name
-        reverse_aliases = {}  # outer_name -> set of inner_names
-        class_node_to_name = {}  # id(ClassExpression node) -> outer name
+        class_vars: set[str] = set()
+        class_aliases: dict[str, str] = {}  # inner_name -> outer_name
+        reverse_aliases: dict[str, set[str]] = {}  # outer_name -> set of inner_names
+        class_node_to_name: dict[int, str] = {}  # id(ClassExpression node) -> outer name
 
-        def find_classes(node, parent):
+        def find_classes(node: dict, parent: dict | None) -> None:
             if node.get('type') == 'VariableDeclarator':
                 init = node.get('init')
                 if init and init.get('type') == 'ClassExpression':
                     decl_id = node.get('id')
                     if decl_id and is_identifier(decl_id):
-                        outer = decl_id['name']
-                        class_vars.add(outer)
-                        class_node_to_name[id(init)] = outer
+                        outer_name = decl_id['name']
+                        class_vars.add(outer_name)
+                        class_node_to_name[id(init)] = outer_name
                         class_id = init.get('id')
                         if class_id and is_identifier(class_id):
-                            inner = class_id['name']
-                            if inner != outer:
-                                class_vars.add(inner)
-                                class_aliases[inner] = outer
-                                reverse_aliases.setdefault(outer, set()).add(inner)
+                            inner_name = class_id['name']
+                            if inner_name != outer_name:
+                                class_vars.add(inner_name)
+                                class_aliases[inner_name] = outer_name
+                                reverse_aliases.setdefault(outer_name, set()).add(inner_name)
             elif node.get('type') == 'AssignmentExpression':
                 right = node.get('right')
                 if right and right.get('type') == 'ClassExpression':
                     left = node.get('left')
                     if left and is_identifier(left):
-                        outer = left['name']
-                        class_vars.add(outer)
-                        class_node_to_name[id(right)] = outer
+                        outer_name = left['name']
+                        class_vars.add(outer_name)
+                        class_node_to_name[id(right)] = outer_name
                         class_id = right.get('id')
                         if class_id and is_identifier(class_id):
-                            inner = class_id['name']
-                            if inner != outer:
-                                class_vars.add(inner)
-                                class_aliases[inner] = outer
-                                reverse_aliases.setdefault(outer, set()).add(inner)
+                            inner_name = class_id['name']
+                            if inner_name != outer_name:
+                                class_vars.add(inner_name)
+                                class_aliases[inner_name] = outer_name
+                                reverse_aliases.setdefault(outer_name, set()).add(inner_name)
 
         simple_traverse(self.ast, find_classes)
 
         if not class_vars:
             return False
 
-        def _normalize(obj_name):
+        def _normalize(obj_name: str) -> str:
             """Resolve class aliases to their canonical (outer) name."""
             return class_aliases.get(obj_name, obj_name)
 
-        def _has_standalone(name):
+        def _has_standalone(name: str) -> bool:
             if standalone_refs.get(name, 0) > 0:
                 return True
             canonical = class_aliases.get(name, name)
             if standalone_refs.get(canonical, 0) > 0:
                 return True
-            for inner in reverse_aliases.get(name, ()):
-                if standalone_refs.get(inner, 0) > 0:
+            for inner_name in reverse_aliases.get(name, ()):
+                if standalone_refs.get(inner_name, 0) > 0:
                     return True
             return False
 
         # Step 2: Classify identifier references and collect this.prop reads
         # in a single traversal
-        member_refs = {v: 0 for v in class_vars}
-        standalone_refs = {v: 0 for v in class_vars}
-        this_reads = set()
+        member_refs: dict[str, int] = {var: 0 for var in class_vars}
+        standalone_refs: dict[str, int] = {var: 0 for var in class_vars}
+        this_reads: set[tuple[str, str]] = set()
 
-        def classify_and_collect(node, parent):
+        def classify_and_collect(node: dict, parent: dict | None) -> None:
             # Collect this.prop reads inside class bodies
             if node.get('type') == 'ClassExpression':
                 class_name = class_node_to_name.get(id(node))
@@ -133,43 +133,46 @@ class DeadClassPropRemover(Transform):
             else:
                 standalone_refs[name] = standalone_refs.get(name, 0) + 1
 
-        def _collect_this_reads_in_class(class_node, class_name):
-            def _inner(n, p):
-                if n.get('type') != 'MemberExpression':
+        def _collect_this_reads_in_class(class_node: dict, class_name: str) -> None:
+            def _visit(node: dict, parent: dict | None) -> None:
+                if node.get('type') != 'MemberExpression':
                     return
-                obj = n.get('object')
+                obj = node.get('object')
                 if not obj or obj.get('type') != 'ThisExpression':
                     return
-                prop = n.get('property')
+                prop = node.get('property')
                 if not prop:
                     return
-                if n.get('computed'):
+                if node.get('computed'):
                     if is_string_literal(prop):
                         this_reads.add((class_name, prop['value']))
                 elif is_identifier(prop):
                     this_reads.add((class_name, prop['name']))
 
-            simple_traverse(class_node.get('body', {}), _inner)
+            simple_traverse(class_node.get('body', {}), _visit)
 
         simple_traverse(self.ast, classify_and_collect)
 
         # Classes with `this.prop` reads use their own properties — not fully dead
-        classes_with_this = set()
+        classes_with_this: set[str] = set()
         for name, prop in this_reads:
             classes_with_this.add(name)
             classes_with_this.add(class_aliases.get(name, name))
 
         # Classes that never escape (only used as X.prop) — all their props are dead
-        fully_dead_classes = {v for v in class_vars if not _has_standalone(v) and v not in classes_with_this}
+        fully_dead_classes = {
+            var for var in class_vars
+            if not _has_standalone(var) and var not in classes_with_this
+        }
 
         # Classes that have escaped — skip individual prop dead-code analysis
-        escaped_classes = {_normalize(v) for v in class_vars if _has_standalone(v)}
+        escaped_classes = {_normalize(var) for var in class_vars if _has_standalone(var)}
 
         # Step 3: For non-fully-dead classes, find individually dead properties
-        writes = set()
-        reads = set()
+        writes: set[tuple[str, str]] = set()
+        reads: set[tuple[str, str]] = set()
 
-        def count_prop_refs(node, parent):
+        def count_prop_refs(node: dict, parent: dict | None) -> None:
             if node.get('type') != 'MemberExpression':
                 return
             obj_name, prop_name = get_member_names(node)
@@ -192,16 +195,16 @@ class DeadClassPropRemover(Transform):
         reads |= {(_normalize(name), prop) for name, prop in this_reads}
 
         # Dead props: written but never read, OR belonging to fully dead classes
-        dead_props = set()
+        dead_props: set[tuple[str, str]] = set()
         for pair in writes:
             if pair not in reads:
                 dead_props.add(pair)
 
         # Collect all props of fully dead classes in a single traversal
         if fully_dead_classes:
-            fully_dead_canonical = {_normalize(v) for v in fully_dead_classes} | fully_dead_classes
+            fully_dead_canonical = {_normalize(var) for var in fully_dead_classes} | fully_dead_classes
 
-            def collect_all_dead(node, parent):
+            def collect_all_dead(node: dict, parent: dict | None) -> None:
                 if node.get('type') != 'AssignmentExpression' or node.get('operator') != '=':
                     return
                 obj_name, prop_name = get_member_names(node.get('left'))
@@ -214,11 +217,11 @@ class DeadClassPropRemover(Transform):
             return False
 
         # Step 4: Remove dead assignment expressions
-        def _is_dead(obj_name, prop_name):
+        def _is_dead(obj_name: str, prop_name: str) -> bool:
             canonical = _normalize(obj_name)
             return (canonical, prop_name) in dead_props or (obj_name, prop_name) in dead_props
 
-        def remove_dead_stmts(node, parent, key, index):
+        def remove_dead_stmts(node: dict, parent: dict | None, key: str | None, index: int | None) -> object:
             if node.get('type') != 'ExpressionStatement':
                 return
             expr = node.get('expression')
@@ -232,13 +235,13 @@ class DeadClassPropRemover(Transform):
             if expr.get('type') == 'SequenceExpression':
                 exprs = expr.get('expressions', [])
                 remaining = []
-                for e in exprs:
-                    if e.get('type') == 'AssignmentExpression' and e.get('operator') == '=':
-                        obj_name, prop_name = get_member_names(e.get('left'))
+                for expression in exprs:
+                    if expression.get('type') == 'AssignmentExpression' and expression.get('operator') == '=':
+                        obj_name, prop_name = get_member_names(expression.get('left'))
                         if obj_name and _is_dead(obj_name, prop_name):
                             self.set_changed()
                             continue
-                    remaining.append(e)
+                    remaining.append(expression)
                 if not remaining:
                     return REMOVE
                 if len(remaining) < len(exprs):

@@ -13,65 +13,65 @@ from ..utils.ast_helpers import make_expression_statement
 from .base import Transform
 
 
-def _negate(expr):
+def _negate(expression: dict) -> dict:
     """Wrap an expression in a logical NOT."""
     return {
         'type': 'UnaryExpression',
         'operator': '!',
         'prefix': True,
-        'argument': expr,
+        'argument': expression,
     }
 
 
 class LogicalToIf(Transform):
     """Convert logical/comma expressions in statement position to if-statements."""
 
-    def execute(self):
+    def execute(self) -> bool:
         self._transform_bodies(self.ast)
         return self.has_changed()
 
-    def _transform_bodies(self, node):
+    def _transform_bodies(self, node: dict | list | object) -> None:
         """Walk all statement arrays and apply transforms."""
         if not isinstance(node, dict):
             return
         for key, child in node.items():
             if isinstance(child, list):
                 if child and isinstance(child[0], dict) and 'type' in child[0]:
-                    self._process_stmt_array(child)
+                    self._process_statement_array(child)
                     for item in child:
                         self._transform_bodies(item)
             elif isinstance(child, dict) and 'type' in child:
                 self._transform_bodies(child)
 
-    def _process_stmt_array(self, stmts):
-        i = 0
-        while i < len(stmts):
-            stmt = stmts[i]
-            if not isinstance(stmt, dict):
-                i += 1
+    def _process_statement_array(self, statements: list) -> None:
+        index = 0
+        while index < len(statements):
+            statement = statements[index]
+            if not isinstance(statement, dict):
+                index += 1
                 continue
 
-            replacement = self._try_convert_stmt(stmt)
+            replacement = self._try_convert_stmt(statement)
             if replacement is not None:
-                stmts[i : i + 1] = replacement
+                statements[index : index + 1] = replacement
                 self.set_changed()
-                i += len(replacement)
+                index += len(replacement)
                 continue
 
-            i += 1
+            index += 1
 
-    def _try_convert_stmt(self, stmt):
+    def _try_convert_stmt(self, statement: dict) -> list | None:
         """Try to convert a statement. Returns replacement list or None."""
-        match stmt.get('type'):
+        match statement.get('type'):
             case 'ExpressionStatement':
-                return self._handle_expression_stmt(stmt)
+                return self._handle_expression_stmt(statement)
             case 'ReturnStatement':
-                return self._handle_return_stmt(stmt)
+                return self._handle_return_stmt(statement)
         return None
 
-    def _handle_expression_stmt(self, stmt):
+    def _handle_expression_stmt(self, statement: dict) -> list | None:
         """Handle ExpressionStatement with logical or conditional."""
-        expression = stmt.get('expression')
+        expression = statement.get('expression')
         if not isinstance(expression, dict):
             return None
         match expression.get('type'):
@@ -81,9 +81,9 @@ class LogicalToIf(Transform):
                 return self._ternary_to_if(expression)
         return None
 
-    def _handle_return_stmt(self, stmt):
+    def _handle_return_stmt(self, statement: dict) -> list | None:
         """Handle ReturnStatement with sequence or logical expressions."""
-        argument = stmt.get('argument')
+        argument = statement.get('argument')
         if not isinstance(argument, dict):
             return None
 
@@ -97,49 +97,49 @@ class LogicalToIf(Transform):
 
         return None
 
-    def _split_return_sequence(self, seq):
+    def _split_return_sequence(self, sequence: dict) -> list | None:
         """Split return (a, b, c) into a; b; return c."""
-        exprs = seq.get('expressions', [])
-        if len(exprs) <= 1:
+        expressions = sequence.get('expressions', [])
+        if len(expressions) <= 1:
             return None
-        new_stmts = []
-        for expression in exprs[:-1]:
+        new_statements = []
+        for expression in expressions[:-1]:
             if isinstance(expression, dict) and expression.get('type') == 'LogicalExpression':
                 converted = self._logical_to_if(expression)
                 if converted:
-                    new_stmts.extend(converted)
+                    new_statements.extend(converted)
                     continue
-            new_stmts.append(make_expression_statement(expression))
-        new_stmts.append({'type': 'ReturnStatement', 'argument': exprs[-1]})
-        return new_stmts
+            new_statements.append(make_expression_statement(expression))
+        new_statements.append({'type': 'ReturnStatement', 'argument': expressions[-1]})
+        return new_statements
 
-    def _split_return_logical(self, logical):
+    def _split_return_logical(self, logical: dict) -> list | None:
         """Split return a || (b(), c) into if (!a) { b(); } return c."""
         right = logical.get('right')
         if not (isinstance(right, dict) and right.get('type') == 'SequenceExpression'):
             return None
-        exprs = right.get('expressions', [])
-        if len(exprs) <= 1:
+        expressions = right.get('expressions', [])
+        if len(expressions) <= 1:
             return None
 
         test = logical.get('left')
         if logical.get('operator') == '||':
             test = _negate(test)
 
-        body_stmts = [make_expression_statement(e) for e in exprs[:-1]]
-        if_stmt = {
+        body_statements = [make_expression_statement(expression) for expression in expressions[:-1]]
+        if_statement = {
             'type': 'IfStatement',
             'test': test,
-            'consequent': make_block_statement(body_stmts),
+            'consequent': make_block_statement(body_statements),
             'alternate': None,
         }
-        ret = {'type': 'ReturnStatement', 'argument': exprs[-1]}
-        return [if_stmt, ret]
+        return_statement = {'type': 'ReturnStatement', 'argument': expressions[-1]}
+        return [if_statement, return_statement]
 
-    def _logical_to_if(self, expr):
+    def _logical_to_if(self, expression: dict) -> list | None:
         """Convert a LogicalExpression to if-statement(s). Returns list of stmts or None."""
-        left = expr.get('left')
-        match expr.get('operator'):
+        left = expression.get('left')
+        match expression.get('operator'):
             case '&&':
                 test = left
             case '||':
@@ -147,27 +147,27 @@ class LogicalToIf(Transform):
             case _:
                 return None
 
-        body_stmts = self._expr_to_stmts(expr.get('right'))
-        if_stmt = {
+        body_statements = self._expr_to_stmts(expression.get('right'))
+        if_statement = {
             'type': 'IfStatement',
             'test': test,
-            'consequent': make_block_statement(body_stmts),
+            'consequent': make_block_statement(body_statements),
             'alternate': None,
         }
-        return [if_stmt]
+        return [if_statement]
 
-    def _ternary_to_if(self, expr):
+    def _ternary_to_if(self, expression: dict) -> list:
         """Convert a ConditionalExpression to if-else. Returns list of stmts or None."""
-        if_stmt = {
+        if_statement = {
             'type': 'IfStatement',
-            'test': expr.get('test'),
-            'consequent': make_block_statement(self._expr_to_stmts(expr.get('consequent'))),
-            'alternate': make_block_statement(self._expr_to_stmts(expr.get('alternate'))),
+            'test': expression.get('test'),
+            'consequent': make_block_statement(self._expr_to_stmts(expression.get('consequent'))),
+            'alternate': make_block_statement(self._expr_to_stmts(expression.get('alternate'))),
         }
-        return [if_stmt]
+        return [if_statement]
 
-    def _expr_to_stmts(self, expr):
+    def _expr_to_stmts(self, expression: dict | None) -> list:
         """Convert an expression to a list of statements."""
-        if isinstance(expr, dict) and expr.get('type') == 'SequenceExpression':
-            return [make_expression_statement(e) for e in expr.get('expressions', [])]
-        return [make_expression_statement(expr)]
+        if isinstance(expression, dict) and expression.get('type') == 'SequenceExpression':
+            return [make_expression_statement(e) for e in expression.get('expressions', [])]
+        return [make_expression_statement(expression)]

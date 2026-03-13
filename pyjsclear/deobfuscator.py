@@ -106,26 +106,26 @@ _LITE_MAX_ITERATIONS = 10
 _NODE_COUNT_LIMIT = 50_000  # Skip ControlFlowRecoverer above this
 
 
-def _count_nodes(ast):
+def _count_nodes(ast: dict) -> int:
     """Count total AST nodes."""
     count = 0
 
-    def cb(node, parent):
+    def increment_count(node: dict, parent: dict | None) -> None:
         nonlocal count
         count += 1
 
-    simple_traverse(ast, cb)
+    simple_traverse(ast, increment_count)
     return count
 
 
 class Deobfuscator:
     """Multi-pass JavaScript deobfuscator."""
 
-    def __init__(self, code, max_iterations=50):
+    def __init__(self, code: str, max_iterations: int = 50) -> None:
         self.original_code = code
         self.max_iterations = max_iterations
 
-    def _run_pre_passes(self, code):
+    def _run_pre_passes(self, code: str) -> str | None:
         """Run encoding detection and eval unpacking pre-passes.
 
         Returns decoded code if an encoding/packing was detected and decoded,
@@ -160,7 +160,7 @@ class Deobfuscator:
     # Maximum number of outer re-parse cycles (generate → re-parse → re-transform)
     _MAX_OUTER_CYCLES = 5
 
-    def execute(self):
+    def execute(self) -> str:
         """Run all transforms and return cleaned source."""
         code = self.original_code
 
@@ -238,7 +238,7 @@ class Deobfuscator:
             # but also recursive.  Return best result so far.
             return previous_code
 
-    def _run_ast_transforms(self, ast, code_size=0):
+    def _run_ast_transforms(self, ast: dict, code_size: int = 0) -> bool:
         """Run all AST transform passes. Returns True if any transform changed the AST."""
         node_count = _count_nodes(ast) if code_size > _LARGE_FILE_SIZE else 0
 
@@ -261,7 +261,7 @@ class Deobfuscator:
 
         # Multi-pass transform loop
         any_transform_changed = False
-        for i in range(max_iterations):
+        for iteration in range(max_iterations):
             modified = False
             for transform_class in transform_classes:
                 if transform_class in skip_transforms:
@@ -274,11 +274,9 @@ class Deobfuscator:
                 if result:
                     modified = True
                     any_transform_changed = True
-                else:
-                    # If a transform didn't change anything after the first pass,
-                    # skip it in subsequent iterations
-                    if i > 0:
-                        skip_transforms.add(transform_class)
+                elif iteration > 0:
+                    # Skip transforms that haven't changed anything after the first pass
+                    skip_transforms.add(transform_class)
 
             if not modified:
                 break

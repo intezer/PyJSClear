@@ -1,5 +1,8 @@
 """Variable scope and binding analysis for ESTree ASTs."""
 
+from collections.abc import Callable
+from typing import Any
+
 from .utils.ast_helpers import _CHILD_KEYS
 from .utils.ast_helpers import get_child_keys
 
@@ -9,16 +12,16 @@ class Binding:
 
     __slots__ = ('name', 'node', 'kind', 'scope', 'references', 'assignments')
 
-    def __init__(self, name, node, kind, scope):
+    def __init__(self, name: str, node: dict, kind: str, scope: 'Scope') -> None:
         self.name = name
         self.node = node  # The declaration node
         self.kind = kind  # 'var', 'let', 'const', 'function', 'param'
         self.scope = scope
-        self.references = []  # List of (node, parent, key, index) where name is referenced
-        self.assignments = []  # List of assignment nodes
+        self.references: list = []  # List of (node, parent, key, index) where name is referenced
+        self.assignments: list = []  # List of assignment nodes
 
     @property
-    def is_constant(self):
+    def is_constant(self) -> bool:
         """True if the binding is never reassigned after declaration."""
         if self.kind == 'const':
             return True
@@ -33,21 +36,21 @@ class Scope:
 
     __slots__ = ('parent', 'node', 'bindings', 'children', 'is_function')
 
-    def __init__(self, parent, node, is_function=False):
+    def __init__(self, parent: 'Scope | None', node: dict, is_function: bool = False) -> None:
         self.parent = parent
         self.node = node
-        self.bindings = {}  # name -> Binding
-        self.children = []
+        self.bindings: dict[str, Binding] = {}  # name -> Binding
+        self.children: list['Scope'] = []
         self.is_function = is_function
         if parent:
             parent.children.append(self)
 
-    def add_binding(self, name, node, kind):
+    def add_binding(self, name: str, node: dict, kind: str) -> Binding:
         binding = Binding(name, node, kind, self)
         self.bindings[name] = binding
         return binding
 
-    def get_binding(self, name):
+    def get_binding(self, name: str) -> Binding | None:
         """Look up a binding, walking up the scope chain."""
         if name in self.bindings:
             return self.bindings[name]
@@ -55,18 +58,18 @@ class Scope:
             return self.parent.get_binding(name)
         return None
 
-    def get_own_binding(self, name):
+    def get_own_binding(self, name: str) -> Binding | None:
         return self.bindings.get(name)
 
 
-def _nearest_function_scope(scope):
+def _nearest_function_scope(scope: Scope | None) -> Scope | None:
     """Walk up to the nearest function (or root) scope."""
     while scope and not scope.is_function:
         scope = scope.parent
     return scope
 
 
-def _is_non_reference_identifier(parent, parent_key):
+def _is_non_reference_identifier(parent: dict | None, parent_key: str | None) -> bool:
     """Return True if this Identifier usage is not a variable reference."""
     if not parent:
         return False
@@ -84,7 +87,9 @@ def _is_non_reference_identifier(parent, parent_key):
     return False
 
 
-def _recurse_into_children(node, child_keys_map, callback):
+def _recurse_into_children(
+    node: dict, child_keys_map: dict, callback: Callable[[dict], Any]
+) -> None:
     """Walk child nodes, calling callback(child_node) for each dict with 'type'."""
     node_type = node.get('type')
     child_keys = child_keys_map.get(node_type)
@@ -102,18 +107,18 @@ def _recurse_into_children(node, child_keys_map, callback):
             callback(child)
 
 
-def build_scope_tree(ast):
+def build_scope_tree(ast: dict) -> tuple[Scope, dict[int, Scope]]:
     """Build a scope tree from an AST, collecting bindings and references.
 
     Returns the root Scope and a dict mapping node id -> Scope.
     """
     root_scope = Scope(None, ast, is_function=True)
     # Maps id(node) -> scope for function/block scope nodes
-    node_scope = {id(ast): root_scope}
+    node_scope: dict[int, Scope] = {id(ast): root_scope}
     # We need to collect all declarations first, then references
-    all_scopes = [root_scope]
+    all_scopes: list[Scope] = [root_scope]
 
-    def _get_scope_for(node, current_scope):
+    def _get_scope_for(node: dict, current_scope: Scope) -> Scope:
         """Get or create the scope for a node."""
         node_id = id(node)
         if node_id in node_scope:
@@ -122,7 +127,7 @@ def build_scope_tree(ast):
 
     _child_keys_map = _CHILD_KEYS
 
-    def _collect_declarations(node, scope):
+    def _collect_declarations(node: dict, scope: Scope) -> None:
         """Walk the AST collecting variable declarations into scopes."""
         if not isinstance(node, dict):
             return
@@ -229,7 +234,7 @@ def build_scope_tree(ast):
                     node, _child_keys_map, lambda child_node: _collect_declarations(child_node, scope)
                 )
 
-    def _collect_pattern_names(pattern, scope, kind, declaration):
+    def _collect_pattern_names(pattern: dict | None, scope: Scope, kind: str, declaration: dict) -> None:
         """Collect binding names from destructuring patterns."""
         if not isinstance(pattern, dict):
             return
@@ -263,7 +268,13 @@ def build_scope_tree(ast):
     _collect_declarations(ast, root_scope)
 
     # Second pass: collect references and assignments
-    def _collect_references(node, scope, parent=None, parent_key=None, parent_index=None):
+    def _collect_references(
+        node: dict,
+        scope: Scope,
+        parent: dict | None = None,
+        parent_key: str | None = None,
+        parent_index: int | None = None,
+    ) -> None:
         if not isinstance(node, dict):
             return
         node_type = node.get('type')
@@ -298,9 +309,9 @@ def build_scope_tree(ast):
             if child is None:
                 continue
             if isinstance(child, list):
-                for i, item in enumerate(child):
+                for child_index, item in enumerate(child):
                     if isinstance(item, dict) and 'type' in item:
-                        _collect_references(item, scope, node, key, i)
+                        _collect_references(item, scope, node, key, child_index)
             elif isinstance(child, dict) and 'type' in child:
                 _collect_references(child, scope, node, key, None)
 

@@ -7,10 +7,7 @@ Detects patterns like:
 And reconstructs the linear statement sequence.
 """
 
-from ..utils.ast_helpers import get_child_keys
-from ..utils.ast_helpers import is_identifier
-from ..utils.ast_helpers import is_literal
-from ..utils.ast_helpers import is_string_literal
+from ..utils.ast_helpers import get_child_keys, is_identifier, is_literal, is_string_literal
 from .base import Transform
 
 
@@ -19,11 +16,11 @@ class ControlFlowRecoverer(Transform):
 
     rebuild_scope = True
 
-    def execute(self):
+    def execute(self) -> bool:
         self._recover_in_bodies(self.ast)
         return self.has_changed()
 
-    def _recover_in_bodies(self, root):
+    def _recover_in_bodies(self, root: dict) -> None:
         """Walk through the AST looking for bodies containing CFF patterns."""
         stack = [root]
         visited = set()
@@ -47,7 +44,7 @@ class ControlFlowRecoverer(Transform):
             self._queue_children(node, stack)
 
     @staticmethod
-    def _queue_children(node, stack):
+    def _queue_children(node: dict, stack: list) -> None:
         """Add all child nodes to the traversal stack."""
         for key in get_child_keys(node):
             child = node.get(key)
@@ -60,140 +57,140 @@ class ControlFlowRecoverer(Transform):
             elif isinstance(child, dict) and 'type' in child:
                 stack.append(child)
 
-    def _try_recover_body(self, parent_node, body_key, body):
+    def _try_recover_body(self, parent_node: dict, body_key: str, body: list) -> None:
         """Try to find and recover CFF patterns in a body array."""
-        i = 0
-        while i < len(body):
-            statement = body[i]
+        index = 0
+        while index < len(body):
+            statement = body[index]
             if not isinstance(statement, dict):
-                i += 1
+                index += 1
                 continue
 
-            if self._try_recover_variable_pattern(body, i, statement):
+            if self._try_recover_variable_pattern(body, index, statement):
                 continue
-            if self._try_recover_expression_pattern(body, i, statement):
+            if self._try_recover_expression_pattern(body, index, statement):
                 continue
 
-            i += 1
+            index += 1
 
-    def _try_recover_variable_pattern(self, body, i, stmt):
+    def _try_recover_variable_pattern(self, body: list, index: int, statement: dict) -> bool:
         """Try Pattern 1: VariableDeclaration with split + loop. Returns True if recovered."""
-        if stmt.get('type') != 'VariableDeclaration':
+        if statement.get('type') != 'VariableDeclaration':
             return False
-        state_info = self._find_state_array_in_decl(stmt)
+        state_info = self._find_state_array_in_decl(statement)
         if not state_info:
             return False
         states, state_var, counter_var = state_info
-        next_idx = i + 1
-        if next_idx >= len(body):
+        next_index = index + 1
+        if next_index >= len(body):
             return False
-        recovered = self._try_recover_from_loop(body[next_idx], states, state_var, counter_var)
+        recovered = self._try_recover_from_loop(body[next_index], states, state_var, counter_var)
         if recovered is None:
             return False
-        body[i : next_idx + 1] = recovered
+        body[index : next_index + 1] = recovered
         self.set_changed()
         return True
 
-    def _try_recover_expression_pattern(self, body, i, stmt):
+    def _try_recover_expression_pattern(self, body: list, index: int, statement: dict) -> bool:
         """Try Pattern 2: ExpressionStatement with split assignment + loop."""
-        if stmt.get('type') != 'ExpressionStatement':
+        if statement.get('type') != 'ExpressionStatement':
             return False
-        expr = stmt.get('expression')
-        if not expr or expr.get('type') != 'AssignmentExpression':
+        expression = statement.get('expression')
+        if not expression or expression.get('type') != 'AssignmentExpression':
             return False
-        state_info = self._find_state_from_assignment(expr)
+        state_info = self._find_state_from_assignment(expression)
         if not state_info:
             return False
         states, state_var = state_info
-        next_idx = i + 1
+        next_index = index + 1
         counter_var = None
-        if next_idx < len(body):
-            counter_variable = self._find_counter_init(body[next_idx])
+        if next_index < len(body):
+            counter_variable = self._find_counter_init(body[next_index])
             if counter_variable is not None:
                 counter_var = counter_variable
-                next_idx += 1
-        if next_idx >= len(body):
+                next_index += 1
+        if next_index >= len(body):
             return False
-        recovered = self._try_recover_from_loop(body[next_idx], states, state_var, counter_var or '_index')
+        recovered = self._try_recover_from_loop(body[next_index], states, state_var, counter_var or '_index')
         if recovered is None:
             return False
-        body[i : next_idx + 1] = recovered
+        body[index : next_index + 1] = recovered
         self.set_changed()
         return True
 
-    def _find_state_array_in_decl(self, decl):
+    def _find_state_array_in_decl(self, declaration: dict) -> tuple | None:
         """Find "X".split("|") pattern in a VariableDeclaration."""
-        for declaration in decl.get('declarations', []):
-            initializer = declaration.get('init')
+        for declarator in declaration.get('declarations', []):
+            initializer = declarator.get('init')
             if not initializer or not self._is_split_call(initializer):
                 continue
             states = self._extract_split_states(initializer)
             if not states:
                 continue
-            if declaration.get('id', {}).get('type') != 'Identifier':
+            if declarator.get('id', {}).get('type') != 'Identifier':
                 continue
-            state_var = declaration['id']['name']
-            counter_var = self._find_counter_in_declaration(decl, exclude=declaration)
+            state_var = declarator['id']['name']
+            counter_var = self._find_counter_in_declaration(declaration, exclude=declarator)
             return states, state_var, counter_var
         return None
 
-    def _find_counter_in_declaration(self, decl, exclude):
+    def _find_counter_in_declaration(self, declaration: dict, exclude: dict) -> str | None:
         """Find a numeric-initialized counter variable in a declaration, skipping *exclude*."""
-        for declaration in decl.get('declarations', []):
-            if declaration is exclude:
+        for declarator in declaration.get('declarations', []):
+            if declarator is exclude:
                 continue
-            if declaration.get('id', {}).get('type') != 'Identifier':
+            if declarator.get('id', {}).get('type') != 'Identifier':
                 continue
-            initializer = declaration.get('init')
+            initializer = declarator.get('init')
             if (
                 initializer
                 and initializer.get('type') == 'Literal'
                 and isinstance(initializer.get('value'), (int, float))
             ):
-                return declaration['id']['name']
+                return declarator['id']['name']
         return None
 
-    def _find_state_from_assignment(self, expr):
+    def _find_state_from_assignment(self, expression: dict) -> tuple | None:
         """Find state array from assignment expression."""
-        if expr.get('type') != 'AssignmentExpression':
+        if expression.get('type') != 'AssignmentExpression':
             return None
-        if not is_identifier(expr.get('left')):
+        if not is_identifier(expression.get('left')):
             return None
-        right = expr.get('right')
+        right = expression.get('right')
         if self._is_split_call(right):
             states = self._extract_split_states(right)
             if states:
-                return states, expr['left']['name']
+                return states, expression['left']['name']
         return None
 
-    def _find_counter_init(self, statement):
+    def _find_counter_init(self, statement: dict) -> str | None:
         """Find counter variable initialization."""
         if not isinstance(statement, dict):
             return None
         match statement.get('type'):
             case 'VariableDeclaration':
-                for declaration in statement.get('declarations', []):
-                    if declaration.get('id', {}).get('type') == 'Identifier':
-                        initializer = declaration.get('init')
+                for declarator in statement.get('declarations', []):
+                    if declarator.get('id', {}).get('type') == 'Identifier':
+                        initializer = declarator.get('init')
                         if (
                             initializer
                             and initializer.get('type') == 'Literal'
                             and isinstance(initializer.get('value'), (int, float))
                         ):
-                            return declaration['id']['name']
+                            return declarator['id']['name']
             case 'ExpressionStatement':
-                expr = statement.get('expression')
+                expression = statement.get('expression')
                 if (
-                    expr
-                    and expr.get('type') == 'AssignmentExpression'
-                    and is_identifier(expr.get('left'))
-                    and is_literal(expr.get('right'))
-                    and isinstance(expr['right'].get('value'), (int, float))
+                    expression
+                    and expression.get('type') == 'AssignmentExpression'
+                    and is_identifier(expression.get('left'))
+                    and is_literal(expression.get('right'))
+                    and isinstance(expression['right'].get('value'), (int, float))
                 ):
-                    return expr['left']['name']
+                    return expression['left']['name']
         return None
 
-    def _is_split_call(self, node):
+    def _is_split_call(self, node: dict) -> bool:
         """Check if node is "X".split("|")."""
         if not isinstance(node, dict):
             return False
@@ -210,36 +207,36 @@ class ControlFlowRecoverer(Transform):
             is_string_literal(property_expression) and property_expression.get('value') == 'split'
         ):
             return False
-        args = node.get('arguments', [])
-        if len(args) != 1 or not is_string_literal(args[0]):
+        arguments = node.get('arguments', [])
+        if len(arguments) != 1 or not is_string_literal(arguments[0]):
             return False
         return True
 
-    def _extract_split_states(self, node):
+    def _extract_split_states(self, node: dict) -> list:
         """Extract states from "1|0|3|2|4".split("|")."""
         callee = node['callee']
         string = callee['object']['value']
         separator = node['arguments'][0]['value']
         return string.split(separator)
 
-    def _try_recover_from_loop(self, loop, states, state_var, counter_var):
+    def _try_recover_from_loop(
+        self, loop: dict, states: list, state_var: str, counter_var: str | None
+    ) -> list | None:
         """Try to recover statements from a for/while loop with switch dispatcher."""
         if not isinstance(loop, dict):
             return None
 
-        loop_type = loop.get('type', '')
-        switch_body = None
         initial_value = 0
+        switch_body = None
 
-        if loop_type == 'ForStatement':
-            # for(var _i = 0; ...) { switch(_array[_i++]) { ... } break; }
-            initial_value = self._extract_for_init_value(loop.get('init'))
-            switch_body = self._extract_switch_from_loop_body(loop.get('body'))
-
-        elif loop_type == 'WhileStatement':
-            test = loop.get('test')
-            if self._is_truthy(test):
+        match loop.get('type', ''):
+            case 'ForStatement':
+                # for(var _i = 0; ...) { switch(_array[_i++]) { ... } break; }
+                initial_value = self._extract_for_init_value(loop.get('init'))
                 switch_body = self._extract_switch_from_loop_body(loop.get('body'))
+            case 'WhileStatement':
+                if self._is_truthy(loop.get('test')):
+                    switch_body = self._extract_switch_from_loop_body(loop.get('body'))
 
         if switch_body is None:
             return None
@@ -248,20 +245,20 @@ class ControlFlowRecoverer(Transform):
         return self._reconstruct_statements(cases_map, states, initial_value)
 
     @staticmethod
-    def _extract_for_init_value(initializer):
+    def _extract_for_init_value(initializer: dict | None) -> int:
         """Extract the initial counter value from a for-loop init clause."""
         if not initializer:
             return 0
         if initializer.get('type') == 'VariableDeclaration':
-            for declaration in initializer.get('declarations', []):
-                if declaration.get('init') and declaration['init'].get('type') == 'Literal':
-                    return int(declaration['init'].get('value', 0))
+            for declarator in initializer.get('declarations', []):
+                if declarator.get('init') and declarator['init'].get('type') == 'Literal':
+                    return int(declarator['init'].get('value', 0))
         elif initializer.get('type') == 'AssignmentExpression' and is_literal(initializer.get('right')):
             return int(initializer['right'].get('value', 0))
         return 0
 
     @staticmethod
-    def _build_case_map(cases):
+    def _build_case_map(cases: list) -> dict:
         """Build map from case test value to (filtered statements, original statements)."""
         cases_map = {}
         for case in cases:
@@ -282,11 +279,11 @@ class ControlFlowRecoverer(Transform):
         return cases_map
 
     @staticmethod
-    def _reconstruct_statements(cases_map, states, initial_value):
+    def _reconstruct_statements(cases_map: dict, states: list, initial_value: int) -> list | None:
         """Reconstruct linear statement sequence from case map and state order."""
         recovered = []
-        for idx in range(initial_value, len(states)):
-            state = states[idx]
+        for index in range(initial_value, len(states)):
+            state = states[index]
             if state not in cases_map:
                 break
             statements, original = cases_map[state]
@@ -296,20 +293,20 @@ class ControlFlowRecoverer(Transform):
                 break
         return recovered or None
 
-    def _extract_switch_from_loop_body(self, body):
+    def _extract_switch_from_loop_body(self, body: dict | None) -> dict | None:
         """Extract SwitchStatement from loop body."""
         if not isinstance(body, dict):
             return None
         if body.get('type') == 'BlockStatement':
-            stmts = body.get('body', [])
-            for stmt in stmts:
-                if stmt.get('type') == 'SwitchStatement':
-                    return stmt
+            statements = body.get('body', [])
+            for statement in statements:
+                if statement.get('type') == 'SwitchStatement':
+                    return statement
         elif body.get('type') == 'SwitchStatement':
             return body
         return None
 
-    def _is_truthy(self, node):
+    def _is_truthy(self, node: dict | None) -> bool:
         """Check if a test expression is always truthy."""
         if not isinstance(node, dict):
             return False
@@ -317,14 +314,14 @@ class ControlFlowRecoverer(Transform):
             return bool(node.get('value'))
         # !0 = true, !![] = true
         if node.get('type') == 'UnaryExpression' and node.get('operator') == '!':
-            arg = node.get('argument')
-            if arg and arg.get('type') == 'Literal' and arg.get('value') == 0:
+            argument = node.get('argument')
+            if argument and argument.get('type') == 'Literal' and argument.get('value') == 0:
                 return True
-            if arg and arg.get('type') == 'ArrayExpression':
+            if argument and argument.get('type') == 'ArrayExpression':
                 return False  # ![] = false, but !![] = true
-            if arg and arg.get('type') == 'UnaryExpression' and arg.get('operator') == '!':
+            if argument and argument.get('type') == 'UnaryExpression' and argument.get('operator') == '!':
                 # !!something
-                inner = arg.get('argument')
+                inner = argument.get('argument')
                 if inner and inner.get('type') == 'ArrayExpression':
                     return True
         return False

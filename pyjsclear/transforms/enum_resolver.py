@@ -21,10 +21,10 @@ from .base import Transform
 class EnumResolver(Transform):
     """Replace TypeScript enum member accesses with their numeric values."""
 
-    def execute(self):
+    def execute(self) -> bool:
         # Phase 1: Detect enum IIFEs and extract member values.
         # Pattern: (function(param) { param[param.NAME = VALUE] = "NAME"; ... })(E || (E = {}))
-        enum_members = {}  # (enum_name, member_name) -> numeric value
+        enum_members: dict[tuple[str, str], int | float] = {}  # (enum_name, member_name) -> numeric value
 
         def find_enums(node, parent):
             if node.get('type') != 'CallExpression':
@@ -91,7 +91,7 @@ class EnumResolver(Transform):
         traverse(self.ast, {'enter': resolve})
         return self.has_changed()
 
-    def _extract_enum_name(self, arg):
+    def _extract_enum_name(self, argument_node: dict) -> str | None:
         """Extract the enum name from the IIFE argument pattern.
 
         Handles:
@@ -99,21 +99,21 @@ class EnumResolver(Transform):
         - E = X.Y || (X.Y = {})  (export-assigned variant)
         """
         # Simple case: just an identifier
-        if is_identifier(arg):
-            return arg['name']
+        if is_identifier(argument_node):
+            return argument_node['name']
         # Assignment wrapper: E = X.Y || (X.Y = {})
-        if arg.get('type') == 'AssignmentExpression' and arg.get('operator') == '=':
-            assign_left = arg.get('left')
+        if argument_node.get('type') == 'AssignmentExpression' and argument_node.get('operator') == '=':
+            assign_left = argument_node.get('left')
             if is_identifier(assign_left):
-                inner = arg.get('right')
+                inner = argument_node.get('right')
                 if inner and inner.get('type') == 'LogicalExpression':
                     return assign_left['name']
             return None
         # Logical OR pattern: E || (E = {})
-        if arg.get('type') != 'LogicalExpression' or arg.get('operator') != '||':
+        if argument_node.get('type') != 'LogicalExpression' or argument_node.get('operator') != '||':
             return None
-        left = arg.get('left')
-        right = arg.get('right')
+        left = argument_node.get('left')
+        right = argument_node.get('right')
         if not is_identifier(left):
             return None
         name = left['name']
@@ -124,15 +124,15 @@ class EnumResolver(Transform):
                 return name
         return None
 
-    def _extract_enum_assignment(self, expr, param_name):
+    def _extract_enum_assignment(self, expression: dict | None, param_name: str) -> tuple[str | None, int | float | None]:
         """Extract (member_name, value) from: param[param.NAME = VALUE] = "NAME".
 
         Returns (member_name, numeric_value) or (None, None).
         """
-        if not expr or expr.get('type') != 'AssignmentExpression':
+        if not expression or expression.get('type') != 'AssignmentExpression':
             return None, None
         # The outer assignment: param[...] = "NAME"
-        left = expr.get('left')
+        left = expression.get('left')
         if not left or left.get('type') != 'MemberExpression' or not left.get('computed'):
             return None, None
         obj = left.get('object')
@@ -159,7 +159,7 @@ class EnumResolver(Transform):
         return member_name, value
 
     @staticmethod
-    def _get_numeric_value(node):
+    def _get_numeric_value(node: dict | None) -> int | float | None:
         """Extract a numeric value from a literal or unary minus expression."""
         if not node:
             return None

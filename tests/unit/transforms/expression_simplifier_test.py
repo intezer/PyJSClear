@@ -1,13 +1,16 @@
 """Unit tests for ExpressionSimplifier transform."""
 
+import math
+
 import pytest
 
 from pyjsclear.transforms.expression_simplifier import ExpressionSimplifier
+from pyjsclear.transforms.expression_simplifier import _JS_NULL
 from tests.unit.conftest import normalize
 from tests.unit.conftest import roundtrip
 
 
-def rt(js_code):
+def rt(js_code: str) -> tuple:
     """Shorthand roundtrip for ExpressionSimplifier."""
     code, changed = roundtrip(js_code, ExpressionSimplifier)
     return normalize(code), changed
@@ -265,7 +268,7 @@ class TestGetResolvableValueNonDict:
         val, ok = es._get_resolvable_value(None)
         assert ok is False
 
-        val, ok = es._get_resolvable_value("string")
+        val, ok = es._get_resolvable_value('string')
         assert ok is False
 
 
@@ -462,14 +465,10 @@ class TestJsToNumber:
         assert es._js_to_number('5') == 5
 
     def test_null_to_zero(self):
-        from pyjsclear.transforms.expression_simplifier import _JS_NULL
-
         es = ExpressionSimplifier({'type': 'Program', 'body': []})
         assert es._js_to_number(_JS_NULL) == 0
 
     def test_undefined_to_nan(self):
-        import math
-
         es = ExpressionSimplifier({'type': 'Program', 'body': []})
         result = es._js_to_number(None)
         assert math.isnan(result)
@@ -483,8 +482,6 @@ class TestJsToString:
     """Lines 343-358: _js_to_string for various types."""
 
     def test_null_to_string(self):
-        from pyjsclear.transforms.expression_simplifier import _JS_NULL
-
         es = ExpressionSimplifier({'type': 'Program', 'body': []})
         assert es._js_to_string(_JS_NULL) == 'null'
 
@@ -516,8 +513,6 @@ class TestJsCompare:
         assert es._js_compare('a', 'a') == 0
 
     def test_nan_comparison(self):
-        import math
-
         es = ExpressionSimplifier({'type': 'Program', 'body': []})
         result = es._js_compare(float('nan'), 1)
         assert math.isnan(result)
@@ -530,8 +525,6 @@ class TestValueToNode:
     """Lines 384-403: _value_to_node for various types."""
 
     def test_null_value(self):
-        from pyjsclear.transforms.expression_simplifier import _JS_NULL
-
         es = ExpressionSimplifier({'type': 'Program', 'body': []})
         result = es._value_to_node(_JS_NULL)
         assert result['type'] == 'Literal'
@@ -622,7 +615,6 @@ class TestUnaryExceptionHandling:
         """-undefined → NaN, which _value_to_node returns None for."""
         code, changed = rt('-undefined;')
         # -undefined produces NaN, which can't be represented as a literal
-        # so it stays unchanged
         assert changed is False
 
 

@@ -17,26 +17,24 @@ from .base import Transform
 class RequireInliner(Transform):
     """Replace require polyfill calls with direct require() calls."""
 
-    def execute(self):
-        polyfill_names = set()
+    def execute(self) -> bool:
+        polyfill_names: set[str] = set()
 
         # Phase 1: Detect require polyfill pattern.
         # We look for: var X = (...)(function(Y) { ... require ... })
         # Heuristic: a VariableDeclarator whose init is a CallExpression,
         # and somewhere in its body there's `typeof require !== "undefined" ? require : ...`
-        def find_polyfills(node, parent):
+        def find_polyfills(node: dict, parent: dict | None) -> None:
             if node.get('type') != 'VariableDeclarator':
                 return
-            decl_id = node.get('id')
+            declaration_id = node.get('id')
             init = node.get('init')
-            if not is_identifier(decl_id):
+            if not is_identifier(declaration_id):
                 return
             if not init or init.get('type') != 'CallExpression':
                 return
-
-            # Check if the init tree contains `typeof require`
             if self._contains_typeof_require(init):
-                polyfill_names.add(decl_id['name'])
+                polyfill_names.add(declaration_id['name'])
 
         simple_traverse(self.ast, find_polyfills)
 
@@ -44,7 +42,7 @@ class RequireInliner(Transform):
             return False
 
         # Phase 2: Replace _0x544bfe(X) with require(X)
-        def replace_calls(node, parent, key, index):
+        def replace_calls(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'CallExpression':
                 return
             callee = node.get('callee')
@@ -55,26 +53,24 @@ class RequireInliner(Transform):
             args = node.get('arguments', [])
             if len(args) != 1:
                 return
-
-            # Replace the callee with require
             node['callee'] = make_identifier('require')
             self.set_changed()
 
         traverse(self.ast, {'enter': replace_calls})
         return self.has_changed()
 
-    def _contains_typeof_require(self, node):
+    def _contains_typeof_require(self, node: dict) -> bool:
         """Check if a subtree contains `typeof require`."""
         found = [False]
 
-        def scan(n, parent):
+        def scan(current_node: dict, parent: dict | None) -> None:
             if found[0]:
                 return
-            if not isinstance(n, dict):
+            if not isinstance(current_node, dict):
                 return
-            if n.get('type') == 'UnaryExpression' and n.get('operator') == 'typeof':
-                arg = n.get('argument')
-                if is_identifier(arg) and arg.get('name') == 'require':
+            if current_node.get('type') == 'UnaryExpression' and current_node.get('operator') == 'typeof':
+                argument = current_node.get('argument')
+                if is_identifier(argument) and argument.get('name') == 'require':
                     found[0] = True
 
         simple_traverse(node, scan)

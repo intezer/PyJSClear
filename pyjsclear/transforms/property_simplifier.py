@@ -9,8 +9,8 @@ from .base import Transform
 class PropertySimplifier(Transform):
     """Simplify obj["prop"] to obj.prop when prop is a valid identifier."""
 
-    def execute(self):
-        def enter(node, parent, key, index):
+    def execute(self) -> bool:
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'MemberExpression':
                 return
             if not node.get('computed'):
@@ -29,7 +29,7 @@ class PropertySimplifier(Transform):
         traverse(self.ast, {'enter': enter})
 
         # Also simplify computed property keys in object literals
-        def enter_obj(node, parent, key, index):
+        def enter_obj(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'Property':
                 return
             key_node = node.get('key')
@@ -51,7 +51,7 @@ class PropertySimplifier(Transform):
         # Simplify method definitions with string literal keys:
         # static ["name"]() → static name()
         # Also handles cases where parser sets computed=False but key is still a Literal
-        def enter_method(node, parent, key, index):
+        def enter_method(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'MethodDefinition':
                 return
             key_node = node.get('key')

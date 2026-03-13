@@ -12,14 +12,14 @@ class DeadExpressionRemover(Transform):
     like `(0, fn())`, and other numeric literal statements.
     """
 
-    def execute(self):
-        def enter(node, parent, key, index):
+    def execute(self) -> bool:
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> object:
             if node.get('type') != 'ExpressionStatement':
                 return
-            expr = node.get('expression')
-            if not isinstance(expr, dict) or expr.get('type') != 'Literal':
+            expression = node.get('expression')
+            if not isinstance(expression, dict) or expression.get('type') != 'Literal':
                 return
-            value = expr.get('value')
+            value = expression.get('value')
             # Only remove numeric literals (not strings/booleans/null/regex)
             if isinstance(value, (int, float)) and not isinstance(value, bool):
                 self.set_changed()

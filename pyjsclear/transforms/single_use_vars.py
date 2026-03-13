@@ -3,17 +3,21 @@
 Targets patterns like:
     const _0x337161 = require("process");
     return _0x337161.env.LOCALAPPDATA;
-→   return require("process").env.LOCALAPPDATA;
+    return require("process").env.LOCALAPPDATA;
 
     const _0x27439f = Buffer.from(_0x162d6f);
     return _0x27439f.toString();
-→   return Buffer.from(_0x162d6f).toString();
+    return Buffer.from(_0x162d6f).toString();
 
 Only inlines when:
 - The variable is constant (no reassignments)
 - There is exactly one reference (used once)
 - The init expression is not too large (≤ 15 AST nodes)
 """
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from ..scope import build_scope_tree
 from ..traverser import REMOVE
@@ -24,15 +28,18 @@ from ..utils.ast_helpers import deep_copy
 from ..utils.ast_helpers import is_identifier
 from .base import Transform
 
+if TYPE_CHECKING:
+    from ..scope import Scope
 
-def _count_nodes(node):
+
+def _count_nodes(node: dict) -> int:
     """Count AST nodes in a subtree."""
     count = [0]
 
-    def cb(n, parent):
+    def increment_count(_node: dict, parent: dict | None) -> None:
         count[0] += 1
 
-    simple_traverse(node, cb)
+    simple_traverse(node, increment_count)
     return count[0]
 
 
@@ -45,7 +52,7 @@ class SingleUseVarInliner(Transform):
     # Keeps inlined expressions readable; avoids ballooning line length.
     _MAX_INIT_NODES = 15
 
-    def execute(self):
+    def execute(self) -> bool:
         scope_tree, _ = build_scope_tree(self.ast)
         inlined = self._process_scope(scope_tree)
         if not inlined:
@@ -53,7 +60,7 @@ class SingleUseVarInliner(Transform):
         self._remove_declarators(inlined)
         return self.has_changed()
 
-    def _process_scope(self, scope):
+    def _process_scope(self, scope: Scope) -> list[dict]:
         """Find and inline single-use constant bindings."""
         inlined_declarators = []
 
@@ -115,7 +122,7 @@ class SingleUseVarInliner(Transform):
 
         return inlined_declarators
 
-    def _is_mutated_member_object(self, ref_parent, ref_key):
+    def _is_mutated_member_object(self, ref_parent: dict | None, ref_key: str | None) -> bool:
         """Check if ref is the object of a member expression that is an assignment target.
 
         Catches: obj[x] = val, obj.x = val, obj[x]++, etc.
@@ -129,27 +136,27 @@ class SingleUseVarInliner(Transform):
         parent_info = find_parent(self.ast, ref_parent)
         if not parent_info:
             return False
-        grandparent, gp_key, _ = parent_info
-        if grandparent.get('type') == 'AssignmentExpression' and gp_key == 'left':
+        grandparent, grandparent_key, _ = parent_info
+        if grandparent.get('type') == 'AssignmentExpression' and grandparent_key == 'left':
             return True
         if grandparent.get('type') == 'UpdateExpression':
             return True
         return False
 
-    def _remove_declarators(self, declarator_nodes):
+    def _remove_declarators(self, declarator_nodes: list[dict]) -> None:
         """Remove inlined VariableDeclarators from their parent declarations."""
-        declarator_ids = {id(d) for d in declarator_nodes}
+        declarator_ids = {id(declarator) for declarator in declarator_nodes}
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> object:
             if node.get('type') != 'VariableDeclaration':
                 return
-            decls = node.get('declarations', [])
-            original_len = len(decls)
-            decls[:] = [d for d in decls if id(d) not in declarator_ids]
-            if len(decls) == original_len:
+            declarations = node.get('declarations', [])
+            original_length = len(declarations)
+            declarations[:] = [declarator for declarator in declarations if id(declarator) not in declarator_ids]
+            if len(declarations) == original_length:
                 return  # No match — continue traversing children
             self.set_changed()
-            if not decls:
+            if not declarations:
                 return REMOVE
 
         traverse(self.ast, {'enter': enter})

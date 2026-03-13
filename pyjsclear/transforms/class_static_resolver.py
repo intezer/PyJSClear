@@ -24,7 +24,7 @@ from .base import Transform
 class ClassStaticResolver(Transform):
     """Inline class static constant properties and identity methods."""
 
-    def execute(self):
+    def execute(self) -> bool:
         # Step 1: Find class variables (var X = class { ... })
         class_vars = {}  # name -> ClassExpression node
 
@@ -146,7 +146,7 @@ class ClassStaticResolver(Transform):
         traverse(self.ast, {'enter': enter})
         return self.has_changed()
 
-    def _get_prop_name(self, member_expr):
+    def _get_prop_name(self, member_expr: dict) -> str | None:
         """Get the property name from a MemberExpression."""
         prop = member_expr.get('property')
         if not prop:
@@ -159,7 +159,7 @@ class ClassStaticResolver(Transform):
             return prop['name']
         return None
 
-    def _is_identity_function(self, func_node):
+    def _is_identity_function(self, func_node: dict) -> bool:
         """Check if a function simply returns its first argument."""
         params = func_node.get('params', [])
         if len(params) != 1:
@@ -173,12 +173,12 @@ class ClassStaticResolver(Transform):
         stmts = body.get('body', [])
         if len(stmts) != 1 or stmts[0].get('type') != 'ReturnStatement':
             return False
-        arg = stmts[0].get('argument')
-        if not arg or not is_identifier(arg):
+        return_argument = stmts[0].get('argument')
+        if not return_argument or not is_identifier(return_argument):
             return False
-        return arg['name'] == param['name']
+        return return_argument['name'] == param['name']
 
-    def _try_inline_identity(self, member_expr, method_node):
+    def _try_inline_identity(self, member_expr: dict, method_node: dict) -> None:
         """Inline Class.identity(arg) → arg."""
         result = find_parent(self.ast, member_expr)
         if not result:
@@ -194,11 +194,11 @@ class ClassStaticResolver(Transform):
         grandparent_result = find_parent(self.ast, call_parent)
         if not grandparent_result:
             return
-        gp, gp_key, gp_index = grandparent_result
-        self._replace_in_parent(call_parent, replacement, gp, gp_key, gp_index)
+        grandparent, grandparent_key, grandparent_index = grandparent_result
+        self._replace_in_parent(call_parent, replacement, grandparent, grandparent_key, grandparent_index)
         self.set_changed()
 
-    def _replace_in_parent(self, target, replacement, parent, key, index):
+    def _replace_in_parent(self, target: dict, replacement: dict, parent: dict, key: str, index: int | None) -> None:
         """Replace target node in the AST using known parent info."""
         if index is not None:
             parent[key][index] = replacement

@@ -7,9 +7,9 @@ from .base import Transform
 class HexNumerics(Transform):
     """Convert hex numeric literals to decimal representation."""
 
-    def execute(self):
+    def execute(self) -> bool:
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'Literal':
                 return
             value = node.get('value')
