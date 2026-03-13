@@ -112,6 +112,9 @@ class ClassStaticResolver(Transform):
             return False
 
         # Step 4: Replace accesses
+        # Build parent map once before traversal
+        self.get_parent_map()
+
         def enter(node, parent, key, index):
             if node.get('type') != 'MemberExpression':
                 return
@@ -140,9 +143,11 @@ class ClassStaticResolver(Transform):
 
             # Try identity method inlining
             if pair in static_methods:
-                self._try_inline_identity(node, static_methods[pair])
+                self._try_inline_identity(node, static_methods[pair], parent, key, index)
 
         traverse(self.ast, {'enter': enter})
+        # Invalidate parent map once after all replacements
+        self.invalidate_parent_map()
         return self.has_changed()
 
     def _get_prop_name(self, member_expr: dict) -> str | None:
@@ -177,24 +182,26 @@ class ClassStaticResolver(Transform):
             return False
         return return_argument['name'] == param['name']
 
-    def _try_inline_identity(self, member_expr: dict, method_node: dict) -> None:
-        """Inline Class.identity(arg) → arg."""
-        result = self.find_parent(member_expr)
-        if not result:
+    def _try_inline_identity(self, member_expr: dict, method_node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
+        """Inline Class.identity(arg) → arg.
+
+        parent/key/index refer to the MemberExpression's parent (from the enter callback).
+        The MemberExpression should be the callee of a CallExpression.
+        """
+        # parent is the CallExpression that contains this MemberExpression as callee
+        if not parent or parent.get('type') != 'CallExpression' or key != 'callee':
             return
-        call_parent, call_key, call_index = result
-        if not call_parent or call_parent.get('type') != 'CallExpression' or call_key != 'callee':
-            return
-        args = call_parent.get('arguments', [])
+        args = parent.get('arguments', [])
         if len(args) != 1:
             return
         replacement = deep_copy(args[0])
-        # Replace the CallExpression with the argument
-        grandparent_result = self.find_parent(call_parent)
+        # Find grandparent of the CallExpression using cached parent map
+        pm = self.get_parent_map()
+        grandparent_result = pm.get(id(parent))
         if not grandparent_result:
             return
         grandparent, grandparent_key, grandparent_index = grandparent_result
-        self._replace_in_parent(call_parent, replacement, grandparent, grandparent_key, grandparent_index)
+        self._replace_in_parent(parent, replacement, grandparent, grandparent_key, grandparent_index)
         self.set_changed()
 
     def _replace_in_parent(self, target: dict, replacement: dict, parent: dict, key: str, index: int | None) -> None:
@@ -203,4 +210,3 @@ class ClassStaticResolver(Transform):
             parent[key][index] = replacement
         else:
             parent[key] = replacement
-        self.invalidate_parent_map()

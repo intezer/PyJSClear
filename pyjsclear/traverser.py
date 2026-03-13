@@ -15,7 +15,7 @@ SKIP = object()
 # Local aliases for hot-path performance (~15% faster traversal)
 _dict = dict
 _list = list
-_isinstance = isinstance
+_type = type
 
 # Maximum recursion depth before falling back to iterative traversal.
 # CPython default recursion limit is ~1000; we switch well before that.
@@ -71,14 +71,14 @@ def _traverse_iterative(node: dict, enter_fn: Callable | None, exit_fn: Callable
                                     parent[key].pop(index)
                                 else:
                                     parent[key] = None
-                        elif _isinstance(exit_result, _dict) and 'type' in exit_result:
+                        elif _type(exit_result) is _dict and 'type' in exit_result:
                             if parent is not None:
                                 if index is not None:
                                     parent[key][index] = exit_result
                                 else:
                                     parent[key] = exit_result
                     continue
-                if _isinstance(result, _dict) and 'type' in result:
+                if _type(result) is _dict and 'type' in result:
                     current_node = result
                     if parent is not None:
                         if index is not None:
@@ -99,9 +99,9 @@ def _traverse_iterative(node: dict, enter_fn: Callable | None, exit_fn: Callable
                 child = current_node.get(child_key)
                 if child is None:
                     continue
-                if _isinstance(child, _list):
+                if _type(child) is _list:
                     stack_append((_OP_LIST_START, current_node, child_key, 0, None))
-                elif _isinstance(child, _dict) and 'type' in child:
+                elif _type(child) is _dict and 'type' in child:
                     stack_append((_OP_ENTER, child, current_node, child_key, None))
 
         elif op == _OP_EXIT:
@@ -116,7 +116,7 @@ def _traverse_iterative(node: dict, enter_fn: Callable | None, exit_fn: Callable
                         parent[key].pop(index)
                     else:
                         parent[key] = None
-            elif _isinstance(result, _dict) and 'type' in result:
+            elif _type(result) is _dict and 'type' in result:
                 if parent is not None:
                     if index is not None:
                         parent[key][index] = result
@@ -131,7 +131,7 @@ def _traverse_iterative(node: dict, enter_fn: Callable | None, exit_fn: Callable
             if idx >= len(child_list):
                 continue
             item = child_list[idx]
-            if _isinstance(item, _dict) and 'type' in item:
+            if _type(item) is _dict and 'type' in item:
                 stack_append((_OP_LIST_RESUME, parent_node, child_key, idx, len(child_list)))
                 stack_append((_OP_ENTER, item, parent_node, child_key, idx))
             else:
@@ -161,7 +161,7 @@ def _traverse_enter_only(node: dict, enter_fn: Callable) -> None:
     _max_depth = _MAX_RECURSIVE_DEPTH
 
     def _visit(current_node: dict, parent: dict | None, key: str | None, index: int | None, depth: int) -> None:
-        node_type = current_node.get('type')
+        node_type = current_node['type']
         if node_type is None:
             return
 
@@ -175,14 +175,14 @@ def _traverse_enter_only(node: dict, enter_fn: Callable) -> None:
             return
         if result is _SKIP:
             return
-        if _isinstance(result, _dict) and 'type' in result:
+        if _type(result) is _dict and 'type' in result:
             current_node = result
             if parent is not None:
                 if index is not None:
                     parent[key][index] = current_node
                 else:
                     parent[key] = current_node
-            node_type = current_node.get('type')
+            node_type = current_node['type']
 
         # Depth check: fall back to iterative for deep subtrees
         if depth > _max_depth:
@@ -198,21 +198,24 @@ def _traverse_enter_only(node: dict, enter_fn: Callable) -> None:
             child = current_node.get(child_key)
             if child is None:
                 continue
-            if _isinstance(child, _list):
-                list_index = 0
-                while list_index < len(child):
-                    item = child[list_index]
-                    if _isinstance(item, _dict) and 'type' in item:
-                        pre_len = len(child)
-                        _visit(item, current_node, child_key, list_index, next_depth)
-                        # If item was removed, list shrunk - stay at same index
-                        if len(child) < pre_len:
+            if _type(child) is _list:
+                child_len = len(child)
+                i = 0
+                while i < child_len:
+                    item = child[i]
+                    if _type(item) is _dict and 'type' in item:
+                        _visit(item, current_node, child_key, i, next_depth)
+                        new_len = len(child)
+                        if new_len < child_len:
+                            child_len = new_len
                             continue
-                    list_index += 1
-            elif _isinstance(child, _dict) and 'type' in child:
+                        child_len = new_len
+                    i += 1
+            elif _type(child) is _dict and 'type' in child:
                 _visit(child, current_node, child_key, None, next_depth)
 
-    _visit(node, None, None, None, 0)
+    if _type(node) is _dict and 'type' in node:
+        _visit(node, None, None, None, 0)
 
 
 def traverse(node: dict, visitor: dict | object) -> None:
@@ -229,7 +232,7 @@ def traverse(node: dict, visitor: dict | object) -> None:
     automatic fallback to iterative for deep subtrees. Uses iterative
     traversal when an exit callback is present.
     """
-    if _isinstance(visitor, _dict):
+    if isinstance(visitor, _dict):
         enter_fn = visitor.get('enter')
         exit_fn = visitor.get('exit')
     else:
@@ -253,7 +256,7 @@ def _simple_traverse_iterative(node: dict, callback: Callable) -> None:
 
     while stack:
         current_node, parent = stack_pop()
-        node_type = current_node.get('type')
+        node_type = current_node['type']
         if node_type is None:
             continue
         callback(current_node, parent)
@@ -264,12 +267,12 @@ def _simple_traverse_iterative(node: dict, callback: Callable) -> None:
             child = current_node.get(key)
             if child is None:
                 continue
-            if _isinstance(child, _list):
-                for list_index in range(len(child) - 1, -1, -1):
-                    item = child[list_index]
-                    if _isinstance(item, _dict) and 'type' in item:
+            if _type(child) is _list:
+                for i in range(len(child) - 1, -1, -1):
+                    item = child[i]
+                    if _type(item) is _dict and 'type' in item:
                         stack_append((item, current_node))
-            elif _isinstance(child, _dict) and 'type' in child:
+            elif _type(child) is _dict and 'type' in child:
                 stack_append((child, current_node))
 
 
@@ -280,7 +283,7 @@ def _simple_traverse_recursive(node: dict, callback: Callable) -> None:
     _max_depth = _MAX_RECURSIVE_DEPTH
 
     def _visit(current_node: dict, parent: dict | None, depth: int) -> None:
-        node_type = current_node.get('type')
+        node_type = current_node['type']
         if node_type is None:
             return
         callback(current_node, parent)
@@ -294,11 +297,11 @@ def _simple_traverse_recursive(node: dict, callback: Callable) -> None:
                 child = current_node.get(key)
                 if child is None:
                     continue
-                if _isinstance(child, _list):
+                if _type(child) is _list:
                     for item in child:
-                        if _isinstance(item, _dict) and 'type' in item:
+                        if _type(item) is _dict and 'type' in item:
                             _simple_traverse_iterative(item, callback)
-                elif _isinstance(child, _dict) and 'type' in child:
+                elif _type(child) is _dict and 'type' in child:
                     _simple_traverse_iterative(child, callback)
             return
 
@@ -310,14 +313,15 @@ def _simple_traverse_recursive(node: dict, callback: Callable) -> None:
             child = current_node.get(key)
             if child is None:
                 continue
-            if _isinstance(child, _list):
+            if _type(child) is _list:
                 for item in child:
-                    if _isinstance(item, _dict) and 'type' in item:
+                    if _type(item) is _dict and 'type' in item:
                         _visit(item, current_node, next_depth)
-            elif _isinstance(child, _dict) and 'type' in child:
+            elif _type(child) is _dict and 'type' in child:
                 _visit(child, current_node, next_depth)
 
-    _visit(node, None, 0)
+    if _type(node) is _dict and 'type' in node:
+        _visit(node, None, 0)
 
 
 def simple_traverse(node: dict, callback: Callable) -> None:
@@ -353,7 +357,7 @@ def build_parent_map(ast: dict) -> dict:
     stack = [(ast, None, None, None)]
     while stack:
         current_node, parent, key, index = stack.pop()
-        node_type = current_node.get('type')
+        node_type = current_node['type']
         if node_type is None:
             continue
         parent_map[id(current_node)] = (parent, key, index)
@@ -364,12 +368,12 @@ def build_parent_map(ast: dict) -> dict:
             child = current_node.get(child_key)
             if child is None:
                 continue
-            if _isinstance(child, _list):
-                for list_index in range(len(child) - 1, -1, -1):
-                    item = child[list_index]
-                    if _isinstance(item, _dict) and 'type' in item:
-                        stack.append((item, current_node, child_key, list_index))
-            elif _isinstance(child, _dict) and 'type' in child:
+            if _type(child) is _list:
+                for i in range(len(child) - 1, -1, -1):
+                    item = child[i]
+                    if _type(item) is _dict and 'type' in item:
+                        stack.append((item, current_node, child_key, i))
+            elif _type(child) is _dict and 'type' in child:
                 stack.append((child, current_node, child_key, None))
 
     return parent_map

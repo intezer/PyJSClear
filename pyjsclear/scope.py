@@ -8,7 +8,7 @@ from .utils.ast_helpers import get_child_keys
 
 
 # Local aliases for hot-path performance
-_isinstance = isinstance
+_type = type
 _dict = dict
 _list = list
 
@@ -103,7 +103,7 @@ def _collect_pattern_names(
     declaration: dict,
 ) -> None:
     """Collect binding names from destructuring patterns."""
-    if not _isinstance(pattern, _dict):
+    if not isinstance(pattern, _dict):
         return
     match pattern.get('type', ''):
         case 'ArrayPattern':
@@ -133,28 +133,39 @@ def _collect_pattern_names(
                 scope.add_binding(left['name'], declaration, kind)
 
 
-def _push_children_to_stack(
-    node: dict,
-    scope: 'Scope',
-    stack: list,
-    child_keys_map: dict,
-) -> None:
-    """Push child nodes onto a stack in reversed order for left-to-right processing."""
-    node_type = node.get('type')
-    child_keys = child_keys_map.get(node_type)
-    if child_keys is None:
-        child_keys = get_child_keys(node)
-    for key in reversed(child_keys):
-        child = node.get(key)
-        if child is None:
+def _collect_declarations_iterative(ast: dict, root_scope: 'Scope', node_scope: dict, all_scopes: list) -> None:
+    """Iterative Pass 1: Collect declarations."""
+    _child_keys_map = _CHILD_KEYS
+    _get_child_keys = get_child_keys
+
+    def _push_children(node: dict, scope: 'Scope', stack: list) -> None:
+        node_type = node.get('type')
+        child_keys = _child_keys_map.get(node_type)
+        if child_keys is None:
+            child_keys = _get_child_keys(node)
+        for key in reversed(child_keys):
+            child = node.get(key)
+            if child is None:
+                continue
+            if _type(child) is _list:
+                for i in range(len(child) - 1, -1, -1):
+                    item = child[i]
+                    if _type(item) is _dict and 'type' in item:
+                        stack.append((item, scope))
+            elif _type(child) is _dict and 'type' in child:
+                stack.append((child, scope))
+
+    decl_stack = [(ast, root_scope)]
+
+    while decl_stack:
+        node, scope = decl_stack.pop()
+
+        if not _type(node) is _dict:
             continue
-        if _isinstance(child, _list):
-            for index in range(len(child) - 1, -1, -1):
-                item = child[index]
-                if _isinstance(item, _dict) and 'type' in item:
-                    stack.append((item, scope))
-        elif _isinstance(child, _dict) and 'type' in child:
-            stack.append((child, scope))
+        node_type = node.get('type')
+        if node_type is None:
+            continue
+        _process_declaration_node(node, node_type, scope, node_scope, all_scopes, decl_stack, _push_children)
 
 
 def _process_declaration_node(
@@ -197,7 +208,7 @@ def _process_declaration_node(
         body = node.get('body')
         if not body:
             return
-        if _isinstance(body, _dict) and body.get('type') == 'BlockStatement':
+        if _type(body) is _dict and body.get('type') == 'BlockStatement':
             node_scope[id(body)] = new_scope
             statements = body.get('body', [])
             for index in range(len(statements) - 1, -1, -1):
@@ -274,6 +285,56 @@ def _process_declaration_node(
         push_children_fn(node, scope, push_target)
 
 
+def _collect_references_iterative(ast: dict, root_scope: 'Scope', node_scope: dict) -> None:
+    """Iterative Pass 2: Collect references and assignments."""
+    _child_keys_map = _CHILD_KEYS
+    _get_child_keys = get_child_keys
+
+    ref_stack = [(ast, root_scope, None, None, None)]
+
+    while ref_stack:
+        node, scope, parent, parent_key, parent_index = ref_stack.pop()
+
+        if not _type(node) is _dict:
+            continue
+        node_type = node.get('type')
+        if node_type is None:
+            continue
+
+        node_id = id(node)
+        if node_id in node_scope:
+            scope = node_scope[node_id]
+
+        if node_type == 'Identifier':
+            name = node.get('name', '')
+            if _is_non_reference_identifier(parent, parent_key):
+                continue
+            binding = scope.get_binding(name)
+            if not binding:
+                continue
+            binding.references.append((node, parent, parent_key, parent_index))
+            if parent and parent.get('type') == 'AssignmentExpression' and parent_key == 'left':
+                binding.assignments.append(parent)
+            elif parent and parent.get('type') == 'UpdateExpression':
+                binding.assignments.append(parent)
+            continue
+
+        child_keys = _child_keys_map.get(node_type)
+        if child_keys is None:
+            child_keys = _get_child_keys(node)
+        for key in reversed(child_keys):
+            child = node.get(key)
+            if child is None:
+                continue
+            if _type(child) is _list:
+                for i in range(len(child) - 1, -1, -1):
+                    item = child[i]
+                    if _type(item) is _dict and 'type' in item:
+                        ref_stack.append((item, scope, node, key, i))
+            elif _type(child) is _dict and 'type' in child:
+                ref_stack.append((child, scope, node, key, None))
+
+
 def build_scope_tree(ast: dict) -> tuple[Scope, dict[int, Scope]]:
     """Build a scope tree from an AST, collecting bindings and references.
 
@@ -292,7 +353,7 @@ def build_scope_tree(ast: dict) -> tuple[Scope, dict[int, Scope]]:
 
     def _push_children(node: dict, scope: Scope, target_list: list) -> None:
         """Push child nodes onto a list."""
-        node_type = node.get('type')
+        node_type = node['type']
         child_keys = _child_keys_map.get(node_type)
         if child_keys is None:
             child_keys = _get_child_keys(node)
@@ -300,16 +361,16 @@ def build_scope_tree(ast: dict) -> tuple[Scope, dict[int, Scope]]:
             child = node.get(key)
             if child is None:
                 continue
-            if _isinstance(child, _list):
-                for index in range(len(child) - 1, -1, -1):
-                    item = child[index]
-                    if _isinstance(item, _dict) and 'type' in item:
+            if _type(child) is _list:
+                for i in range(len(child) - 1, -1, -1):
+                    item = child[i]
+                    if _type(item) is _dict and 'type' in item:
                         target_list.append((item, scope))
-            elif _isinstance(child, _dict) and 'type' in child:
+            elif _type(child) is _dict and 'type' in child:
                 target_list.append((child, scope))
 
     def _visit_declaration(node: dict, scope: Scope, depth: int) -> None:
-        if not _isinstance(node, _dict):
+        if not _type(node) is _dict:
             return
         node_type = node.get('type')
         if node_type is None:
@@ -334,7 +395,7 @@ def build_scope_tree(ast: dict) -> tuple[Scope, dict[int, Scope]]:
         decl_stack = [(start_node, start_scope)]
         while decl_stack:
             node, scope = decl_stack.pop()
-            if not _isinstance(node, _dict):
+            if not _type(node) is _dict:
                 continue
             node_type = node.get('type')
             if node_type is None:
@@ -355,9 +416,9 @@ def build_scope_tree(ast: dict) -> tuple[Scope, dict[int, Scope]]:
         parent_index: int | None,
         depth: int,
     ) -> None:
-        if not _isinstance(node, _dict):
+        if not _type(node) is _dict:
             return
-        node_type = node.get('type')
+        node_type = node.get('type')  # not all dicts have 'type'
         if node_type is None:
             return
 
@@ -391,11 +452,11 @@ def build_scope_tree(ast: dict) -> tuple[Scope, dict[int, Scope]]:
             child = node.get(key)
             if child is None:
                 continue
-            if _isinstance(child, _list):
+            if _type(child) is _list:
                 for child_index, item in enumerate(child):
-                    if _isinstance(item, _dict) and 'type' in item:
+                    if _type(item) is _dict and 'type' in item:
                         _visit_reference(item, scope, node, key, child_index, next_depth)
-            elif _isinstance(child, _dict) and 'type' in child:
+            elif _type(child) is _dict and 'type' in child:
                 _visit_reference(child, scope, node, key, None, next_depth)
 
     def _collect_references_iterative_from(start_node: dict, start_scope: Scope) -> None:
@@ -403,7 +464,7 @@ def build_scope_tree(ast: dict) -> tuple[Scope, dict[int, Scope]]:
         ref_stack = [(start_node, start_scope, None, None, None)]
         while ref_stack:
             node, scope, parent, parent_key, parent_index = ref_stack.pop()
-            if not _isinstance(node, _dict):
+            if not _type(node) is _dict:
                 continue
             node_type = node.get('type')
             if node_type is None:
@@ -431,12 +492,12 @@ def build_scope_tree(ast: dict) -> tuple[Scope, dict[int, Scope]]:
                 child = node.get(key)
                 if child is None:
                     continue
-                if _isinstance(child, _list):
-                    for index in range(len(child) - 1, -1, -1):
-                        item = child[index]
-                        if _isinstance(item, _dict) and 'type' in item:
-                            ref_stack.append((item, scope, node, key, index))
-                elif _isinstance(child, _dict) and 'type' in child:
+                if _type(child) is _list:
+                    for i in range(len(child) - 1, -1, -1):
+                        item = child[i]
+                        if _type(item) is _dict and 'type' in item:
+                            ref_stack.append((item, scope, node, key, i))
+                elif _type(child) is _dict and 'type' in child:
                     ref_stack.append((child, scope, node, key, None))
 
     _visit_reference(ast, root_scope, None, None, None, 0)
