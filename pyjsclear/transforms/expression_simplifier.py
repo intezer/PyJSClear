@@ -1,6 +1,7 @@
 """Evaluate static unary/binary expressions to literals."""
 
 import math
+from typing import Any
 
 from ..traverser import traverse
 from ..utils.ast_helpers import is_literal
@@ -41,7 +42,7 @@ _RESOLVABLE_BINARY = {
 class ExpressionSimplifier(Transform):
     """Simplify constant unary/binary expressions to literals."""
 
-    def execute(self):
+    def execute(self) -> bool:
         self._simplify_unary_binary()
         self._simplify_conditionals()
         self._simplify_awaits()
@@ -49,32 +50,38 @@ class ExpressionSimplifier(Transform):
         self._simplify_method_calls()
         return self.has_changed()
 
-    def _simplify_unary_binary(self):
+    def _simplify_unary_binary(self) -> None:
         """Fold constant unary and binary expressions."""
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
             match node.get('type', ''):
                 case 'UnaryExpression':
                     result = self._simplify_unary(node)
                 case 'BinaryExpression':
                     result = self._simplify_binary(node)
                 case _:
-                    return
+                    return None
             if result is not None:
                 self.set_changed()
                 return result
+            return None
 
         traverse(self.ast, {'enter': enter})
 
-    def _simplify_conditionals(self):
+    def _simplify_conditionals(self) -> None:
         """Convert test ? false : true → !test."""
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
             if node.get('type') != 'ConditionalExpression':
-                return
-            cons = node.get('consequent')
-            alt = node.get('alternate')
-            if is_literal(cons) and cons.get('value') is False and is_literal(alt) and alt.get('value') is True:
+                return None
+            consequent = node.get('consequent')
+            alternate = node.get('alternate')
+            if (
+                is_literal(consequent)
+                and consequent.get('value') is False
+                and is_literal(alternate)
+                and alternate.get('value') is True
+            ):
                 self.set_changed()
                 return {
                     'type': 'UnaryExpression',
@@ -82,48 +89,49 @@ class ExpressionSimplifier(Transform):
                     'prefix': True,
                     'argument': node['test'],
                 }
+            return None
 
         traverse(self.ast, {'enter': enter})
 
-    def _simplify_awaits(self):
+    def _simplify_awaits(self) -> None:
         """Simplify await (0x0, expr) → await expr."""
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'AwaitExpression':
                 return
-            arg = node.get('argument')
-            if not isinstance(arg, dict) or arg.get('type') != 'SequenceExpression':
+            argument = node.get('argument')
+            if not isinstance(argument, dict) or argument.get('type') != 'SequenceExpression':
                 return
-            exprs = arg.get('expressions', [])
-            if len(exprs) <= 1:
+            expressions = argument.get('expressions', [])
+            if len(expressions) <= 1:
                 return
-            node['argument'] = exprs[-1]
+            node['argument'] = expressions[-1]
             self.set_changed()
 
         traverse(self.ast, {'enter': enter})
 
-    def _simplify_comma_calls(self):
+    def _simplify_comma_calls(self) -> None:
         """Simplify (0, expr)(args) → expr(args)."""
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'CallExpression':
                 return
             callee = node.get('callee')
             if not isinstance(callee, dict) or callee.get('type') != 'SequenceExpression':
                 return
-            exprs = callee.get('expressions', [])
-            if len(exprs) < 2:
+            expressions = callee.get('expressions', [])
+            if len(expressions) < 2:
                 return
             # Only simplify when the leading expressions are side-effect-free literals
-            for expr in exprs[:-1]:
-                if not isinstance(expr, dict) or expr.get('type') != 'Literal':
+            for expression in expressions[:-1]:
+                if not isinstance(expression, dict) or expression.get('type') != 'Literal':
                     return
-            node['callee'] = exprs[-1]
+            node['callee'] = expressions[-1]
             self.set_changed()
 
         traverse(self.ast, {'enter': enter})
 
-    def _simplify_unary(self, node):
+    def _simplify_unary(self, node: dict) -> dict | None:
         operator = node.get('operator', '')
         if operator not in _RESOLVABLE_UNARY:
             return None
@@ -137,8 +145,8 @@ class ExpressionSimplifier(Transform):
 
         argument = node.get('argument')
         argument = self._simplify_expr(argument)
-        value, ok = self._get_resolvable_value(argument)
-        if not ok:
+        value, resolved = self._get_resolvable_value(argument)
+        if not resolved:
             return None
 
         try:
@@ -147,7 +155,7 @@ class ExpressionSimplifier(Transform):
             return None
         return self._value_to_node(result)
 
-    def _simplify_binary(self, node):
+    def _simplify_binary(self, node: dict) -> dict | None:
         operator = node.get('operator', '')
         if operator not in _RESOLVABLE_BINARY:
             return None
@@ -172,7 +180,7 @@ class ExpressionSimplifier(Transform):
             return None
         return self._value_to_node(result)
 
-    def _simplify_expr(self, node):
+    def _simplify_expr(self, node: Any) -> Any:
         if not isinstance(node, dict):
             return node
         match node.get('type', ''):
@@ -184,7 +192,7 @@ class ExpressionSimplifier(Transform):
                 return result if result is not None else node
         return node
 
-    def _is_negative_numeric(self, node):
+    def _is_negative_numeric(self, node: Any) -> bool:
         return (
             isinstance(node, dict)
             and node.get('type') == 'UnaryExpression'
@@ -193,7 +201,7 @@ class ExpressionSimplifier(Transform):
             and isinstance(node['argument'].get('value'), (int, float))
         )
 
-    def _get_resolvable_value(self, node):
+    def _get_resolvable_value(self, node: Any) -> tuple[Any, bool]:
         if not isinstance(node, dict):
             return None, False
         match node.get('type', ''):
@@ -204,9 +212,9 @@ class ExpressionSimplifier(Transform):
                 # Literal with value None is JS null, not undefined
                 return (_JS_NULL if value is None else value), True
             case 'UnaryExpression' if node.get('operator') == '-':
-                arg = node.get('argument')
-                if is_literal(arg) and isinstance(arg.get('value'), (int, float)):
-                    return -arg['value'], True
+                argument = node.get('argument')
+                if is_literal(argument) and isinstance(argument.get('value'), (int, float)):
+                    return -argument['value'], True
             case 'Identifier' if node.get('name') == 'undefined':
                 return None, True
             case 'ArrayExpression' if len(node.get('elements', [])) == 0:
@@ -215,7 +223,7 @@ class ExpressionSimplifier(Transform):
                 return {}, True
         return None, False
 
-    def _apply_unary(self, operator, value):
+    def _apply_unary(self, operator: str, value: Any) -> Any:
         match operator:
             case '-':
                 return -self._js_to_number(value)
@@ -224,16 +232,16 @@ class ExpressionSimplifier(Transform):
             case '!':
                 return not self._js_truthy(value)
             case '~':
-                n = self._js_to_number(value)
-                if isinstance(n, float) and math.isnan(n):
+                number = self._js_to_number(value)
+                if isinstance(number, float) and math.isnan(number):
                     return -1  # ~NaN → -1
-                return ~int(n)
+                return ~int(number)
             case 'typeof':
                 return self._js_typeof(value)
             case 'void':
                 return None  # JS undefined
 
-    def _apply_binary(self, operator, left, right):
+    def _apply_binary(self, operator: str, left: Any, right: Any) -> Any:
         match operator:
             case '+':
                 if isinstance(left, str) or isinstance(right, str):
@@ -244,15 +252,15 @@ class ExpressionSimplifier(Transform):
             case '*':
                 return self._js_to_number(left) * self._js_to_number(right)
             case '/':
-                result = self._js_to_number(right)
-                if result == 0:
+                divisor = self._js_to_number(right)
+                if divisor == 0:
                     raise ValueError('division by zero')
-                return self._js_to_number(left) / result
+                return self._js_to_number(left) / divisor
             case '%':
-                result = self._js_to_number(right)
-                if result == 0:
+                modulus = self._js_to_number(right)
+                if modulus == 0:
                     raise ValueError('mod by zero')
-                return self._js_to_number(left) % result
+                return self._js_to_number(left) % modulus
             case '**':
                 return self._js_to_number(left) ** self._js_to_number(right)
             case '|':
@@ -267,14 +275,14 @@ class ExpressionSimplifier(Transform):
                 return self._js_to_int32(left) >> (self._js_to_int32(right) & 31)
             case '>>>':
                 left_operand = self._js_to_int32(left) & 0xFFFFFFFF
-                result = self._js_to_int32(right) & 31
-                return left_operand >> result
+                shift = self._js_to_int32(right) & 31
+                return left_operand >> shift
             case '==' | '!=':
-                eq = self._js_abstract_eq(left, right)
-                return eq if operator == '==' else not eq
+                equal = self._js_abstract_eq(left, right)
+                return equal if operator == '==' else not equal
             case '===' | '!==':
-                eq = self._js_strict_eq(left, right)
-                return eq if operator == '===' else not eq
+                equal = self._js_strict_eq(left, right)
+                return equal if operator == '===' else not equal
             case '<':
                 return self._js_compare(left, right) < 0
             case '<=':
@@ -286,7 +294,7 @@ class ExpressionSimplifier(Transform):
             case _:
                 raise ValueError(f'Unknown operator: {operator}')
 
-    def _js_abstract_eq(self, left, right):
+    def _js_abstract_eq(self, left: Any, right: Any) -> bool:
         """JS == (null and undefined are equal to each other only)."""
         if (left is None or left is _JS_NULL) and (right is None or right is _JS_NULL):
             return True
@@ -294,7 +302,7 @@ class ExpressionSimplifier(Transform):
             return False
         return left == right
 
-    def _js_strict_eq(self, left, right):
+    def _js_strict_eq(self, left: Any, right: Any) -> bool:
         """JS === (null !== undefined)."""
         if left is _JS_NULL:
             return right is _JS_NULL
@@ -302,7 +310,7 @@ class ExpressionSimplifier(Transform):
             return False
         return left == right and type(left) == type(right)
 
-    def _js_truthy(self, value):
+    def _js_truthy(self, value: Any) -> bool:
         if value is None or value is _JS_NULL:
             return False
         match value:
@@ -317,7 +325,7 @@ class ExpressionSimplifier(Transform):
             case _:
                 return bool(value)
 
-    def _js_typeof(self, value):
+    def _js_typeof(self, value: Any) -> str:
         if value is _JS_NULL:
             return 'object'  # typeof null === 'object' in JS
         if value is None:
@@ -334,11 +342,11 @@ class ExpressionSimplifier(Transform):
             case _:
                 return 'undefined'
 
-    def _js_to_int32(self, value):
+    def _js_to_int32(self, value: Any) -> int:
         """Coerce to 32-bit integer (for bitwise ops)."""
         return int(self._js_to_number(value))
 
-    def _js_to_number(self, value):
+    def _js_to_number(self, value: Any) -> int | float:
         if value is _JS_NULL:
             return 0  # Number(null) → 0
         if value is None:
@@ -362,7 +370,7 @@ class ExpressionSimplifier(Transform):
             case _:
                 return 0
 
-    def _js_to_string(self, value):
+    def _js_to_string(self, value: Any) -> str:
         if value is _JS_NULL:
             return 'null'
         if value is None:
@@ -381,7 +389,7 @@ class ExpressionSimplifier(Transform):
             case _:
                 return str(value)
 
-    def _js_compare(self, left, right):
+    def _js_compare(self, left: Any, right: Any) -> int | float:
         # JS compares strings lexicographically, not numerically
         if isinstance(left, str) and isinstance(right, str):
             if left < right:
@@ -403,7 +411,7 @@ class ExpressionSimplifier(Transform):
             return 1
         return 0
 
-    def _value_to_node(self, value):
+    def _value_to_node(self, value: Any) -> dict | None:
         if value is _JS_NULL:
             return make_literal(None)  # null literal
         if value is None:
@@ -426,7 +434,7 @@ class ExpressionSimplifier(Transform):
                 return make_literal(value)
         return None
 
-    def _simplify_method_calls(self):
+    def _simplify_method_calls(self) -> None:
         """Statically evaluate simple method calls on literals.
 
         Handles:
@@ -434,27 +442,27 @@ class ExpressionSimplifier(Transform):
           (N).toString() → "N"
         """
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
             if node.get('type') != 'CallExpression':
-                return
+                return None
             callee = node.get('callee')
             if not isinstance(callee, dict) or callee.get('type') != 'MemberExpression':
-                return
+                return None
             prop = callee.get('property')
             if not prop:
-                return
+                return None
             method_name = prop.get('name') if prop.get('type') == 'Identifier' else None
             if not method_name:
-                return
+                return None
 
             # (N).toString() → "N"
             if method_name == 'toString' and len(node.get('arguments', [])) == 0:
                 obj = callee.get('object')
                 if is_numeric_literal(obj):
                     val = obj['value']
-                    s = str(int(val)) if isinstance(val, float) and val == int(val) else str(val)
+                    string_value = str(int(val)) if isinstance(val, float) and val == int(val) else str(val)
                     self.set_changed()
-                    return make_literal(s)
+                    return make_literal(string_value)
 
             # Buffer.from([...nums...]).toString(encoding) → string literal
             if method_name == 'toString' and len(node.get('arguments', [])) <= 1:
@@ -463,9 +471,11 @@ class ExpressionSimplifier(Transform):
                     self.set_changed()
                     return make_literal(result)
 
+            return None
+
         traverse(self.ast, {'enter': enter})
 
-    def _try_eval_buffer_from_tostring(self, obj, args):
+    def _try_eval_buffer_from_tostring(self, obj: Any, arguments: list) -> str | None:
         """Try to evaluate Buffer.from([...nums...]).toString(encoding)."""
         if not isinstance(obj, dict) or obj.get('type') != 'CallExpression':
             return None
@@ -473,11 +483,19 @@ class ExpressionSimplifier(Transform):
         if not isinstance(callee, dict) or callee.get('type') != 'MemberExpression':
             return None
         # Check for Buffer.from
-        buf_obj = callee.get('object')
-        buf_prop = callee.get('property')
-        if not (buf_obj and buf_obj.get('type') == 'Identifier' and buf_obj.get('name') == 'Buffer'):
+        buffer_object = callee.get('object')
+        buffer_property = callee.get('property')
+        if not (
+            buffer_object
+            and buffer_object.get('type') == 'Identifier'
+            and buffer_object.get('name') == 'Buffer'
+        ):
             return None
-        if not (buf_prop and buf_prop.get('type') == 'Identifier' and buf_prop.get('name') == 'from'):
+        if not (
+            buffer_property
+            and buffer_property.get('type') == 'Identifier'
+            and buffer_property.get('name') == 'from'
+        ):
             return None
         # First arg must be an array of numbers
         call_args = obj.get('arguments', [])
@@ -485,17 +503,17 @@ class ExpressionSimplifier(Transform):
             return None
         elements = call_args[0].get('elements', [])
         byte_values = []
-        for el in elements:
-            if not is_numeric_literal(el):
+        for element in elements:
+            if not is_numeric_literal(element):
                 return None
-            val = el['value']
+            val = element['value']
             if not isinstance(val, (int, float)) or val != int(val) or val < 0 or val > 255:
                 return None
             byte_values.append(int(val))
         # Determine encoding for toString
         encoding = 'utf8'
-        if args and is_literal(args[0]) and isinstance(args[0].get('value'), str):
-            encoding = args[0]['value']
+        if arguments and is_literal(arguments[0]) and isinstance(arguments[0].get('value'), str):
+            encoding = arguments[0]['value']
         try:
             data = bytes(byte_values)
             if encoding in ('utf8', 'utf-8'):

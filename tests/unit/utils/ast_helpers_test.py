@@ -3,8 +3,6 @@
 import copy
 import math
 
-import pytest
-
 from pyjsclear.utils.ast_helpers import _CHILD_KEYS
 from pyjsclear.utils.ast_helpers import deep_copy
 from pyjsclear.utils.ast_helpers import get_child_keys
@@ -32,29 +30,29 @@ from pyjsclear.utils.ast_helpers import replace_identifiers
 
 
 class TestDeepCopy:
-    def test_basic_node(self):
+    def test_basic_node(self) -> None:
         node = {'type': 'Literal', 'value': 42, 'raw': '42'}
         result = deep_copy(node)
         assert result == node
         assert result is not node
 
-    def test_nested_node_independence(self):
+    def test_nested_node_independence(self) -> None:
         inner = {'type': 'Identifier', 'name': 'x'}
         outer = {'type': 'ExpressionStatement', 'expression': inner}
         result = deep_copy(outer)
         result['expression']['name'] = 'y'
         assert inner['name'] == 'x'
 
-    def test_list_children(self):
+    def test_list_children(self) -> None:
         node = {'type': 'BlockStatement', 'body': [{'type': 'EmptyStatement'}]}
         result = deep_copy(node)
         result['body'].append({'type': 'EmptyStatement'})
         assert len(node['body']) == 1
 
-    def test_none_passthrough(self):
+    def test_none_passthrough(self) -> None:
         assert deep_copy(None) is None
 
-    def test_empty_dict(self):
+    def test_empty_dict(self) -> None:
         assert deep_copy({}) == {}
 
 
@@ -64,74 +62,74 @@ class TestDeepCopy:
 
 
 class TestIsLiteral:
-    def test_string_literal(self):
+    def test_string_literal(self) -> None:
         assert is_literal({'type': 'Literal', 'value': 'hello', 'raw': '"hello"'})
 
-    def test_numeric_literal(self):
+    def test_numeric_literal(self) -> None:
         assert is_literal({'type': 'Literal', 'value': 42, 'raw': '42'})
 
-    def test_not_a_dict(self):
+    def test_not_a_dict(self) -> None:
         assert not is_literal('Literal')
         assert not is_literal(42)
         assert not is_literal(None)
         assert not is_literal([])
 
-    def test_wrong_type(self):
+    def test_wrong_type(self) -> None:
         assert not is_literal({'type': 'Identifier', 'name': 'x'})
 
-    def test_missing_type(self):
+    def test_missing_type(self) -> None:
         assert not is_literal({'value': 42})
 
-    def test_empty_dict(self):
+    def test_empty_dict(self) -> None:
         assert not is_literal({})
 
 
 class TestIsIdentifier:
-    def test_basic(self):
+    def test_basic(self) -> None:
         assert is_identifier({'type': 'Identifier', 'name': 'foo'})
 
-    def test_not_identifier(self):
+    def test_not_identifier(self) -> None:
         assert not is_identifier({'type': 'Literal', 'value': 1})
 
-    def test_non_dict(self):
+    def test_non_dict(self) -> None:
         assert not is_identifier('Identifier')
         assert not is_identifier(None)
 
 
 class TestIsStringLiteral:
-    def test_string(self):
+    def test_string(self) -> None:
         assert is_string_literal({'type': 'Literal', 'value': 'hello'})
 
-    def test_empty_string(self):
+    def test_empty_string(self) -> None:
         assert is_string_literal({'type': 'Literal', 'value': ''})
 
-    def test_number_not_string(self):
+    def test_number_not_string(self) -> None:
         assert not is_string_literal({'type': 'Literal', 'value': 42})
 
-    def test_bool_not_string(self):
+    def test_bool_not_string(self) -> None:
         assert not is_string_literal({'type': 'Literal', 'value': True})
 
-    def test_none_not_string(self):
+    def test_none_not_string(self) -> None:
         assert not is_string_literal({'type': 'Literal', 'value': None, 'raw': 'null'})
 
 
 class TestIsNumericLiteral:
-    def test_int(self):
+    def test_int(self) -> None:
         assert is_numeric_literal({'type': 'Literal', 'value': 42})
 
-    def test_float(self):
+    def test_float(self) -> None:
         assert is_numeric_literal({'type': 'Literal', 'value': 3.14})
 
-    def test_zero(self):
+    def test_zero(self) -> None:
         assert is_numeric_literal({'type': 'Literal', 'value': 0})
 
-    def test_negative(self):
+    def test_negative(self) -> None:
         assert is_numeric_literal({'type': 'Literal', 'value': -1})
 
-    def test_string_not_numeric(self):
+    def test_string_not_numeric(self) -> None:
         assert not is_numeric_literal({'type': 'Literal', 'value': '42'})
 
-    def test_bool_not_numeric(self):
+    def test_bool_not_numeric(self) -> None:
         # In Python bool is subclass of int, but isinstance(True, bool) is True
         # and the function checks for (int, float). Since bool IS int, this returns True.
         # However, the check order matters: is_boolean_literal checks bool first.
@@ -140,45 +138,45 @@ class TestIsNumericLiteral:
 
 
 class TestIsBooleanLiteral:
-    def test_true(self):
+    def test_true(self) -> None:
         assert is_boolean_literal({'type': 'Literal', 'value': True})
 
-    def test_false(self):
+    def test_false(self) -> None:
         assert is_boolean_literal({'type': 'Literal', 'value': False})
 
-    def test_int_not_bool(self):
+    def test_int_not_bool(self) -> None:
         assert not is_boolean_literal({'type': 'Literal', 'value': 1})
 
-    def test_string_not_bool(self):
+    def test_string_not_bool(self) -> None:
         assert not is_boolean_literal({'type': 'Literal', 'value': 'true'})
 
 
 class TestIsNullLiteral:
-    def test_null(self):
+    def test_null(self) -> None:
         assert is_null_literal({'type': 'Literal', 'value': None, 'raw': 'null'})
 
-    def test_none_without_raw(self):
+    def test_none_without_raw(self) -> None:
         # Must have raw == 'null' to be considered null literal
         assert not is_null_literal({'type': 'Literal', 'value': None})
 
-    def test_none_wrong_raw(self):
+    def test_none_wrong_raw(self) -> None:
         assert not is_null_literal({'type': 'Literal', 'value': None, 'raw': 'undefined'})
 
-    def test_non_literal(self):
+    def test_non_literal(self) -> None:
         assert not is_null_literal({'type': 'Identifier', 'name': 'null'})
 
 
 class TestIsUndefined:
-    def test_undefined_identifier(self):
+    def test_undefined_identifier(self) -> None:
         assert is_undefined({'type': 'Identifier', 'name': 'undefined'})
 
-    def test_other_identifier(self):
+    def test_other_identifier(self) -> None:
         assert not is_undefined({'type': 'Identifier', 'name': 'null'})
 
-    def test_literal_not_undefined(self):
+    def test_literal_not_undefined(self) -> None:
         assert not is_undefined({'type': 'Literal', 'value': None, 'raw': 'null'})
 
-    def test_non_dict(self):
+    def test_non_dict(self) -> None:
         assert not is_undefined(None)
 
 
@@ -188,33 +186,33 @@ class TestIsUndefined:
 
 
 class TestGetLiteralValue:
-    def test_string_value(self):
+    def test_string_value(self) -> None:
         val, ok = get_literal_value({'type': 'Literal', 'value': 'hello'})
         assert ok is True
         assert val == 'hello'
 
-    def test_numeric_value(self):
+    def test_numeric_value(self) -> None:
         val, ok = get_literal_value({'type': 'Literal', 'value': 42})
         assert ok is True
         assert val == 42
 
-    def test_none_value_null(self):
+    def test_none_value_null(self) -> None:
         val, ok = get_literal_value({'type': 'Literal', 'value': None, 'raw': 'null'})
         assert ok is True
         assert val is None
 
-    def test_non_literal(self):
+    def test_non_literal(self) -> None:
         val, ok = get_literal_value({'type': 'Identifier', 'name': 'x'})
         assert ok is False
         assert val is None
 
-    def test_literal_missing_value_key(self):
+    def test_literal_missing_value_key(self) -> None:
         # A Literal node without a 'value' key; .get returns None
         val, ok = get_literal_value({'type': 'Literal', 'raw': '42'})
         assert ok is True
         assert val is None
 
-    def test_bool_value(self):
+    def test_bool_value(self) -> None:
         val, ok = get_literal_value({'type': 'Literal', 'value': True})
         assert ok is True
         assert val is True
@@ -226,43 +224,43 @@ class TestGetLiteralValue:
 
 
 class TestMakeLiteral:
-    def test_integer(self):
+    def test_integer(self) -> None:
         node = make_literal(42)
         assert node == {'type': 'Literal', 'value': 42, 'raw': '42'}
 
-    def test_float_whole_number(self):
+    def test_float_whole_number(self) -> None:
         # Whole floats are rendered as int strings
         node = make_literal(3.0)
         assert node['raw'] == '3'
 
-    def test_float_fractional(self):
+    def test_float_fractional(self) -> None:
         node = make_literal(3.14)
         assert node['raw'] == '3.14'
 
-    def test_negative_zero_float(self):
+    def test_negative_zero_float(self) -> None:
         # -0.0 in Python: str(-0.0) is '-0.0', and -0.0 == 0 is True
         # but str(-0.0).startswith('-') triggers the else branch
         node = make_literal(-0.0)
         assert node['raw'] == '-0.0'
 
-    def test_boolean_true(self):
+    def test_boolean_true(self) -> None:
         node = make_literal(True)
         assert node == {'type': 'Literal', 'value': True, 'raw': 'true'}
 
-    def test_boolean_false(self):
+    def test_boolean_false(self) -> None:
         node = make_literal(False)
         assert node == {'type': 'Literal', 'value': False, 'raw': 'false'}
 
-    def test_null(self):
+    def test_null(self) -> None:
         node = make_literal(None)
         assert node == {'type': 'Literal', 'value': None, 'raw': 'null'}
 
-    def test_simple_string(self):
+    def test_simple_string(self) -> None:
         node = make_literal('hello')
         assert node['value'] == 'hello'
         assert node['raw'] == '"hello"'
 
-    def test_string_with_double_quotes(self):
+    def test_string_with_double_quotes(self) -> None:
         """Bug #2: String containing double quotes. repr('say "hi"') gives
         The raw value must properly escape inner double quotes."""
         node = make_literal('say "hi"')
@@ -271,15 +269,15 @@ class TestMakeLiteral:
         assert raw.endswith('"')
         assert raw == '"say \\"hi\\""'
 
-    def test_custom_raw(self):
+    def test_custom_raw(self) -> None:
         node = make_literal(42, raw='0x2A')
         assert node == {'type': 'Literal', 'value': 42, 'raw': '0x2A'}
 
-    def test_negative_int(self):
+    def test_negative_int(self) -> None:
         node = make_literal(-5)
         assert node['raw'] == '-5'
 
-    def test_large_float(self):
+    def test_large_float(self) -> None:
         node = make_literal(1e10)
         # 1e10 == int(1e10) and not negative zero, so raw = str(int(1e10))
         assert node['raw'] == '10000000000'
@@ -290,7 +288,7 @@ class TestMakeLiteral:
     # then checks if raw starts with '"' and if not, re-wraps.
     # This section documents the current behavior for edge cases.
 
-    def test_bug2_string_with_single_quotes(self):
+    def test_bug2_string_with_single_quotes(self) -> None:
         """Bug #2: Strings containing single quotes. repr() would use double quotes
         for the Python repr, so replacing ' with " produces unexpected results.
 
@@ -305,7 +303,7 @@ class TestMakeLiteral:
         assert raw.startswith('"')
         assert raw.endswith('"')
 
-    def test_bug2_backslash_string(self):
+    def test_bug2_backslash_string(self) -> None:
         """Bug #2: Strings with backslashes. repr() produces escape sequences
         which then get the quote replacement applied.
 
@@ -320,7 +318,7 @@ class TestMakeLiteral:
         # but repr gives us Python escaping, not JS escaping
         assert '\\\\' in raw  # double-escaped backslash from repr
 
-    def test_bug2_unicode_string(self):
+    def test_bug2_unicode_string(self) -> None:
         """Bug #2: Unicode strings. repr() may produce \\uXXXX or the literal char
         depending on the character. For printable unicode, repr includes it literally."""
         node = make_literal('\u00e9')  # e-acute
@@ -328,7 +326,7 @@ class TestMakeLiteral:
         assert raw.startswith('"')
         assert raw.endswith('"')
 
-    def test_bug2_newline_string(self):
+    def test_bug2_newline_string(self) -> None:
         """Bug #2: Strings with newlines. repr() produces \\n which is valid JS too,
         so this case happens to work."""
         node = make_literal('line1\nline2')
@@ -337,13 +335,13 @@ class TestMakeLiteral:
         assert raw.endswith('"')
         assert '\\n' in raw
 
-    def test_bug2_tab_string(self):
+    def test_bug2_tab_string(self) -> None:
         """Bug #2: Strings with tabs. repr() produces \\t which is valid JS."""
         node = make_literal('a\tb')
         raw = node['raw']
         assert '\\t' in raw
 
-    def test_bug2_string_with_both_quote_types(self):
+    def test_bug2_string_with_both_quote_types(self) -> None:
         """Bug #2: String containing both single and double quotes.
         repr() for a string with both quotes uses single-quote wrapping and
         escapes the single quotes. The replace("'", '"') then converts ALL
@@ -353,12 +351,12 @@ class TestMakeLiteral:
         assert raw.startswith('"')
         assert raw.endswith('"')
 
-    def test_bug2_empty_string(self):
+    def test_bug2_empty_string(self) -> None:
         """Bug #2: Empty string should produce '""'."""
         node = make_literal('')
         assert node['raw'] == '""'
 
-    def test_bug2_null_byte_string(self):
+    def test_bug2_null_byte_string(self) -> None:
         """Bug #2: String with null byte. repr() produces \\x00 which is NOT
         valid JS (JS uses \\0 or \\u0000). This documents the current behavior."""
         node = make_literal('a\x00b')
@@ -374,10 +372,10 @@ class TestMakeLiteral:
 
 
 class TestMakeIdentifier:
-    def test_basic(self):
+    def test_basic(self) -> None:
         assert make_identifier('foo') == {'type': 'Identifier', 'name': 'foo'}
 
-    def test_underscore(self):
+    def test_underscore(self) -> None:
         assert make_identifier('_') == {'type': 'Identifier', 'name': '_'}
 
 
@@ -387,7 +385,7 @@ class TestMakeIdentifier:
 
 
 class TestMakeExpressionStatement:
-    def test_wraps_expression(self):
+    def test_wraps_expression(self) -> None:
         expr = {'type': 'Literal', 'value': 42, 'raw': '42'}
         result = make_expression_statement(expr)
         assert result['type'] == 'ExpressionStatement'
@@ -400,11 +398,11 @@ class TestMakeExpressionStatement:
 
 
 class TestMakeBlockStatement:
-    def test_empty_body(self):
+    def test_empty_body(self) -> None:
         result = make_block_statement([])
         assert result == {'type': 'BlockStatement', 'body': []}
 
-    def test_with_statements(self):
+    def test_with_statements(self) -> None:
         stmts = [{'type': 'EmptyStatement'}, {'type': 'EmptyStatement'}]
         result = make_block_statement(stmts)
         assert result['body'] is stmts
@@ -417,7 +415,7 @@ class TestMakeBlockStatement:
 
 
 class TestMakeVarDeclaration:
-    def test_var_no_init(self):
+    def test_var_no_init(self) -> None:
         result = make_var_declaration('x')
         assert result['type'] == 'VariableDeclaration'
         assert result['kind'] == 'var'
@@ -427,13 +425,13 @@ class TestMakeVarDeclaration:
         assert decl['id'] == {'type': 'Identifier', 'name': 'x'}
         assert decl['init'] is None
 
-    def test_let_with_init(self):
+    def test_let_with_init(self) -> None:
         init = {'type': 'Literal', 'value': 5, 'raw': '5'}
         result = make_var_declaration('y', init=init, kind='let')
         assert result['kind'] == 'let'
         assert result['declarations'][0]['init'] is init
 
-    def test_const(self):
+    def test_const(self) -> None:
         result = make_var_declaration('Z', kind='const')
         assert result['kind'] == 'const'
 
@@ -444,40 +442,40 @@ class TestMakeVarDeclaration:
 
 
 class TestIsValidIdentifier:
-    def test_simple(self):
+    def test_simple(self) -> None:
         assert is_valid_identifier('foo')
 
-    def test_underscore_prefix(self):
+    def test_underscore_prefix(self) -> None:
         assert is_valid_identifier('_private')
 
-    def test_dollar_prefix(self):
+    def test_dollar_prefix(self) -> None:
         assert is_valid_identifier('$jquery')
 
-    def test_digits_allowed_after_first(self):
+    def test_digits_allowed_after_first(self) -> None:
         assert is_valid_identifier('x1')
 
-    def test_starts_with_digit(self):
+    def test_starts_with_digit(self) -> None:
         assert not is_valid_identifier('1abc')
 
-    def test_empty_string(self):
+    def test_empty_string(self) -> None:
         assert not is_valid_identifier('')
 
-    def test_none(self):
+    def test_none(self) -> None:
         assert not is_valid_identifier(None)
 
-    def test_non_string(self):
+    def test_non_string(self) -> None:
         assert not is_valid_identifier(42)
 
-    def test_hyphen(self):
+    def test_hyphen(self) -> None:
         assert not is_valid_identifier('foo-bar')
 
-    def test_single_dollar(self):
+    def test_single_dollar(self) -> None:
         assert is_valid_identifier('$')
 
-    def test_single_underscore(self):
+    def test_single_underscore(self) -> None:
         assert is_valid_identifier('_')
 
-    def test_reserved_words_pass_regex(self):
+    def test_reserved_words_pass_regex(self) -> None:
         # The function only does regex check, not reserved word check
         assert is_valid_identifier('if')
         assert is_valid_identifier('return')
@@ -490,25 +488,25 @@ class TestIsValidIdentifier:
 
 
 class TestChildKeys:
-    def test_known_node_type(self):
+    def test_known_node_type(self) -> None:
         node = {'type': 'BinaryExpression', 'left': {}, 'right': {}, 'operator': '+'}
         assert get_child_keys(node) == ('left', 'right')
 
-    def test_literal_has_no_children(self):
+    def test_literal_has_no_children(self) -> None:
         assert get_child_keys({'type': 'Literal', 'value': 1}) == ()
 
-    def test_identifier_has_no_children(self):
+    def test_identifier_has_no_children(self) -> None:
         assert get_child_keys({'type': 'Identifier', 'name': 'x'}) == ()
 
-    def test_non_dict_returns_empty(self):
+    def test_non_dict_returns_empty(self) -> None:
         assert get_child_keys('not a node') == ()
         assert get_child_keys(None) == ()
         assert get_child_keys(42) == ()
 
-    def test_missing_type_returns_empty(self):
+    def test_missing_type_returns_empty(self) -> None:
         assert get_child_keys({'value': 42}) == ()
 
-    def test_unknown_node_type_fallback(self):
+    def test_unknown_node_type_fallback(self) -> None:
         # Unknown type falls back to heuristic: keys with dict/list values not in _SKIP_KEYS
         node = {'type': 'UnknownThing', 'body': [], 'extra': {}, 'name': 'test'}
         keys = get_child_keys(node)
@@ -517,13 +515,13 @@ class TestChildKeys:
         # 'name' is in _SKIP_KEYS so should not appear
         assert 'name' not in keys
 
-    def test_fallback_skips_type_key(self):
+    def test_fallback_skips_type_key(self) -> None:
         node = {'type': 'CustomNode', 'child': {'type': 'Literal'}}
         keys = get_child_keys(node)
         assert 'type' not in keys
         assert 'child' in keys
 
-    def test_all_known_types_in_child_keys(self):
+    def test_all_known_types_in_child_keys(self) -> None:
         # Sanity check: every value in _CHILD_KEYS is a tuple
         for node_type, keys in _CHILD_KEYS.items():
             assert isinstance(keys, tuple), f'{node_type} keys is not a tuple'
@@ -535,7 +533,7 @@ class TestChildKeys:
 
 
 class TestReplaceIdentifiers:
-    def test_simple_replacement(self):
+    def test_simple_replacement(self) -> None:
         node = {
             'type': 'BinaryExpression',
             'operator': '+',
@@ -547,7 +545,7 @@ class TestReplaceIdentifiers:
         assert node['left'] == {'type': 'Literal', 'value': 1, 'raw': '1'}
         assert node['right'] == {'type': 'Identifier', 'name': 'b'}
 
-    def test_replacement_is_deep_copied(self):
+    def test_replacement_is_deep_copied(self) -> None:
         replacement = {'type': 'Literal', 'value': 1, 'raw': '1'}
         node = {
             'type': 'ExpressionStatement',
@@ -558,7 +556,7 @@ class TestReplaceIdentifiers:
         replacement['value'] = 999
         assert node['expression']['value'] == 1
 
-    def test_skips_non_computed_member_property(self):
+    def test_skips_non_computed_member_property(self) -> None:
         # obj.foo -- 'foo' should NOT be replaced even if in param_map
         node = {
             'type': 'MemberExpression',
@@ -576,7 +574,7 @@ class TestReplaceIdentifiers:
         # property should NOT be replaced (non-computed)
         assert node['property']['name'] == 'foo'
 
-    def test_replaces_computed_member_property(self):
+    def test_replaces_computed_member_property(self) -> None:
         # obj[foo] -- 'foo' SHOULD be replaced
         node = {
             'type': 'MemberExpression',
@@ -588,7 +586,7 @@ class TestReplaceIdentifiers:
         replace_identifiers(node, param_map)
         assert node['property'] == {'type': 'Literal', 'value': 'bar', 'raw': '"bar"'}
 
-    def test_replaces_in_array_children(self):
+    def test_replaces_in_array_children(self) -> None:
         node = {
             'type': 'ArrayExpression',
             'elements': [
@@ -602,7 +600,7 @@ class TestReplaceIdentifiers:
         assert node['elements'][0] == {'type': 'Literal', 'value': 1, 'raw': '1'}
         assert node['elements'][1] == {'type': 'Identifier', 'name': 'b'}
 
-    def test_recursive_replacement(self):
+    def test_recursive_replacement(self) -> None:
         node = {
             'type': 'ExpressionStatement',
             'expression': {
@@ -616,18 +614,18 @@ class TestReplaceIdentifiers:
         replace_identifiers(node, param_map)
         assert node['expression']['left'] == {'type': 'Literal', 'value': 10, 'raw': '10'}
 
-    def test_non_dict_input_noop(self):
+    def test_non_dict_input_noop(self) -> None:
         # Should not raise
         replace_identifiers(None, {'x': {'type': 'Literal'}})
         replace_identifiers('string', {'x': {'type': 'Literal'}})
         replace_identifiers([], {'x': {'type': 'Literal'}})
 
-    def test_no_type_key_noop(self):
+    def test_no_type_key_noop(self) -> None:
         node = {'value': 42}
         replace_identifiers(node, {'value': {'type': 'Literal'}})
         assert node == {'value': 42}
 
-    def test_child_is_none_skipped(self):
+    def test_child_is_none_skipped(self) -> None:
         node = {
             'type': 'ReturnStatement',
             'argument': None,
@@ -635,7 +633,7 @@ class TestReplaceIdentifiers:
         # Should not raise
         replace_identifiers(node, {'x': {'type': 'Literal'}})
 
-    def test_nested_list_with_non_identifier_dicts(self):
+    def test_nested_list_with_non_identifier_dicts(self) -> None:
         # Items in a list that are dicts with 'type' but not Identifier should recurse
         node = {
             'type': 'ArrayExpression',
@@ -659,69 +657,69 @@ class TestReplaceIdentifiers:
 
 
 class TestNodesEqual:
-    def test_identical_literals(self):
+    def test_identical_literals(self) -> None:
         a = {'type': 'Literal', 'value': 42, 'raw': '42'}
         b = {'type': 'Literal', 'value': 42, 'raw': '42'}
         assert nodes_equal(a, b)
 
-    def test_different_values(self):
+    def test_different_values(self) -> None:
         a = {'type': 'Literal', 'value': 42, 'raw': '42'}
         b = {'type': 'Literal', 'value': 43, 'raw': '43'}
         assert not nodes_equal(a, b)
 
-    def test_ignores_position_info(self):
+    def test_ignores_position_info(self) -> None:
         a = {'type': 'Literal', 'value': 1, 'raw': '1', 'start': 0, 'end': 1}
         b = {'type': 'Literal', 'value': 1, 'raw': '1', 'start': 50, 'end': 51}
         assert nodes_equal(a, b)
 
-    def test_ignores_loc(self):
+    def test_ignores_loc(self) -> None:
         a = {'type': 'Identifier', 'name': 'x', 'loc': {'start': {'line': 1}}}
         b = {'type': 'Identifier', 'name': 'x', 'loc': {'start': {'line': 5}}}
         assert nodes_equal(a, b)
 
-    def test_ignores_range(self):
+    def test_ignores_range(self) -> None:
         a = {'type': 'Identifier', 'name': 'x', 'range': [0, 1]}
         b = {'type': 'Identifier', 'name': 'x', 'range': [10, 11]}
         assert nodes_equal(a, b)
 
-    def test_different_types(self):
+    def test_different_types(self) -> None:
         a = {'type': 'Literal', 'value': 1}
         b = {'type': 'Identifier', 'name': '1'}
         assert not nodes_equal(a, b)
 
-    def test_list_equality(self):
+    def test_list_equality(self) -> None:
         a = [{'type': 'Literal', 'value': 1}, {'type': 'Literal', 'value': 2}]
         b = [{'type': 'Literal', 'value': 1}, {'type': 'Literal', 'value': 2}]
         assert nodes_equal(a, b)
 
-    def test_list_different_length(self):
+    def test_list_different_length(self) -> None:
         a = [{'type': 'Literal', 'value': 1}]
         b = [{'type': 'Literal', 'value': 1}, {'type': 'Literal', 'value': 2}]
         assert not nodes_equal(a, b)
 
-    def test_list_different_order(self):
+    def test_list_different_order(self) -> None:
         a = [{'type': 'Literal', 'value': 1}, {'type': 'Literal', 'value': 2}]
         b = [{'type': 'Literal', 'value': 2}, {'type': 'Literal', 'value': 1}]
         assert not nodes_equal(a, b)
 
-    def test_scalar_equality(self):
+    def test_scalar_equality(self) -> None:
         assert nodes_equal(42, 42)
         assert nodes_equal('hello', 'hello')
         assert not nodes_equal(42, 43)
         assert not nodes_equal('a', 'b')
 
-    def test_type_mismatch(self):
+    def test_type_mismatch(self) -> None:
         # type(a) != type(b) returns False
         assert not nodes_equal(42, '42')
         assert not nodes_equal({}, [])
         assert not nodes_equal(None, {})
 
-    def test_dict_extra_key(self):
+    def test_dict_extra_key(self) -> None:
         a = {'type': 'Literal', 'value': 1}
         b = {'type': 'Literal', 'value': 1, 'extra': True}
         assert not nodes_equal(a, b)
 
-    def test_nested_structures(self):
+    def test_nested_structures(self) -> None:
         a = {
             'type': 'BinaryExpression',
             'operator': '+',
@@ -733,7 +731,7 @@ class TestNodesEqual:
         b['right']['value'] = 3
         assert not nodes_equal(a, b)
 
-    def test_nested_with_position_ignored(self):
+    def test_nested_with_position_ignored(self) -> None:
         a = {
             'type': 'BinaryExpression',
             'operator': '+',
@@ -748,15 +746,15 @@ class TestNodesEqual:
         }
         assert nodes_equal(a, b)
 
-    def test_empty_dicts(self):
+    def test_empty_dicts(self) -> None:
         assert nodes_equal({}, {})
 
-    def test_empty_lists(self):
+    def test_empty_lists(self) -> None:
         assert nodes_equal([], [])
 
-    def test_none_values(self):
+    def test_none_values(self) -> None:
         assert nodes_equal(None, None)
 
-    def test_bool_equality(self):
+    def test_bool_equality(self) -> None:
         assert nodes_equal(True, True)
         assert not nodes_equal(True, False)

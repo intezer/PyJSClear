@@ -4,11 +4,18 @@ Detects: var x = y; (where y is also a variable)
 And replaces all references to x with y, then removes x.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from ..scope import build_scope_tree
 from ..traverser import REMOVE
 from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
 from .base import Transform
+
+if TYPE_CHECKING:
+    from ..scope import Scope
 
 
 class ReassignmentRemover(Transform):
@@ -51,13 +58,16 @@ class ReassignmentRemover(Transform):
 
     rebuild_scope = True
 
-    def execute(self):
-        scope_tree, _ = build_scope_tree(self.ast)
+    def execute(self) -> bool:
+        if self.scope_tree is not None:
+            scope_tree = self.scope_tree
+        else:
+            scope_tree, _ = build_scope_tree(self.ast)
         self._process_scope(scope_tree)
         self._inline_assignment_aliases(scope_tree)
         return self.has_changed()
 
-    def _process_scope(self, scope):
+    def _process_scope(self, scope: Scope) -> None:
         for name, binding in list(scope.bindings.items()):
             if not binding.is_constant:
                 continue
@@ -69,8 +79,8 @@ class ReassignmentRemover(Transform):
                 continue
 
             # Skip destructuring patterns — id must be a simple Identifier
-            decl_id = node.get('id')
-            if not decl_id or decl_id.get('type') != 'Identifier':
+            declaration_id = node.get('id')
+            if not declaration_id or declaration_id.get('type') != 'Identifier':
                 continue
 
             initializer = node.get('init')
@@ -80,12 +90,12 @@ class ReassignmentRemover(Transform):
             target_name = initializer.get('name', '')
             if target_name == name:
                 continue
+
             target_binding = scope.get_binding(target_name)
             # Allow inlining if target is a well-known global or a constant binding
-            if target_binding:
-                if not target_binding.is_constant:
-                    continue
-            elif target_name not in self._WELL_KNOWN_GLOBALS:
+            if target_binding and not target_binding.is_constant:
+                continue
+            if not target_binding and target_name not in self._WELL_KNOWN_GLOBALS:
                 continue
 
             # Replace all references to `name` with `target_name`
@@ -108,7 +118,7 @@ class ReassignmentRemover(Transform):
         for child in scope.children:
             self._process_scope(child)
 
-    def _inline_assignment_aliases(self, scope_tree):
+    def _inline_assignment_aliases(self, scope_tree: Scope) -> None:
         """Inline aliases created by `var x; ... x = y;` patterns.
 
         Handles the obfuscator pattern where a variable is declared without
@@ -116,17 +126,17 @@ class ReassignmentRemover(Transform):
         """
         self._process_assignment_aliases(scope_tree)
 
-    def _remove_assignment_statement(self, assignment_node):
+    def _remove_assignment_statement(self, assignment_node: dict) -> None:
         """Remove the ExpressionStatement containing the given assignment expression."""
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> object:
             if node.get('type') == 'ExpressionStatement' and node.get('expression') is assignment_node:
                 self.set_changed()
                 return REMOVE
 
         traverse(self.ast, {'enter': enter})
 
-    def _process_assignment_aliases(self, scope):
+    def _process_assignment_aliases(self, scope: Scope) -> None:
         for name, binding in list(scope.bindings.items()):
             if binding.is_constant or binding.kind == 'param':
                 continue
@@ -167,10 +177,9 @@ class ReassignmentRemover(Transform):
 
             # The target must be constant or a well-known global
             target_binding = scope.get_binding(target_name)
-            if target_binding:
-                if not target_binding.is_constant:
-                    continue
-            elif target_name not in self._WELL_KNOWN_GLOBALS:
+            if target_binding and not target_binding.is_constant:
+                continue
+            if not target_binding and target_name not in self._WELL_KNOWN_GLOBALS:
                 continue
 
             # Replace all reads of `name` with `target_name`

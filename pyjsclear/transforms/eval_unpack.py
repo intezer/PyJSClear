@@ -27,21 +27,21 @@ _PACKER_RE2 = re.compile(
 _EVAL_RE = re.compile(r'^eval\s*\(', re.MULTILINE)
 
 
-def is_eval_packed(code):
+def is_eval_packed(code: str) -> bool:
     """Check if code uses eval packing."""
     return bool(_PACKER_RE.search(code) or _PACKER_RE2.search(code) or _EVAL_RE.search(code.lstrip()))
 
 
-def _dean_edwards_unpack(packed, radix, count, keywords):
+def _dean_edwards_unpack(packed: str, radix: int, count: int, keywords: list[str]) -> str:
     """Pure Python implementation of Dean Edwards unpacker."""
 
     # Build the replacement function
-    def base_encode(c):
-        prefix = '' if c < radix else base_encode(int(c / radix))
-        c = c % radix
-        if c > 35:
-            return prefix + chr(c + 29)
-        return prefix + ('0123456789abcdefghijklmnopqrstuvwxyz'[c] if c < 36 else chr(c + 29))
+    def base_encode(value: int) -> str:
+        prefix = '' if value < radix else base_encode(int(value / radix))
+        remainder = value % radix
+        if remainder > 35:
+            return prefix + chr(remainder + 29)
+        return prefix + ('0123456789abcdefghijklmnopqrstuvwxyz'[remainder] if remainder < 36 else chr(remainder + 29))
 
     # Build dictionary
     lookup = {}
@@ -51,34 +51,35 @@ def _dean_edwards_unpack(packed, radix, count, keywords):
         lookup[key] = keywords[count] if count < len(keywords) and keywords[count] else key
 
     # Replace tokens in packed string
-    def replacer(match):
-        token = match.group(0)
+    def replacer(token_match: re.Match) -> str:
+        token = token_match.group(0)
         return lookup.get(token, token)
 
     return re.sub(r'\b\w+\b', replacer, packed)
 
 
-def eval_unpack(code):
+def eval_unpack(code: str) -> str | None:
     """Unpack eval-packed JavaScript. Returns unpacked code or None."""
     return _try_dean_edwards(code)
 
 
-def _try_dean_edwards(code):
+def _try_dean_edwards(code: str) -> str | None:
     """Try to unpack Dean Edwards packer format."""
     for pattern in [_PACKER_RE, _PACKER_RE2]:
-        m = pattern.search(code)
-        if m:
-            packed = m.group(1)
-            radix = int(m.group(2))
-            count = int(m.group(3))
-            keywords_str = m.group(4)
-            keywords = keywords_str.split('|')
+        pattern_match = pattern.search(code)
+        if not pattern_match:
+            continue
 
-            # Unescape the packed string
-            packed = packed.replace("\\'", "'").replace('\\\\', '\\')
+        packed = pattern_match.group(1)
+        radix = int(pattern_match.group(2))
+        count = int(pattern_match.group(3))
+        keywords = pattern_match.group(4).split('|')
 
-            try:
-                return _dean_edwards_unpack(packed, radix, count, keywords)
-            except Exception:
-                continue
+        # Unescape the packed string
+        packed = packed.replace("\\'", "'").replace('\\\\', '\\')
+
+        try:
+            return _dean_edwards_unpack(packed, radix, count, keywords)
+        except Exception:
+            continue
     return None

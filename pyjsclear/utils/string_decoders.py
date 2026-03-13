@@ -1,10 +1,9 @@
 """String decoder implementations for obfuscator.io patterns."""
 
-from enum import Enum
-from urllib.parse import unquote
+from enum import StrEnum
 
 
-class DecoderType(Enum):
+class DecoderType(StrEnum):
     BASIC = 'basic'
     BASE_64 = 'base64'
     RC4 = 'rc4'
@@ -13,7 +12,7 @@ class DecoderType(Enum):
 _BASE_64_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/='
 
 
-def base64_transform(encoded_string):
+def base64_transform(encoded_string: str) -> str:
     """Decode obfuscator.io's custom base64 encoding."""
     # Decode 4 base64 chars into 3 bytes using 6-bit groups.
     # bit_buffer accumulates bits; every non-first char in a group yields a byte
@@ -39,19 +38,19 @@ def base64_transform(encoded_string):
 class StringDecoder:
     """Base string decoder."""
 
-    def __init__(self, string_array, index_offset):
+    def __init__(self, string_array: list[str], index_offset: int) -> None:
         self.string_array = string_array
         self.index_offset = index_offset
         self.is_first_call = True
 
     @property
-    def type(self):
+    def type(self) -> DecoderType:
         return DecoderType.BASIC
 
-    def get_string(self, index, *args):
+    def get_string(self, index: int, *args) -> str | None:
         raise NotImplementedError
 
-    def get_string_for_rotation(self, index, *args, **kwargs):
+    def get_string_for_rotation(self, index: int, *args, **kwargs) -> str | None:
         if self.is_first_call:
             self.is_first_call = False
             raise RuntimeError('First call')
@@ -62,10 +61,10 @@ class BasicStringDecoder(StringDecoder):
     """Simple array index + offset decoder."""
 
     @property
-    def type(self):
+    def type(self) -> DecoderType:
         return DecoderType.BASIC
 
-    def get_string(self, index, *args):
+    def get_string(self, index: int, *args) -> str | None:
         array_index = index + self.index_offset
         if 0 <= array_index < len(self.string_array):
             return self.string_array[array_index]
@@ -75,15 +74,15 @@ class BasicStringDecoder(StringDecoder):
 class Base64StringDecoder(StringDecoder):
     """Base64 string decoder."""
 
-    def __init__(self, string_array, index_offset):
+    def __init__(self, string_array: list[str], index_offset: int) -> None:
         super().__init__(string_array, index_offset)
-        self._cache = {}
+        self._cache: dict[int, str] = {}
 
     @property
-    def type(self):
+    def type(self) -> DecoderType:
         return DecoderType.BASE_64
 
-    def get_string(self, index, *args):
+    def get_string(self, index: int, *args) -> str | None:
         if index in self._cache:
             return self._cache[index]
         array_index = index + self.index_offset
@@ -97,15 +96,15 @@ class Base64StringDecoder(StringDecoder):
 class Rc4StringDecoder(StringDecoder):
     """RC4 string decoder."""
 
-    def __init__(self, string_array, index_offset):
+    def __init__(self, string_array: list[str], index_offset: int) -> None:
         super().__init__(string_array, index_offset)
-        self._cache = {}
+        self._cache: dict[tuple[int, str], str] = {}
 
     @property
-    def type(self):
+    def type(self) -> DecoderType:
         return DecoderType.RC4
 
-    def get_string(self, index, key=None):
+    def get_string(self, index: int, key: str | None = None) -> str | None:
         if not key:
             return None
         # Include key in cache to avoid collisions with different RC4 keys
@@ -120,7 +119,7 @@ class Rc4StringDecoder(StringDecoder):
         self._cache[cache_key] = decoded
         return decoded
 
-    def _rc4_decode(self, encoded_string, key):
+    def _rc4_decode(self, encoded_string: str, key: str) -> str:
         """RC4 decryption with base64 pre-processing."""
         encoded_string = base64_transform(encoded_string)
         # KSA

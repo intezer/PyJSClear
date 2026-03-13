@@ -11,22 +11,22 @@ class ElseIfFlattener(Transform):
     where each else block wraps a single if statement.
     """
 
-    def execute(self):
-        def enter(node, parent, key, index):
-            if node.get('type') != 'IfStatement':
-                return
-            alt = node.get('alternate')
-            if not alt or alt.get('type') != 'BlockStatement':
-                return
-            body = alt.get('body', [])
-            if len(body) != 1:
-                return
-            inner = body[0]
-            if inner.get('type') != 'IfStatement':
-                return
-            # Flatten: replace the block with the inner if
-            node['alternate'] = inner
-            self.set_changed()
+    def _enter_node(self, node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
+        if node.get('type') != 'IfStatement':
+            return
+        alternate_node = node.get('alternate')
+        if not alternate_node or alternate_node.get('type') != 'BlockStatement':
+            return
+        body = alternate_node.get('body', [])
+        if len(body) != 1:
+            return
+        inner_if = body[0]
+        if inner_if.get('type') != 'IfStatement':
+            return
+        # Flatten: replace the block with the inner if
+        node['alternate'] = inner_if
+        self.set_changed()
 
-        traverse(self.ast, {'enter': enter})
+    def execute(self) -> bool:
+        traverse(self.ast, {'enter': self._enter_node})
         return self.has_changed()

@@ -1,5 +1,9 @@
+"""Tests for the ObjectSimplifier transform."""
+
 import pytest
 
+from pyjsclear.generator import generate
+from pyjsclear.parser import parse
 from pyjsclear.transforms.object_simplifier import ObjectSimplifier
 from tests.unit.conftest import normalize
 from tests.unit.conftest import roundtrip
@@ -182,9 +186,6 @@ class TestCoverageGaps:
 
     def test_is_proxy_object_non_property_type(self):
         """Lines 121, 124: _is_proxy_object with non-Property type or missing value."""
-        from pyjsclear.generator import generate
-        from pyjsclear.parser import parse
-
         ast = parse('const o = {x: 1}; y(o.x);')
         t = ObjectSimplifier(ast)
         # SpreadElement is not a Property
@@ -194,8 +195,6 @@ class TestCoverageGaps:
 
     def test_get_property_key_no_key(self):
         """Lines 136: _get_property_key returns None when key is missing."""
-        from pyjsclear.parser import parse
-
         ast = parse('const o = {x: 1};')
         t = ObjectSimplifier(ast)
         assert t._get_property_key({}) is None
@@ -203,8 +202,6 @@ class TestCoverageGaps:
 
     def test_computed_property_key_ignored(self):
         """Line 46: property key returns None for computed key (not Identifier or string Literal)."""
-        from pyjsclear.parser import parse
-
         ast = parse('const o = {x: 1}; var y = o.x;')
         t = ObjectSimplifier(ast)
         # A property with a computed (non-string, non-identifier) key returns None
@@ -212,8 +209,6 @@ class TestCoverageGaps:
 
     def test_has_property_assignment_me_parent_info_none(self):
         """Line 97: _has_property_assignment where find_parent returns None for me."""
-        from pyjsclear.parser import parse
-
         # Build a scenario with a detached member expression
         ast = parse('const o = {x: 1}; var y = o.x;')
         t = ObjectSimplifier(ast)
@@ -223,8 +218,6 @@ class TestCoverageGaps:
 
     def test_try_inline_function_call_me_parent_info_none(self):
         """Line 107: _try_inline_function_call where find_parent returns None."""
-        from pyjsclear.parser import parse
-
         ast = parse('const o = {fn: function(a) { return a; }}; o.fn(1);')
         t = ObjectSimplifier(ast)
         changed = t.execute()
@@ -232,8 +225,6 @@ class TestCoverageGaps:
 
     def test_get_member_prop_name_no_property(self):
         """Line 148: _get_member_prop_name with no property returns None."""
-        from pyjsclear.parser import parse
-
         ast = parse('const o = {x: 1};')
         t = ObjectSimplifier(ast)
         assert t._get_member_prop_name({}) is None
@@ -241,12 +232,9 @@ class TestCoverageGaps:
 
     def test_body_not_block_not_expression(self):
         """Line 183: body that's not BlockStatement and not expression for non-arrow."""
-        from pyjsclear.parser import parse
-
         ast = parse('const o = {fn: function(a) { return a; }}; o.fn(1);')
         t = ObjectSimplifier(ast)
         # Manually set the function body to something that is not a BlockStatement
-        # Find the function in the object
         props = ast['body'][0]['declarations'][0]['init']['properties']
         func = props[0]['value']
         func['body'] = {'type': 'Literal', 'value': 1}  # Not a BlockStatement

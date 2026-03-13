@@ -38,7 +38,7 @@ class AntiTamperRemover(Transform):
     ]
 
     @staticmethod
-    def _extract_iife_call(expr):
+    def _extract_iife_call(expr: dict) -> dict | None:
         """Extract a CallExpression from an IIFE pattern."""
         if expr.get('type') == 'CallExpression':
             return expr
@@ -46,23 +46,20 @@ class AntiTamperRemover(Transform):
             return expr.get('argument')
         return None
 
-    def _matches_anti_tamper_pattern(self, src):
+    def _matches_anti_tamper_pattern(self, source: str) -> bool:
         """Check if source matches any anti-tamper pattern."""
-        for pattern in self._SELF_DEFENDING_PATTERNS:
-            if pattern.search(src):
-                return True
-        if any(p.search(src) for p in self._DEBUG_PATTERNS):
-            if re.search(r'\bdebugger\b', src) and (re.search(r'\bwhile\b|\bfor\b|\bsetInterval\b', src)):
-                return True
-        for pattern in self._CONSOLE_PATTERNS:
-            if pattern.search(src):
-                return True
+        if any(pattern.search(source) for pattern in self._SELF_DEFENDING_PATTERNS):
+            return True
+        if re.search(r'\bdebugger\b', source) and re.search(r'\bwhile\b|\bfor\b|\bsetInterval\b', source):
+            return True
+        if any(pattern.search(source) for pattern in self._CONSOLE_PATTERNS):
+            return True
         return False
 
-    def execute(self):
+    def execute(self) -> bool:
         nodes_to_remove = []
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict, key: str, index: int | None) -> None:
             if node.get('type') != 'ExpressionStatement':
                 return
             expr = node.get('expression')
@@ -94,9 +91,9 @@ class AntiTamperRemover(Transform):
 
         # Remove flagged nodes
         if nodes_to_remove:
-            remove_set = set(id(n) for n in nodes_to_remove)
+            remove_set = {id(node) for node in nodes_to_remove}
 
-            def remover(node, parent, key, index):
+            def remover(node: dict, parent: dict, key: str, index: int | None) -> object | None:
                 if id(node) in remove_set:
                     self.set_changed()
                     return REMOVE

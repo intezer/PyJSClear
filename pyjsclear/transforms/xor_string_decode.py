@@ -26,23 +26,23 @@ from ..utils.ast_helpers import make_literal
 from .base import Transform
 
 
-def _extract_numeric_array(node):
+def _extract_numeric_array(node: dict | None) -> list[int] | None:
     """Extract a list of integers from an ArrayExpression node."""
     if not node or node.get('type') != 'ArrayExpression':
         return None
     elements = node.get('elements', [])
     result = []
-    for el in elements:
-        if not is_numeric_literal(el):
+    for element in elements:
+        if not is_numeric_literal(element):
             return None
-        val = el['value']
-        if not isinstance(val, (int, float)) or val != int(val) or val < 0 or val > 255:
+        value = element['value']
+        if not isinstance(value, (int, float)) or value != int(value) or value < 0 or value > 255:
             return None
-        result.append(int(val))
+        result.append(int(value))
     return result
 
 
-def _xor_decode(byte_array, prefix_len=4):
+def _xor_decode(byte_array: list[int], prefix_len: int = 4) -> str | None:
     """Decode XOR-obfuscated byte array: prefix XOR'd against remaining data."""
     if len(byte_array) <= prefix_len:
         return None
@@ -56,7 +56,7 @@ def _xor_decode(byte_array, prefix_len=4):
         return None
 
 
-def _is_xor_decoder_function(node):
+def _is_xor_decoder_function(node: dict | None) -> bool:
     """Heuristic: check if a function body contains XOR (^=) on array elements
     and a slice/Buffer.from pattern typical of XOR string decoders."""
     if not node:
@@ -69,17 +69,17 @@ def _is_xor_decoder_function(node):
     has_slice = [False]
     has_tostring = [False]
 
-    def scan(n, parent):
-        if not isinstance(n, dict):
+    def scan(ast_node: dict, parent: dict) -> None:
+        if not isinstance(ast_node, dict):
             return
         # Look for ^= operator
-        if n.get('type') == 'AssignmentExpression' and n.get('operator') == '^=':
+        if ast_node.get('type') == 'AssignmentExpression' and ast_node.get('operator') == '^=':
             has_xor[0] = True
         # Look for .slice or .from
-        if n.get('type') == 'MemberExpression':
-            prop = n.get('property')
-            if prop:
-                name = prop.get('name') or (prop.get('value') if prop.get('type') == 'Literal' else None)
+        if ast_node.get('type') == 'MemberExpression':
+            property_node = ast_node.get('property')
+            if property_node:
+                name = property_node.get('name') or (property_node.get('value') if property_node.get('type') == 'Literal' else None)
                 if name in ('slice', 'from'):
                     has_slice[0] = True
                 if name in ('toString', 'decode'):
@@ -92,11 +92,11 @@ def _is_xor_decoder_function(node):
 class XorStringDecoder(Transform):
     """Decode XOR-obfuscated string constants and inline them."""
 
-    def execute(self):
+    def execute(self) -> bool:
         # Phase 1: Find XOR decoder functions
-        decoder_funcs = set()
+        decoder_funcs: set[str] = set()
 
-        def find_decoders(node, parent):
+        def find_decoders(node: dict, parent: dict) -> None:
             if node.get('type') not in ('FunctionDeclaration', 'FunctionExpression'):
                 return
             params = node.get('params', [])
@@ -111,9 +111,9 @@ class XorStringDecoder(Transform):
                 if func_id and is_identifier(func_id):
                     decoder_funcs.add(func_id['name'])
             elif parent and parent.get('type') == 'VariableDeclarator':
-                decl_id = parent.get('id')
-                if decl_id and is_identifier(decl_id):
-                    decoder_funcs.add(decl_id['name'])
+                declaration_id = parent.get('id')
+                if declaration_id and is_identifier(declaration_id):
+                    decoder_funcs.add(declaration_id['name'])
 
         simple_traverse(self.ast, find_decoders)
 
@@ -121,14 +121,14 @@ class XorStringDecoder(Transform):
             return False
 
         # Phase 2: Find calls like `var X = decoder([...bytes...])` and decode
-        decoded_vars = {}  # var_name → decoded_string
+        decoded_vars: dict[str, str] = {}  # var_name → decoded_string
 
-        def find_calls(node, parent):
+        def find_calls(node: dict, parent: dict) -> None:
             if node.get('type') != 'VariableDeclarator':
                 return
-            decl_id = node.get('id')
+            declaration_id = node.get('id')
             init = node.get('init')
-            if not is_identifier(decl_id) or not init:
+            if not is_identifier(declaration_id) or not init:
                 return
             if init.get('type') != 'CallExpression':
                 return
@@ -143,7 +143,7 @@ class XorStringDecoder(Transform):
                 return
             decoded = _xor_decode(byte_array)
             if decoded is not None:
-                decoded_vars[decl_id['name']] = decoded
+                decoded_vars[declaration_id['name']] = decoded
 
         simple_traverse(self.ast, find_calls)
 
@@ -152,12 +152,12 @@ class XorStringDecoder(Transform):
 
         # Phase 3: Replace computed member accesses obj[_0xVAR] → obj.decoded
         # and standalone identifier refs with string literals
-        def replace_refs(node, parent, key, index):
+        def replace_refs(node: dict, parent: dict, key: str, index: int | None) -> dict | None:
             # Handle computed member: obj[_0xVAR] → obj.decoded or obj["decoded"]
             if node.get('type') == 'MemberExpression' and node.get('computed'):
-                prop = node.get('property')
-                if is_identifier(prop) and prop['name'] in decoded_vars:
-                    decoded = decoded_vars[prop['name']]
+                property_node = node.get('property')
+                if is_identifier(property_node) and property_node['name'] in decoded_vars:
+                    decoded = decoded_vars[property_node['name']]
                     if is_valid_identifier(decoded):
                         node['property'] = make_identifier(decoded)
                         node['computed'] = False
@@ -193,32 +193,32 @@ class XorStringDecoder(Transform):
 
         return self.has_changed()
 
-    def _remove_dead_declarations(self, decoded_vars):
+    def _remove_dead_declarations(self, decoded_vars: dict[str, str]) -> None:
         """Remove var X = decoder([...]) declarations that are now inlined."""
         remaining_refs = {name: 0 for name in decoded_vars}
 
-        def count(node, parent):
+        def count_refs(node: dict, parent: dict) -> None:
             if is_identifier(node) and node['name'] in remaining_refs:
                 if parent and parent.get('type') == 'VariableDeclarator' and node is parent.get('id'):
                     return
                 remaining_refs[node['name']] = remaining_refs.get(node['name'], 0) + 1
 
-        simple_traverse(self.ast, count)
+        simple_traverse(self.ast, count_refs)
 
-        dead_vars = {name for name, count in remaining_refs.items() if count == 0}
+        dead_vars = {name for name, ref_count in remaining_refs.items() if ref_count == 0}
         if not dead_vars:
             return
 
-        def remove_decls(node, parent, key, index):
+        def remove_decls(node: dict, parent: dict, key: str, index: int | None) -> dict | None:
             if node.get('type') != 'VariableDeclaration':
                 return
             decls = node.get('declarations', [])
             remaining = []
-            for d in decls:
-                did = d.get('id')
-                if is_identifier(did) and did['name'] in dead_vars:
+            for declaration in decls:
+                declaration_id = declaration.get('id')
+                if is_identifier(declaration_id) and declaration_id['name'] in dead_vars:
                     continue
-                remaining.append(d)
+                remaining.append(declaration)
             if len(remaining) == len(decls):
                 return
             if not remaining:

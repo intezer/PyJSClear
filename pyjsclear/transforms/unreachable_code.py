@@ -11,14 +11,14 @@ _TERMINATORS = frozenset({'ReturnStatement', 'ThrowStatement', 'BreakStatement',
 class UnreachableCodeRemover(Transform):
     """Remove statements that follow a terminator (return/throw/break/continue) in a block."""
 
-    def execute(self):
-        def enter(node, parent, key, index):
-            t = node.get('type')
-            if t in ('BlockStatement', 'Program'):
+    def execute(self) -> bool:
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
+            node_type = node.get('type')
+            if node_type in ('BlockStatement', 'Program'):
                 body = node.get('body')
                 if body and isinstance(body, list):
                     self._truncate_after_terminator(body, node, 'body')
-            elif t == 'SwitchCase':
+            elif node_type == 'SwitchCase':
                 consequent = node.get('consequent')
                 if consequent and isinstance(consequent, list):
                     self._truncate_after_terminator(consequent, node, 'consequent')
@@ -26,12 +26,13 @@ class UnreachableCodeRemover(Transform):
         traverse(self.ast, {'enter': enter})
         return self.has_changed()
 
-    def _truncate_after_terminator(self, stmts, node, key):
-        for i, stmt in enumerate(stmts):
-            if not isinstance(stmt, dict):
+    def _truncate_after_terminator(self, statements: list, node: dict, key: str) -> None:
+        for statement_index, statement in enumerate(statements):
+            if not isinstance(statement, dict):
                 continue
-            if stmt.get('type') in _TERMINATORS:
-                if i + 1 < len(stmts):
-                    self.set_changed()
-                    node[key] = stmts[: i + 1]
-                return
+            if statement.get('type') not in _TERMINATORS:
+                continue
+            if statement_index + 1 < len(statements):
+                self.set_changed()
+                node[key] = statements[: statement_index + 1]
+            return

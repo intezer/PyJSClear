@@ -7,6 +7,8 @@ And removes expression statements that call them:
     obj.methodName('...');  // removed
 """
 
+from typing import Any
+
 from ..traverser import REMOVE
 from ..traverser import simple_traverse
 from ..traverser import traverse
@@ -17,11 +19,11 @@ from .base import Transform
 class NoopCallRemover(Transform):
     """Remove expression-statement calls to no-op methods."""
 
-    def execute(self):
+    def execute(self) -> bool:
         # Phase 1: Find no-op methods (empty body or just 'return;')
-        noop_methods = set()
+        noop_methods: set[str] = set()
 
-        def find_noops(node, parent):
+        def find_noops(node: dict, parent: dict | None) -> None:
             if node.get('type') != 'MethodDefinition':
                 return
             if node.get('kind') not in ('method', None):
@@ -29,21 +31,21 @@ class NoopCallRemover(Transform):
             key = node.get('key')
             if not key or not is_identifier(key):
                 return
-            fn = node.get('value')
-            if not fn or fn.get('type') != 'FunctionExpression':
+            function_expression = node.get('value')
+            if not function_expression or function_expression.get('type') != 'FunctionExpression':
                 return
-            # Check if async — async no-op still returns a promise, skip
-            if fn.get('async'):
+            # Async no-op still returns a promise, skip
+            if function_expression.get('async'):
                 return
-            body = fn.get('body')
+            body = function_expression.get('body')
             if not body or body.get('type') != 'BlockStatement':
                 return
-            stmts = body.get('body', [])
-            if len(stmts) == 0:
+            statements = body.get('body', [])
+            if not statements:
                 noop_methods.add(key['name'])
-            elif len(stmts) == 1:
-                stmt = stmts[0]
-                if stmt.get('type') == 'ReturnStatement' and stmt.get('argument') is None:
+            elif len(statements) == 1:
+                statement = statements[0]
+                if statement.get('type') == 'ReturnStatement' and statement.get('argument') is None:
                     noop_methods.add(key['name'])
 
         simple_traverse(self.ast, find_noops)
@@ -52,13 +54,13 @@ class NoopCallRemover(Transform):
             return False
 
         # Phase 2: Remove ExpressionStatement calls to no-op methods
-        def remove_calls(node, parent, key, index):
+        def remove_calls(node: dict, parent: dict | None, key: str | None, index: int | None) -> Any:
             if node.get('type') != 'ExpressionStatement':
                 return
-            expr = node.get('expression')
-            if not expr or expr.get('type') not in ('CallExpression', 'AwaitExpression'):
+            expression = node.get('expression')
+            if not expression or expression.get('type') not in ('CallExpression', 'AwaitExpression'):
                 return
-            call = expr
+            call = expression
             if call.get('type') == 'AwaitExpression':
                 call = call.get('argument')
                 if not call or call.get('type') != 'CallExpression':
@@ -66,10 +68,10 @@ class NoopCallRemover(Transform):
             callee = call.get('callee')
             if not callee or callee.get('type') != 'MemberExpression':
                 return
-            prop = callee.get('property')
-            if not prop or not is_identifier(prop):
+            property_node = callee.get('property')
+            if not property_node or not is_identifier(property_node):
                 return
-            if prop['name'] in noop_methods:
+            if property_node['name'] in noop_methods:
                 self.set_changed()
                 return REMOVE
 

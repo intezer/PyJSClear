@@ -8,7 +8,7 @@ import esprima
 _ASYNC_MAP = {'isAsync': 'async', 'allowAwait': 'await'}
 
 
-def _fast_to_dict(obj):
+def _fast_to_dict(obj: object) -> object:
     """Convert esprima AST objects to plain dicts, ~2x faster than toDict()."""
     if isinstance(obj, (str, int, float, bool, type(None))):
         return obj
@@ -29,7 +29,7 @@ def _fast_to_dict(obj):
     return output
 
 
-def parse(code):
+def parse(code: str) -> dict:
     """Parse JavaScript code into an ESTree-compatible AST.
 
     Returns a Program node (dict).

@@ -5,7 +5,7 @@ from ..traverser import traverse
 from .base import Transform
 
 
-def _is_truthy_literal(node):
+def _is_truthy_literal(node: dict) -> bool | None:
     """Check if node is a literal that is truthy in JS. Returns None if unknown."""
     if not isinstance(node, dict):
         return None
@@ -34,15 +34,15 @@ def _is_truthy_literal(node):
         case 'LogicalExpression':
             left = _is_truthy_literal(node.get('left'))
             right = _is_truthy_literal(node.get('right'))
-            op = node.get('operator')
-            if op == '&&':
+            operator = node.get('operator')
+            if operator == '&&':
                 # falsy && anything → falsy
                 if left is False:
                     return False
                 # truthy && right → right (if right is known)
                 if left is True and right is not None:
                     return right
-            elif op == '||':
+            elif operator == '||':
                 # truthy || anything → truthy
                 if left is True:
                     return True
@@ -52,7 +52,7 @@ def _is_truthy_literal(node):
     return None
 
 
-def _unwrap_block(node):
+def _unwrap_block(node: dict) -> dict:
     """Unwrap a single-statement block to its contents."""
     if isinstance(node, dict) and node.get('type') == 'BlockStatement':
         body = node.get('body', [])
@@ -64,8 +64,8 @@ def _unwrap_block(node):
 class DeadBranchRemover(Transform):
     """Remove dead branches from if statements and ternary expressions."""
 
-    def execute(self):
-        def enter(node, parent, key, index):
+    def execute(self) -> bool:
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
             node_type = node.get('type', '')
 
             if node_type == 'IfStatement':
@@ -75,8 +75,8 @@ class DeadBranchRemover(Transform):
                 self.set_changed()
                 if truthy:
                     return node.get('consequent')
-                alt = node.get('alternate')
-                return alt if alt else REMOVE
+                alternate_branch = node.get('alternate')
+                return alternate_branch if alternate_branch else REMOVE
 
             if node_type == 'ConditionalExpression':
                 truthy = _is_truthy_literal(node.get('test'))

@@ -11,7 +11,6 @@ Handles two patterns common in esbuild-bundled obfuscated code:
      ... C.id(expr) ...   →   ... expr ...
 """
 
-from ..traverser import find_parent
 from ..traverser import simple_traverse
 from ..traverser import traverse
 from ..utils.ast_helpers import deep_copy
@@ -24,7 +23,7 @@ from .base import Transform
 class ClassStaticResolver(Transform):
     """Inline class static constant properties and identity methods."""
 
-    def execute(self):
+    def execute(self) -> bool:
         # Step 1: Find class variables (var X = class { ... })
         class_vars = {}  # name -> ClassExpression node
 
@@ -113,6 +112,9 @@ class ClassStaticResolver(Transform):
             return False
 
         # Step 4: Replace accesses
+        # Build parent map once before traversal
+        self.get_parent_map()
+
         def enter(node, parent, key, index):
             if node.get('type') != 'MemberExpression':
                 return
@@ -141,12 +143,14 @@ class ClassStaticResolver(Transform):
 
             # Try identity method inlining
             if pair in static_methods:
-                self._try_inline_identity(node, static_methods[pair])
+                self._try_inline_identity(node, static_methods[pair], parent, key, index)
 
         traverse(self.ast, {'enter': enter})
+        # Invalidate parent map once after all replacements
+        self.invalidate_parent_map()
         return self.has_changed()
 
-    def _get_prop_name(self, member_expr):
+    def _get_prop_name(self, member_expr: dict) -> str | None:
         """Get the property name from a MemberExpression."""
         prop = member_expr.get('property')
         if not prop:
@@ -159,7 +163,7 @@ class ClassStaticResolver(Transform):
             return prop['name']
         return None
 
-    def _is_identity_function(self, func_node):
+    def _is_identity_function(self, func_node: dict) -> bool:
         """Check if a function simply returns its first argument."""
         params = func_node.get('params', [])
         if len(params) != 1:
@@ -173,32 +177,34 @@ class ClassStaticResolver(Transform):
         stmts = body.get('body', [])
         if len(stmts) != 1 or stmts[0].get('type') != 'ReturnStatement':
             return False
-        arg = stmts[0].get('argument')
-        if not arg or not is_identifier(arg):
+        return_argument = stmts[0].get('argument')
+        if not return_argument or not is_identifier(return_argument):
             return False
-        return arg['name'] == param['name']
+        return return_argument['name'] == param['name']
 
-    def _try_inline_identity(self, member_expr, method_node):
-        """Inline Class.identity(arg) → arg."""
-        result = find_parent(self.ast, member_expr)
-        if not result:
+    def _try_inline_identity(self, member_expr: dict, method_node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
+        """Inline Class.identity(arg) → arg.
+
+        parent/key/index refer to the MemberExpression's parent (from the enter callback).
+        The MemberExpression should be the callee of a CallExpression.
+        """
+        # parent is the CallExpression that contains this MemberExpression as callee
+        if not parent or parent.get('type') != 'CallExpression' or key != 'callee':
             return
-        call_parent, call_key, call_index = result
-        if not call_parent or call_parent.get('type') != 'CallExpression' or call_key != 'callee':
-            return
-        args = call_parent.get('arguments', [])
+        args = parent.get('arguments', [])
         if len(args) != 1:
             return
         replacement = deep_copy(args[0])
-        # Replace the CallExpression with the argument
-        grandparent_result = find_parent(self.ast, call_parent)
+        # Find grandparent of the CallExpression using cached parent map
+        pm = self.get_parent_map()
+        grandparent_result = pm.get(id(parent))
         if not grandparent_result:
             return
-        gp, gp_key, gp_index = grandparent_result
-        self._replace_in_parent(call_parent, replacement, gp, gp_key, gp_index)
+        grandparent, grandparent_key, grandparent_index = grandparent_result
+        self._replace_in_parent(parent, replacement, grandparent, grandparent_key, grandparent_index)
         self.set_changed()
 
-    def _replace_in_parent(self, target, replacement, parent, key, index):
+    def _replace_in_parent(self, target: dict, replacement: dict, parent: dict, key: str, index: int | None) -> None:
         """Replace target node in the AST using known parent info."""
         if index is not None:
             parent[key][index] = replacement

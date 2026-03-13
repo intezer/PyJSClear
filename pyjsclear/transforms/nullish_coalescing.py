@@ -17,36 +17,47 @@ from .base import Transform
 class NullishCoalescing(Transform):
     """Convert nullish check patterns to ?? operator."""
 
-    def execute(self):
-        def enter(node, parent, key, index):
-            if node.get('type') != 'ConditionalExpression':
-                return
-            test = node.get('test')
-            if not isinstance(test, dict) or test.get('type') != 'LogicalExpression' or test.get('operator') != '&&':
-                return
-
-            left_cmp = test.get('left')
-            right_cmp = test.get('right')
-            if not isinstance(left_cmp, dict) or not isinstance(right_cmp, dict):
-                return
-
-            # Pattern: X !== null && X !== undefined ? X : default
-            # Where X might be (_0x = value) or just an identifier
-            result = self._match_nullish_pattern(left_cmp, right_cmp, node.get('consequent'), node.get('alternate'))
-            if result:
-                self.set_changed()
-                return result
-
-            # Also handle reversed order: X !== undefined && X !== null ? X : default
-            result = self._match_nullish_pattern(right_cmp, left_cmp, node.get('consequent'), node.get('alternate'))
-            if result:
-                self.set_changed()
-                return result
-
-        traverse(self.ast, {'enter': enter})
+    def execute(self) -> bool:
+        traverse(self.ast, {'enter': self._enter})
         return self.has_changed()
 
-    def _match_nullish_pattern(self, null_check, undef_check, consequent, alternate):
+    def _enter(self, node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
+        if node.get('type') != 'ConditionalExpression':
+            return None
+        test = node.get('test')
+        if not isinstance(test, dict) or test.get('type') != 'LogicalExpression' or test.get('operator') != '&&':
+            return None
+
+        left_cmp = test.get('left')
+        right_cmp = test.get('right')
+        if not isinstance(left_cmp, dict) or not isinstance(right_cmp, dict):
+            return None
+
+        consequent = node.get('consequent')
+        alternate = node.get('alternate')
+
+        # Pattern: X !== null && X !== undefined ? X : default
+        # Where X might be (_0x = value) or just an identifier
+        result = self._match_nullish_pattern(left_cmp, right_cmp, consequent, alternate)
+        if result:
+            self.set_changed()
+            return result
+
+        # Also handle reversed order: X !== undefined && X !== null ? X : default
+        result = self._match_nullish_pattern(right_cmp, left_cmp, consequent, alternate)
+        if result:
+            self.set_changed()
+            return result
+
+        return None
+
+    def _match_nullish_pattern(
+        self,
+        null_check: dict,
+        undef_check: dict,
+        consequent: dict | None,
+        alternate: dict | None,
+    ) -> dict | None:
         """Try to match the pattern and return a ?? node if successful."""
         # null_check: X !== null (or (tmp = value) !== null)
         if null_check.get('type') != 'BinaryExpression' or null_check.get('operator') != '!==':

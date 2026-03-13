@@ -9,7 +9,7 @@ import os
 import sys
 
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from conftest_fuzz import SAFE_EXCEPTIONS
 from conftest_fuzz import FuzzedDataProvider
@@ -54,7 +54,7 @@ TRANSFORM_CLASSES = [
 ]
 
 
-def TestOneInput(data):
+def TestOneInput(data: bytes) -> None:
     if len(data) < 4:
         return
 
@@ -84,5 +84,5 @@ def TestOneInput(data):
         return
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     run_fuzzer(TestOneInput)

@@ -647,3 +647,71 @@ class TestTraverseFallbackChildKeys:
         assert 'Program' in visited
         assert 'UnknownCustomNode' in visited
         assert 'Identifier' in visited
+
+
+# ===========================================================================
+# Deep AST tests (exercises iterative fallback at depth > 500)
+# ===========================================================================
+
+
+def _make_deep_ast(depth):
+    """Build an AST of nested IfStatements to the given depth.
+
+    Structure: Program -> nested IfStatements each containing a BlockStatement
+    with a single child, down to a Literal leaf.
+    """
+    leaf = {'type': 'Literal', 'value': 42, 'raw': '42'}
+    node = leaf
+    for _ in range(depth):
+        node = {
+            'type': 'IfStatement',
+            'test': {'type': 'Literal', 'value': True, 'raw': 'true'},
+            'consequent': {
+                'type': 'BlockStatement',
+                'body': [{'type': 'ExpressionStatement', 'expression': node}],
+            },
+            'alternate': None,
+        }
+    return {'type': 'Program', 'sourceType': 'script', 'body': [node]}
+
+
+class TestDeepASTTraversal:
+    """Verify that traverse() and simple_traverse() handle ASTs deeper than 500."""
+
+    def test_traverse_deep_ast(self):
+        ast = _make_deep_ast(600)
+        types = []
+        traverse(ast, {'enter': lambda n, p, k, i: types.append(n['type'])})
+        assert 'Program' in types
+        assert 'Literal' in types
+        # Should have visited all IfStatements
+        assert types.count('IfStatement') == 600
+
+    def test_simple_traverse_deep_ast(self):
+        ast = _make_deep_ast(600)
+        types = []
+        simple_traverse(ast, lambda n, p: types.append(n['type']))
+        assert 'Program' in types
+        assert 'Literal' in types
+        assert types.count('IfStatement') == 600
+
+    def test_traverse_deep_ast_with_exit(self):
+        """Exit-callback path uses fully iterative traversal."""
+        ast = _make_deep_ast(600)
+        exit_types = []
+        traverse(ast, {'exit': lambda n, p, k, i: exit_types.append(n['type'])})
+        assert 'Program' in exit_types
+        assert 'Literal' in exit_types
+
+    def test_traverse_deep_ast_removal(self):
+        """REMOVE works correctly across the recursive/iterative boundary."""
+        ast = _make_deep_ast(600)
+        removed_count = []
+
+        def enter(node, parent, key, index):
+            if node['type'] == 'Literal' and node.get('value') == 42:
+                removed_count.append(1)
+                return REMOVE
+
+        traverse(ast, {'enter': enter})
+        assert len(removed_count) > 0

@@ -1,5 +1,8 @@
+"""Tests for the ObjectPacker transform."""
+
 import pytest
 
+from pyjsclear.parser import parse
 from pyjsclear.transforms.object_packer import ObjectPacker
 from tests.unit.conftest import normalize
 from tests.unit.conftest import roundtrip
@@ -128,7 +131,6 @@ class TestCoverageGaps:
     def test_property_node_is_none(self):
         """Line 87: Property node is None stops packing."""
         from pyjsclear.generator import generate
-        from pyjsclear.parser import parse
 
         ast = parse('var o = {}; o.x = 1;')
         # Manually set the property of the MemberExpression to None
@@ -165,8 +167,6 @@ class TestCoverageGaps:
 
     def test_non_dict_in_body_direct_ast(self):
         """Line 22/57: non-dict in body triggers skip in _process_bodies and _try_pack_body."""
-        from pyjsclear.parser import parse
-
         ast = parse('var o = {}; o.x = 1;')
         ast['body'].append(42)
         t = ObjectPacker(ast)

@@ -1,6 +1,7 @@
 """Tests for the MemberChainResolver transform."""
 
 from pyjsclear.transforms.member_chain_resolver import MemberChainResolver
+from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
 from tests.unit.conftest import normalize
 from tests.unit.conftest import roundtrip
 
@@ -90,13 +91,9 @@ class TestHelperFunctions:
     """Direct tests for _get_member_names helper."""
 
     def test_get_member_names_none(self):
-        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
-
         assert _get_member_names(None) == (None, None)
 
     def test_get_member_names_no_prop(self):
-        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
-
         node = {
             'type': 'MemberExpression',
             'object': {'type': 'Identifier', 'name': 'x'},
@@ -106,8 +103,6 @@ class TestHelperFunctions:
         assert _get_member_names(node) == (None, None)
 
     def test_get_member_names_computed_non_string(self):
-        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
-
         node = {
             'type': 'MemberExpression',
             'object': {'type': 'Identifier', 'name': 'x'},
@@ -117,8 +112,6 @@ class TestHelperFunctions:
         assert _get_member_names(node) == (None, None)
 
     def test_get_member_names_non_identifier_obj(self):
-        from pyjsclear.utils.ast_helpers import get_member_names as _get_member_names
-
         node = {
             'type': 'MemberExpression',
             'object': {'type': 'Literal', 'value': 1},

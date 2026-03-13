@@ -2,6 +2,9 @@
 
 from .generator import generate
 from .parser import parse
+from .scope import build_scope_tree
+from .transforms.aa_decode import aa_decode
+from .transforms.aa_decode import is_aa_encoded
 from .transforms.anti_tamper import AntiTamperRemover
 from .transforms.class_static_resolver import ClassStaticResolver
 from .transforms.class_string_decoder import ClassStringDecoder
@@ -26,8 +29,6 @@ from .transforms.global_alias import GlobalAliasInliner
 from .transforms.hex_escapes import HexEscapes
 from .transforms.hex_escapes import decode_hex_escapes_source
 from .transforms.hex_numerics import HexNumerics
-from .transforms.aa_decode import aa_decode
-from .transforms.aa_decode import is_aa_encoded
 from .transforms.jj_decode import is_jj_encoded
 from .transforms.jj_decode import jj_decode
 from .transforms.jsfuck_decode import is_jsfuck
@@ -52,6 +53,22 @@ from .transforms.variable_renamer import VariableRenamer
 from .transforms.xor_string_decode import XorStringDecoder
 from .traverser import simple_traverse
 
+
+# Transforms that use build_scope_tree and benefit from cached scope
+_SCOPE_TRANSFORMS = frozenset(
+    {
+        ConstantProp,
+        SingleUseVarInliner,
+        ReassignmentRemover,
+        ProxyFunctionInliner,
+        UnusedVariableRemover,
+        ObjectSimplifier,
+        StringRevealer,
+        VariableRenamer,
+        VarToConst,
+        LetToConst,
+    }
+)
 
 # StringRevealer runs first to handle string arrays before other transforms
 # modify the wrapper function structure.
@@ -106,26 +123,26 @@ _LITE_MAX_ITERATIONS = 10
 _NODE_COUNT_LIMIT = 50_000  # Skip ControlFlowRecoverer above this
 
 
-def _count_nodes(ast):
+def _count_nodes(ast: dict) -> int:
     """Count total AST nodes."""
     count = 0
 
-    def cb(node, parent):
+    def increment_count(node: dict, parent: dict | None) -> None:
         nonlocal count
         count += 1
 
-    simple_traverse(ast, cb)
+    simple_traverse(ast, increment_count)
     return count
 
 
 class Deobfuscator:
     """Multi-pass JavaScript deobfuscator."""
 
-    def __init__(self, code, max_iterations=50):
+    def __init__(self, code: str, max_iterations: int = 50) -> None:
         self.original_code = code
         self.max_iterations = max_iterations
 
-    def _run_pre_passes(self, code):
+    def _run_pre_passes(self, code: str) -> str | None:
         """Run encoding detection and eval unpacking pre-passes.
 
         Returns decoded code if an encoding/packing was detected and decoded,
@@ -160,7 +177,7 @@ class Deobfuscator:
     # Maximum number of outer re-parse cycles (generate → re-parse → re-transform)
     _MAX_OUTER_CYCLES = 5
 
-    def execute(self):
+    def execute(self) -> str:
         """Run all transforms and return cleaned source."""
         code = self.original_code
 
@@ -238,7 +255,7 @@ class Deobfuscator:
             # but also recursive.  Return best result so far.
             return previous_code
 
-    def _run_ast_transforms(self, ast, code_size=0):
+    def _run_ast_transforms(self, ast: dict, code_size: int = 0) -> bool:
         """Run all AST transform passes. Returns True if any transform changed the AST."""
         node_count = _count_nodes(ast) if code_size > _LARGE_FILE_SIZE else 0
 
@@ -259,26 +276,40 @@ class Deobfuscator:
         # Track which transforms are no longer productive
         skip_transforms = set()
 
+        # Cache scope tree across transforms — only rebuild when a transform
+        # that modifies bindings returns changed=True
+        scope_tree = None
+        node_scope = None
+        scope_dirty = True  # Start dirty to build on first use
+
         # Multi-pass transform loop
         any_transform_changed = False
-        for i in range(max_iterations):
+        for iteration in range(max_iterations):
             modified = False
             for transform_class in transform_classes:
                 if transform_class in skip_transforms:
                     continue
                 try:
-                    transform = transform_class(ast)
+                    # Build scope tree lazily when needed by a scope-using transform
+                    if transform_class in _SCOPE_TRANSFORMS and scope_dirty:
+                        scope_tree, node_scope = build_scope_tree(ast)
+                        scope_dirty = False
+
+                    if transform_class in _SCOPE_TRANSFORMS:
+                        transform = transform_class(ast, scope_tree=scope_tree, node_scope=node_scope)
+                    else:
+                        transform = transform_class(ast)
                     result = transform.execute()
                 except Exception:
                     continue
                 if result:
                     modified = True
                     any_transform_changed = True
-                else:
-                    # If a transform didn't change anything after the first pass,
-                    # skip it in subsequent iterations
-                    if i > 0:
-                        skip_transforms.add(transform_class)
+                    # Any AST change invalidates the cached scope tree
+                    scope_dirty = True
+                elif iteration > 0:
+                    # Skip transforms that haven't changed anything after the first pass
+                    skip_transforms.add(transform_class)
 
             if not modified:
                 break

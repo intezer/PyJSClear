@@ -22,7 +22,7 @@ from ..utils.ast_helpers import is_string_literal
 from .base import Transform
 
 
-def _is_constant_expr(node):
+def _is_constant_expr(node: dict) -> bool:
     """Check if a node is a constant expression safe to inline."""
     if not isinstance(node, dict):
         return False
@@ -36,32 +36,46 @@ def _is_constant_expr(node):
     return False
 
 
+def _get_property_name(member_expr: dict, property_key: str) -> str | None:
+    """Extract the string name of a member expression's property."""
+    prop = member_expr.get(property_key)
+    if not prop:
+        return None
+    if member_expr.get('computed'):
+        if not is_string_literal(prop):
+            return None
+        return prop['value']
+    if is_identifier(prop):
+        return prop['name']
+    return None
+
+
 class MemberChainResolver(Transform):
     """Resolve multi-level member chains (A.B.C) to literal values."""
 
-    def execute(self):
-        # Maps: (class_name, prop_name) → AST node (constant expression)
-        class_constants = {}
-        # Maps: prop_name → class_name (from X.prop = ClassIdentifier assignments)
-        prop_to_class = {}
+    def execute(self) -> bool:
+        # Maps: (class_name, property_name) → AST node (constant expression)
+        class_constants: dict[tuple[str, str], dict] = {}
+        # Maps: property_name → class_name (from X.prop = ClassIdentifier assignments)
+        property_to_class: dict[str, str] = {}
 
         # Phase 1: Collect X.prop = constant_expr and X.prop = Identifier assignments
-        def collect(node, parent):
+        def collect(node: dict, parent: dict | None) -> None:
             if node.get('type') != 'AssignmentExpression':
                 return
             if node.get('operator') != '=':
                 return
             left = node.get('left')
             right = node.get('right')
-            obj_name, prop_name = get_member_names(left)
-            if not obj_name:
+            object_name, property_name = get_member_names(left)
+            if not object_name:
                 return
 
             if _is_constant_expr(right):
-                class_constants[(obj_name, prop_name)] = right
+                class_constants[(object_name, property_name)] = right
             elif is_identifier(right):
-                # X.prop = SomeClass — record prop_name → SomeClass
-                prop_to_class[prop_name] = right['name']
+                # X.prop = SomeClass — record property_name → SomeClass
+                property_to_class[property_name] = right['name']
 
         simple_traverse(self.ast, collect)
 
@@ -69,9 +83,9 @@ class MemberChainResolver(Transform):
             return False
 
         # Phase 1b: Invalidate constants that are reassigned through alias chains.
-        # Pattern: A.B.C = expr where B → class_name via prop_to_class
+        # Pattern: A.B.C = expr where B → class_name via property_to_class
         # means (class_name, C) is NOT a true constant.
-        def invalidate_chain_assignments(node, parent):
+        def invalidate_chain_assignments(node: dict, parent: dict | None) -> None:
             if node.get('type') != 'AssignmentExpression':
                 return
             left = node.get('left')
@@ -80,34 +94,16 @@ class MemberChainResolver(Transform):
             inner = left.get('object')
             if not inner or inner.get('type') != 'MemberExpression':
                 return
-            # Get C (outer property)
-            outer_prop = left.get('property')
-            if not outer_prop:
+            outer_property_name = _get_property_name(left, 'property')
+            if outer_property_name is None:
                 return
-            if left.get('computed'):
-                if not is_string_literal(outer_prop):
-                    return
-                c_name = outer_prop['value']
-            elif is_identifier(outer_prop):
-                c_name = outer_prop['name']
-            else:
-                return
-            # Get B (middle property)
-            inner_prop = inner.get('property')
-            if not inner_prop:
-                return
-            if inner.get('computed'):
-                if not is_string_literal(inner_prop):
-                    return
-                b_name = inner_prop['value']
-            elif is_identifier(inner_prop):
-                b_name = inner_prop['name']
-            else:
+            middle_property_name = _get_property_name(inner, 'property')
+            if middle_property_name is None:
                 return
             # If B resolves to a class, invalidate (class, C)
-            class_name = prop_to_class.get(b_name)
-            if class_name and (class_name, c_name) in class_constants:
-                del class_constants[(class_name, c_name)]
+            class_name = property_to_class.get(middle_property_name)
+            if class_name and (class_name, outer_property_name) in class_constants:
+                del class_constants[(class_name, outer_property_name)]
 
         simple_traverse(self.ast, invalidate_chain_assignments)
 
@@ -116,56 +112,38 @@ class MemberChainResolver(Transform):
 
         # Phase 2: Replace A.B.C member chains where B resolves to a class
         # and (class, C) maps to a constant expression
-        def resolve(node, parent, key, index):
+        def resolve(node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
             if node.get('type') != 'MemberExpression':
-                return
+                return None
             # Skip assignment targets
             if parent and parent.get('type') == 'AssignmentExpression' and key == 'left':
-                return
+                return None
 
-            # Get C (the outer property)
-            outer_prop = node.get('property')
-            if not outer_prop:
-                return
-            if node.get('computed'):
-                if not is_string_literal(outer_prop):
-                    return
-                c_name = outer_prop['value']
-            elif is_identifier(outer_prop):
-                c_name = outer_prop['name']
-            else:
-                return
+            outer_property_name = _get_property_name(node, 'property')
+            if outer_property_name is None:
+                return None
 
             # Get the inner member expression (A.B)
             inner = node.get('object')
             if not inner or inner.get('type') != 'MemberExpression':
-                return
+                return None
 
-            # Get B (the middle property)
-            inner_prop = inner.get('property')
-            if not inner_prop:
-                return
-            if inner.get('computed'):
-                if not is_string_literal(inner_prop):
-                    return
-                b_name = inner_prop['value']
-            elif is_identifier(inner_prop):
-                b_name = inner_prop['name']
-            else:
-                return
+            middle_property_name = _get_property_name(inner, 'property')
+            if middle_property_name is None:
+                return None
 
             # Resolve B → class_name
-            class_name = prop_to_class.get(b_name)
+            class_name = property_to_class.get(middle_property_name)
             if not class_name:
-                return
+                return None
 
             # Resolve (class_name, C) → constant expression
-            const_node = class_constants.get((class_name, c_name))
-            if const_node is None:
-                return
+            constant_node = class_constants.get((class_name, outer_property_name))
+            if constant_node is None:
+                return None
 
             self.set_changed()
-            return deep_copy(const_node)
+            return deep_copy(constant_node)
 
         traverse(self.ast, {'enter': resolve})
         return self.has_changed()

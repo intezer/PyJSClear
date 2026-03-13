@@ -18,7 +18,7 @@ import re
 # ---------------------------------------------------------------------------
 
 
-def is_jj_encoded(code):
+def is_jj_encoded(code: str) -> bool:
     """Return True if *code* looks like JJEncoded JavaScript.
 
     Checks for the ``VARNAME=~[]`` initialisation pattern that begins every
@@ -37,84 +37,91 @@ def is_jj_encoded(code):
 
 _OBJECT_STR = '[object Object]'
 
+# Single-char JS escape sequences
+_SINGLE_CHAR_ESCAPES: dict[str, str] = {
+    'n': '\n', 'r': '\r', 't': '\t',
+    '\\': '\\', "'": "'", '"': '"',
+    '/': '/', 'b': '\b', 'f': '\f',
+}
 
-def _split_at_depth_zero(text, delimiter):
+
+def _split_at_depth_zero(text: str, delimiter: str) -> list[str]:
     """Split *text* on *delimiter* only when bracket/paren depth is 0
     and not inside a string literal.  All logic is iterative."""
     parts = []
     current = []
     depth = 0
-    i = 0
+    index = 0
     in_string = None
-    while i < len(text):
-        ch = text[i]
+    while index < len(text):
+        character = text[index]
 
         if in_string is not None:
-            current.append(ch)
-            if ch == '\\' and i + 1 < len(text):
-                i += 1
-                current.append(text[i])
-            elif ch == in_string:
+            current.append(character)
+            if character == '\\' and index + 1 < len(text):
+                index += 1
+                current.append(text[index])
+            elif character == in_string:
                 in_string = None
-            i += 1
+            index += 1
             continue
 
-        if ch in ('"', "'"):
-            in_string = ch
-            current.append(ch)
-            i += 1
+        if character in ('"', "'"):
+            in_string = character
+            current.append(character)
+            index += 1
             continue
 
-        if ch in ('(', '[', '{'):
+        if character in ('(', '[', '{'):
             depth += 1
-            current.append(ch)
-            i += 1
+            current.append(character)
+            index += 1
             continue
 
-        if ch in (')', ']', '}'):
+        if character in (')', ']', '}'):
             depth -= 1
-            current.append(ch)
-            i += 1
+            current.append(character)
+            index += 1
             continue
 
-        if depth == 0 and text[i:i + len(delimiter)] == delimiter:
+        if depth == 0 and text[index:index + len(delimiter)] == delimiter:
             parts.append(''.join(current))
             current = []
-            i += len(delimiter)
+            index += len(delimiter)
             continue
 
-        current.append(ch)
-        i += 1
+        current.append(character)
+        index += 1
 
     parts.append(''.join(current))
     return parts
 
 
-def _find_matching_close(text, start, open_ch, close_ch):
-    """Return index of *close_ch* matching *open_ch* at *start*.
+def _find_matching_close(text: str, start: int, open_character: str, close_character: str) -> int:
+    """Return index of *close_character* matching *open_character* at *start*.
     Iterative, respects strings."""
     depth = 0
     in_string = None
-    i = start
-    while i < len(text):
-        ch = text[i]
+    index = start
+    while index < len(text):
+        character = text[index]
         if in_string is not None:
-            if ch == '\\' and i + 1 < len(text):
-                i += 2
+            if character == '\\' and index + 1 < len(text):
+                index += 2
                 continue
-            if ch == in_string:
+            if character == in_string:
                 in_string = None
-            i += 1
+            index += 1
             continue
-        if ch in ('"', "'"):
-            in_string = ch
-        elif ch == open_ch:
+        if character in ('"', "'"):
+            in_string = character
+        elif character == open_character:
             depth += 1
-        elif ch == close_ch:
+        elif character == close_character:
             depth -= 1
             if depth == 0:
-                return i
-        i += 1
+                return index
+        index += 1
     return -1
 
 
@@ -123,7 +130,7 @@ def _find_matching_close(text, start, open_ch, close_ch):
 # ---------------------------------------------------------------------------
 
 
-def _parse_symbol_table(stmt, varname):
+def _parse_symbol_table(stmt: str, varname: str) -> dict[str, int | str] | None:
     """Parse the ``$={___:++$, ...}`` statement and return a dict
     mapping property names to their resolved values (ints or chars)."""
     prefix = varname + '='
@@ -137,7 +144,7 @@ def _parse_symbol_table(stmt, varname):
     else:
         return None
 
-    table = {}
+    table: dict[str, int | str] = {}
     counter = -1  # ~[] = -1
 
     entries = _split_at_depth_zero(body, ',')
@@ -145,11 +152,11 @@ def _parse_symbol_table(stmt, varname):
         entry = entry.strip()
         if not entry:
             continue
-        colon_idx = entry.find(':')
-        if colon_idx == -1:
+        colon_index = entry.find(':')
+        if colon_index == -1:
             continue
-        key = entry[:colon_idx].strip()
-        value_expr = entry[colon_idx + 1:].strip()
+        key = entry[:colon_index].strip()
+        value_expr = entry[colon_index + 1:].strip()
 
         if value_expr.startswith('++'):
             counter += 1
@@ -163,16 +170,16 @@ def _parse_symbol_table(stmt, varname):
             # Walk backwards to find matching [
             depth = 0
             bracket_start = -1
-            j = bracket_end
-            while j >= 0:
-                if value_expr[j] == ']':
+            scan = bracket_end
+            while scan >= 0:
+                if value_expr[scan] == ']':
                     depth += 1
-                elif value_expr[j] == '[':
+                elif value_expr[scan] == '[':
                     depth -= 1
                     if depth == 0:
-                        bracket_start = j
+                        bracket_start = scan
                         break
-                j -= 1
+                scan -= 1
             if bracket_start <= 0:
                 continue
 
@@ -192,7 +199,7 @@ def _parse_symbol_table(stmt, varname):
     return table
 
 
-def _eval_coercion(expr, varname):
+def _eval_coercion(expr: str, varname: str) -> str | None:
     """Evaluate a coercion expression to a string.
 
     Handles:  (![]+"")  -> "false",  (!""+"") -> "true",
@@ -212,7 +219,7 @@ def _eval_coercion(expr, varname):
 
     if expr == '![]':
         return 'false'
-    if expr == '!""' or expr == "!''":
+    if expr in ('!""', "!''"):
         return 'true'
     if expr == '{}':
         return _OBJECT_STR
@@ -220,7 +227,7 @@ def _eval_coercion(expr, varname):
     if expr == varname + '[' + varname + ']':
         return 'undefined'
     # (!VARNAME) where VARNAME is object -> false
-    if expr == '!' + varname or expr == '(!' + varname + ')':
+    if expr in ('!' + varname, '(!' + varname + ')'):
         return 'false'
     # General X[X] pattern
     if re.match(r'^([a-zA-Z_$][a-zA-Z0-9_$]*)\[\1\]$', expr):
@@ -239,14 +246,14 @@ def _eval_coercion(expr, varname):
 _MAX_EVAL_DEPTH = 100
 
 
-def _eval_expr(expr, table, varname, _depth=0):
+def _eval_expr(expr: str, table: dict[str, int | str], varname: str, depth: int = 0) -> str | None:
     """Evaluate a JJEncode expression to a string value.
 
     Handles symbol-table references, string literals, coercion
     expressions with indexing, sub-assignments, and concatenation.
     Returns the resolved string or None.
     """
-    if _depth > _MAX_EVAL_DEPTH:
+    if depth > _MAX_EVAL_DEPTH:
         return None
 
     expr = expr.strip()
@@ -281,15 +288,15 @@ def _eval_expr(expr, table, varname, _depth=0):
                 else:
                     break
 
-            val = _eval_inner(inner, table, varname, _depth + 1)
+            val = _eval_inner(inner, table, varname, depth + 1)
             if not rest:
                 return val
             # Check for [index] after the paren
             if rest.startswith('[') and rest.endswith(']'):
                 if val is None:
                     return None
-                idx_expr = rest[1:-1].strip()
-                idx = _resolve_int(idx_expr, table, varname)
+                index_expr = rest[1:-1].strip()
+                idx = _resolve_int(index_expr, table, varname)
                 if isinstance(val, str) and idx is not None and 0 <= idx < len(val):
                     return val[idx]
                 return None
@@ -309,8 +316,8 @@ def _eval_expr(expr, table, varname, _depth=0):
         key = expr[len(prefix):bracket_pos]
         str_val = table.get(key)
         if isinstance(str_val, str) and expr.endswith(']'):
-            idx_expr = expr[bracket_pos + 1:-1]
-            idx = _resolve_int(idx_expr, table, varname)
+            index_expr = expr[bracket_pos + 1:-1]
+            idx = _resolve_int(index_expr, table, varname)
             if idx is not None and 0 <= idx < len(str_val):
                 return str_val[idx]
         return None
@@ -326,20 +333,20 @@ def _eval_expr(expr, table, varname, _depth=0):
         tokens = _split_at_depth_zero(expr, '+')
         if len(tokens) > 1:
             parts = []
-            for t in tokens:
-                v = _eval_expr(t, table, varname, _depth + 1)
-                if v is None:
+            for token in tokens:
+                token_val = _eval_expr(token, table, varname, depth + 1)
+                if token_val is None:
                     return None
-                parts.append(v)
+                parts.append(token_val)
             return ''.join(parts)
 
     return None
 
 
-def _eval_inner(inner, table, varname, _depth=0):
+def _eval_inner(inner: str, table: dict[str, int | str], varname: str, depth: int = 0) -> str | None:
     """Evaluate the inside of a parenthesised expression.
     Handles sub-assignments and simple expressions."""
-    if _depth > _MAX_EVAL_DEPTH:
+    if depth > _MAX_EVAL_DEPTH:
         return None
 
     prefix = varname + '.'
@@ -350,7 +357,7 @@ def _eval_inner(inner, table, varname, _depth=0):
         if eq_pos is not None:
             key = inner[len(prefix):eq_pos]
             rhs = inner[eq_pos + 1:]
-            val = _eval_expr(rhs, table, varname, _depth + 1)
+            val = _eval_expr(rhs, table, varname, depth + 1)
             if val is not None:
                 table[key] = val
                 return val
@@ -361,41 +368,41 @@ def _eval_inner(inner, table, varname, _depth=0):
         return coercion_str
 
     # Just a nested expression
-    return _eval_expr(inner, table, varname, _depth + 1)
+    return _eval_expr(inner, table, varname, depth + 1)
 
 
-def _find_top_level_eq(expr):
+def _find_top_level_eq(expr: str) -> int | None:
     """Find the position of the first ``=`` at depth 0 that is not ``==``."""
     depth = 0
     in_string = None
-    i = 0
-    while i < len(expr):
-        ch = expr[i]
+    index = 0
+    while index < len(expr):
+        character = expr[index]
         if in_string is not None:
-            if ch == '\\' and i + 1 < len(expr):
-                i += 2
+            if character == '\\' and index + 1 < len(expr):
+                index += 2
                 continue
-            if ch == in_string:
+            if character == in_string:
                 in_string = None
-            i += 1
+            index += 1
             continue
-        if ch in ('"', "'"):
-            in_string = ch
-        elif ch in ('(', '[', '{'):
+        if character in ('"', "'"):
+            in_string = character
+        elif character in ('(', '[', '{'):
             depth += 1
-        elif ch in (')', ']', '}'):
+        elif character in (')', ']', '}'):
             depth -= 1
-        elif ch == '=' and depth == 0:
+        elif character == '=' and depth == 0:
             # Check not ==
-            if i + 1 < len(expr) and expr[i + 1] == '=':
-                i += 2
+            if index + 1 < len(expr) and expr[index + 1] == '=':
+                index += 2
                 continue
-            return i
-        i += 1
+            return index
+        index += 1
     return None
 
 
-def _eval_coercion_indexed(expr, table, varname):
+def _eval_coercion_indexed(expr: str, table: dict[str, int | str], varname: str) -> str | None:
     """Handle ``(![]+"")[$._$_]`` — coercion string indexed by a
     symbol table reference."""
     if not expr.endswith(']'):
@@ -404,16 +411,16 @@ def _eval_coercion_indexed(expr, table, varname):
     bracket_end = len(expr) - 1
     depth = 0
     bracket_start = -1
-    j = bracket_end
-    while j >= 0:
-        if expr[j] == ']':
+    scan = bracket_end
+    while scan >= 0:
+        if expr[scan] == ']':
             depth += 1
-        elif expr[j] == '[':
+        elif expr[scan] == '[':
             depth -= 1
             if depth == 0:
-                bracket_start = j
+                bracket_start = scan
                 break
-        j -= 1
+        scan -= 1
 
     if bracket_start <= 0:
         return None
@@ -434,7 +441,7 @@ def _eval_coercion_indexed(expr, table, varname):
     return ''
 
 
-def _resolve_int(expr, table, varname):
+def _resolve_int(expr: str, table: dict[str, int | str], varname: str) -> int | None:
     """Resolve an expression to an integer."""
     expr = expr.strip()
     prefix = varname + '.'
@@ -455,7 +462,7 @@ def _resolve_int(expr, table, varname):
 # ---------------------------------------------------------------------------
 
 
-def _parse_augment_statement(stmt, table, varname):
+def _parse_augment_statement(stmt: str, table: dict[str, int | str], varname: str) -> None:
     """Parse statements that build multi-character strings like
     "constructor" and "return" by concatenation, and store
     intermediate single-char sub-assignments into the table."""
@@ -492,51 +499,51 @@ def _parse_augment_statement(stmt, table, varname):
 # ---------------------------------------------------------------------------
 
 
-def _decode_js_string_literal(s):
+def _decode_js_string_literal(content: str) -> str:
     """Decode escapes in a JS string literal content (between quotes).
 
     Only handles \\\\ -> \\, \\\" -> \", \\' -> ', and leaves everything
     else (like \\1, \\x, \\u) as-is for later processing."""
     result = []
-    i = 0
-    while i < len(s):
-        if s[i] == '\\' and i + 1 < len(s):
-            nch = s[i + 1]
-            if nch in ('"', "'", '\\'):
-                result.append(nch)
-                i += 2
+    index = 0
+    while index < len(content):
+        if content[index] == '\\' and index + 1 < len(content):
+            next_character = content[index + 1]
+            if next_character in ('"', "'", '\\'):
+                result.append(next_character)
+                index += 2
                 continue
-        result.append(s[i])
-        i += 1
+        result.append(content[index])
+        index += 1
     return ''.join(result)
 
 
-def _decode_escapes(s):
+def _decode_escapes(text: str) -> str:
     """Decode octal (\\NNN), hex (\\xNN), unicode (\\uNNNN) escape
     sequences in a single left-to-right pass.  Also handles standard
     single-char escapes."""
     result = []
-    i = 0
-    while i < len(s):
-        if s[i] == '\\' and i + 1 < len(s):
-            nch = s[i + 1]
+    index = 0
+    while index < len(text):
+        if text[index] == '\\' and index + 1 < len(text):
+            next_character = text[index + 1]
 
             # Unicode escape \uNNNN
-            if nch == 'u' and i + 5 < len(s):
-                hex_str = s[i + 2:i + 6]
+            if next_character == 'u' and index + 5 < len(text):
+                hex_str = text[index + 2:index + 6]
                 try:
                     result.append(chr(int(hex_str, 16)))
-                    i += 6
+                    index += 6
                     continue
                 except ValueError:
                     pass
 
             # Hex escape \xNN
-            if nch == 'x' and i + 3 < len(s):
-                hex_str = s[i + 2:i + 4]
+            if next_character == 'x' and index + 3 < len(text):
+                hex_str = text[index + 2:index + 4]
                 try:
                     result.append(chr(int(hex_str, 16)))
-                    i += 4
+                    index += 4
                     continue
                 except ValueError:
                     pass
@@ -544,35 +551,30 @@ def _decode_escapes(s):
             # Octal escape: JS allows \0-\377 (max value 255).
             # First digit 0-3: up to 3 total digits (\000-\377).
             # First digit 4-7: up to 2 total digits (\40-\77).
-            if '0' <= nch <= '7':
-                max_digits = 3 if nch <= '3' else 2
+            if '0' <= next_character <= '7':
+                max_digits = 3 if next_character <= '3' else 2
                 octal = ''
-                j = i + 1
-                while j < len(s) and j < i + 1 + max_digits and '0' <= s[j] <= '7':
-                    octal += s[j]
-                    j += 1
+                scan = index + 1
+                while scan < len(text) and scan < index + 1 + max_digits and '0' <= text[scan] <= '7':
+                    octal += text[scan]
+                    scan += 1
                 result.append(chr(int(octal, 8)))
-                i = j
+                index = scan
                 continue
 
             # Standard single-char escapes
-            _esc = {
-                'n': '\n', 'r': '\r', 't': '\t',
-                '\\': '\\', "'": "'", '"': '"',
-                '/': '/', 'b': '\b', 'f': '\f',
-            }
-            if nch in _esc:
-                result.append(_esc[nch])
-                i += 2
+            if next_character in _SINGLE_CHAR_ESCAPES:
+                result.append(_SINGLE_CHAR_ESCAPES[next_character])
+                index += 2
                 continue
 
             # Unknown escape — keep literal
-            result.append(nch)
-            i += 2
+            result.append(next_character)
+            index += 2
             continue
 
-        result.append(s[i])
-        i += 1
+        result.append(text[index])
+        index += 1
 
     return ''.join(result)
 
@@ -582,7 +584,7 @@ def _decode_escapes(s):
 # ---------------------------------------------------------------------------
 
 
-def _extract_payload_expression(stmt, varname):
+def _extract_payload_expression(stmt: str, varname: str) -> str | None:
     """Extract the inner concatenation expression from the payload
     statement ``$.$($.$(EXPR)())()``."""
     # Find VARNAME.$(VARNAME.$(
@@ -596,28 +598,28 @@ def _extract_payload_expression(stmt, varname):
     # Find matching ) for the inner $.$(
     depth = 1
     in_string = None
-    i = start
-    while i < len(stmt):
-        ch = stmt[i]
+    index = start
+    while index < len(stmt):
+        character = stmt[index]
         if in_string is not None:
-            if ch == '\\' and i + 1 < len(stmt):
-                i += 2
+            if character == '\\' and index + 1 < len(stmt):
+                index += 2
                 continue
-            if ch == in_string:
+            if character == in_string:
                 in_string = None
-            i += 1
+            index += 1
             continue
-        if ch in ('"', "'"):
-            in_string = ch
-            i += 1
+        if character in ('"', "'"):
+            in_string = character
+            index += 1
             continue
-        if ch == '(':
+        if character == '(':
             depth += 1
-        elif ch == ')':
+        elif character == ')':
             depth -= 1
             if depth == 0:
-                return stmt[start:i]
-        i += 1
+                return stmt[start:index]
+        index += 1
 
     return None
 
@@ -627,7 +629,7 @@ def _extract_payload_expression(stmt, varname):
 # ---------------------------------------------------------------------------
 
 
-def jj_decode(code):
+def jj_decode(code: str) -> str | None:
     """Decode JJEncoded JavaScript.  Returns the decoded string, or
     ``None`` on any failure."""
     try:
@@ -637,16 +639,16 @@ def jj_decode(code):
         return None
 
 
-def _jj_decode_inner(code):
+def _jj_decode_inner(code: str) -> str | None:
     if not code or not code.strip():
         return None
 
     stripped = code.strip()
 
-    m = re.match(r'^([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*~\s*\[\s*\]', stripped)
-    if not m:
+    match = re.match(r'^([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*~\s*\[\s*\]', stripped)
+    if not match:
         return None
-    varname = m.group(1)
+    varname = match.group(1)
 
     # Find the JJEncode line
     jj_line = None
@@ -661,7 +663,7 @@ def _jj_decode_inner(code):
 
     # Split into semicolon-delimited statements at depth 0
     stmts = _split_at_depth_zero(jj_line, ';')
-    stmts = [s.strip() for s in stmts if s.strip()]
+    stmts = [statement.strip() for statement in stmts if statement.strip()]
 
     if len(stmts) < 5:
         return None

@@ -9,7 +9,7 @@ import os
 import sys
 
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from conftest_fuzz import SAFE_EXCEPTIONS
 from conftest_fuzz import bytes_to_js
@@ -20,7 +20,7 @@ from pyjsclear.parser import parse
 from pyjsclear.transforms.expression_simplifier import ExpressionSimplifier
 
 
-def TestOneInput(data):
+def TestOneInput(data: bytes) -> None:
     if len(data) < 2:
         return
 
@@ -42,8 +42,8 @@ def TestOneInput(data):
     except SAFE_EXCEPTIONS:
         return
 
-    assert isinstance(result, str), f"generate() returned {type(result)} after ExpressionSimplifier"
+    assert isinstance(result, str), f'generate() returned {type(result)} after ExpressionSimplifier'
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     run_fuzzer(TestOneInput)

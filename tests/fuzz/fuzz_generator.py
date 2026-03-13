@@ -10,7 +10,7 @@ import os
 import sys
 
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from conftest_fuzz import SAFE_EXCEPTIONS
 from conftest_fuzz import FuzzedDataProvider
@@ -22,7 +22,7 @@ from pyjsclear.generator import generate
 from pyjsclear.parser import parse
 
 
-def TestOneInput(data):
+def TestOneInput(data: bytes) -> None:
     if len(data) < 4:
         return
 
@@ -30,7 +30,7 @@ def TestOneInput(data):
     mode = fdp.ConsumeIntInRange(0, 1)
 
     if mode == 0:
-        # Roundtrip mode: parse valid JS then generate
+        # Roundtrip: parse then generate
         code = bytes_to_js(fdp.ConsumeBytes(fdp.remaining_bytes()))
         try:
             ast = parse(code)
@@ -42,22 +42,21 @@ def TestOneInput(data):
         except SAFE_EXCEPTIONS:
             return
 
-        assert isinstance(result, str), f"generate() returned {type(result)}, expected str"
+        assert isinstance(result, str), f'generate() returned {type(result)}, expected str'
     else:
-        # Synthetic AST mode: test with malformed input
+        # Synthetic AST: test with malformed input
         remaining = fdp.ConsumeBytes(fdp.remaining_bytes())
         ast = bytes_to_ast_dict(remaining)
 
         try:
             result = generate(ast)
         except (KeyError, TypeError, AttributeError, ValueError):
-            # Expected for malformed ASTs
             return
         except SAFE_EXCEPTIONS:
             return
 
-        assert isinstance(result, str), f"generate() returned {type(result)}, expected str"
+        assert isinstance(result, str), f'generate() returned {type(result)}, expected str'
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     run_fuzzer(TestOneInput)

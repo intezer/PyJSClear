@@ -1,7 +1,9 @@
 """Root test configuration."""
 
+import pytest
 
-def pytest_addoption(parser):
+
+def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
         '--update-snapshots',
         action='store_true',

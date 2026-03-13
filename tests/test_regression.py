@@ -13,7 +13,6 @@ Tests cover:
 - Cross-cutting quality invariants
 """
 
-import os
 import re
 from pathlib import Path
 
@@ -31,17 +30,17 @@ RE_HEX = re.compile(r'\\x[0-9a-fA-F]{2}')
 RE_HEX_NUMERIC = re.compile(r'\b0x[0-9a-fA-F]+\b')
 
 
-def _deobfuscate(filename):
+def _deobfuscate(filename: str) -> tuple[str, str]:
     code = (SAMPLES_DIR / filename).read_text()
     result = pyjsclear.deobfuscate(code)
     return code, result
 
 
-def _count_0x(text):
+def _count_0x(text: str) -> int:
     return len(RE_0X.findall(text))
 
 
-def _count_hex(text):
+def _count_hex(text: str) -> int:
     return len(RE_HEX.findall(text))
 
 
@@ -176,7 +175,7 @@ class TestOtherTransforms:
         assert result != code, 'PropertySimplifier should transform the code'
         assert len(result) < len(code), 'Output should be smaller (bracket -> dot)'
         # String decode should NOT fire — the array literal should still be present
-        assert "createAnimatedComponent" in result
+        assert 'createAnimatedComponent' in result
 
     def test_animatedimage_2element_array_no_decode(self):
         """AnimatedImage: 2-element array — below Strategy 2b threshold.
@@ -187,8 +186,8 @@ class TestOtherTransforms:
         code, result = _deobfuscate('AnimatedImage-obfuscated.js')
         assert result != code, 'PropertySimplifier should still fire'
         # String decode should NOT fire — the array literal should still be present
-        assert "createAnimatedComponent" in result
-        assert "exports" in result
+        assert 'createAnimatedComponent' in result
+        assert 'exports' in result
 
 
 # ================================================================
@@ -525,7 +524,7 @@ class TestMultipleDecoders:
 # ================================================================
 
 
-def _deobfuscate_resource(filename):
+def _deobfuscate_resource(filename: str) -> tuple[str, str]:
     """Load and deobfuscate a file from tests/resources/."""
     code = (RESOURCES_DIR / filename).read_text()
     result = pyjsclear.deobfuscate(code)
@@ -579,7 +578,7 @@ class TestSampleSizeInvariants:
 
     def test_few_long_lines(self, sample_result):
         _, result = sample_result
-        long_lines = sum(1 for l in result.splitlines() if len(l) > 500)
+        long_lines = sum(1 for line in result.splitlines() if len(line) > 500)
         assert long_lines <= 5, f'{long_lines} lines > 500 chars'
 
 
@@ -698,7 +697,7 @@ class TestSampleRegressionGuards:
     def test_no_proxy_inliner_blowup(self, sample_result):
         """OptionalChaining + ProxyFunctionInliner interaction guard."""
         _, result = sample_result
-        max_line_len = max(len(l) for l in result.splitlines())
+        max_line_len = max(len(line) for line in result.splitlines())
         assert max_line_len < 2000, f'Max line length {max_line_len} suggests proxy inliner blowup'
 
     def test_helper_functions_preserved(self, sample_result):
@@ -756,19 +755,19 @@ class TestQualityInvariants:
 
     def test_no_empty_output(self):
         """No sample should produce empty output."""
-        for f in SAMPLES_DIR.glob('*.js'):
-            code = f.read_text()
+        for sample_file in SAMPLES_DIR.glob('*.js'):
+            code = sample_file.read_text()
             result = pyjsclear.deobfuscate(code)
-            assert len(result.strip()) > 0, f'{f.name} produced empty output'
+            assert len(result.strip()) > 0, f'{sample_file.name} produced empty output'
 
     def test_no_hex_increase(self):
         """Deobfuscation should never introduce new hex escapes."""
-        for f in SAMPLES_DIR.glob('*.js'):
-            code = f.read_text()
+        for sample_file in SAMPLES_DIR.glob('*.js'):
+            code = sample_file.read_text()
             result = pyjsclear.deobfuscate(code)
             assert _count_hex(result) <= _count_hex(
                 code
-            ), f'{f.name}: hex escapes increased from {_count_hex(code)} to {_count_hex(result)}'
+            ), f'{sample_file.name}: hex escapes increased from {_count_hex(code)} to {_count_hex(result)}'
 
     def test_output_not_larger_than_input(self):
         """Deobfuscated output should never be larger than the input.
@@ -776,11 +775,11 @@ class TestQualityInvariants:
         Deobfuscation removes string arrays, dead code, and infrastructure.
         If output grows, something is wrong (e.g., proxy inlining blowup).
         """
-        for f in SAMPLES_DIR.glob('*.js'):
-            code = f.read_text()
+        for sample_file in SAMPLES_DIR.glob('*.js'):
+            code = sample_file.read_text()
             result = pyjsclear.deobfuscate(code)
             assert len(result) <= len(code) * 1.1, (
-                f'{f.name}: output ({len(result)}) > 110% of input ({len(code)}). '
+                f'{sample_file.name}: output ({len(result)}) > 110% of input ({len(code)}). '
                 f'Ratio: {len(result)/len(code):.2f}'
             )
 
@@ -790,10 +789,8 @@ class TestQualityInvariants:
         If the output doesn't parse, a transform likely corrupted the AST.
         We skip files whose input doesn't parse (ES modules with import).
         """
-        from pyjsclear.parser import parse
-
-        for f in SAMPLES_DIR.glob('*.js'):
-            code = f.read_text()
+        for sample_file in SAMPLES_DIR.glob('*.js'):
+            code = sample_file.read_text()
             # Skip files that don't parse as input (ES modules)
             try:
                 parse(code)
@@ -802,8 +799,8 @@ class TestQualityInvariants:
             result = pyjsclear.deobfuscate(code)
             try:
                 parse(result)
-            except SyntaxError as e:
-                pytest.fail(f'{f.name}: output does not parse: {e}')
+            except SyntaxError as error:
+                pytest.fail(f'{sample_file.name}: output does not parse: {error}')
 
     def test_no_extremely_long_lines(self):
         """No output line should exceed 5000 chars.
@@ -812,10 +809,10 @@ class TestQualityInvariants:
         or other expansion bugs. The limit is generous (5000) to accommodate
         files with legitimately long array literals.
         """
-        for f in SAMPLES_DIR.glob('*.js'):
-            code = f.read_text()
+        for sample_file in SAMPLES_DIR.glob('*.js'):
+            code = sample_file.read_text()
             result = pyjsclear.deobfuscate(code)
             for i, line in enumerate(result.splitlines(), 1):
                 assert len(line) <= 5000, (
-                    f'{f.name} line {i}: {len(line)} chars (max 5000). ' f'Preview: {line[:80]}...'
+                    f'{sample_file.name} line {i}: {len(line)} chars (max 5000). ' f'Preview: {line[:80]}...'
                 )

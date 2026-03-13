@@ -135,38 +135,59 @@ _CONSTRUCTOR_NAMES = {
     'FormData': 'form',
 }
 
+# fs-like methods
+_FS_METHODS = {
+    'readFileSync',
+    'writeFileSync',
+    'existsSync',
+    'mkdirSync',
+    'statSync',
+    'readdirSync',
+    'unlinkSync',
+    'createWriteStream',
+    'createReadStream',
+    'readFile',
+    'writeFile',
+    'appendFileSync',
+}
 
-def _name_generator(reserved):
+# path-like methods
+_PATH_METHODS = {'join', 'resolve', 'basename', 'dirname', 'extname', 'normalize'}
+
+_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
+
+
+def _name_generator(reserved: set) -> object:
     """Yield short identifier names, skipping reserved and taken names."""
-    for c in 'abcdefghijklmnopqrstuvwxyz':
-        if c not in reserved:
-            yield c
-    for c1 in 'abcdefghijklmnopqrstuvwxyz':
-        for c2 in 'abcdefghijklmnopqrstuvwxyz':
-            name = c1 + c2
+    for char in _ALPHABET:
+        if char not in reserved:
+            yield char
+    for first_char in _ALPHABET:
+        for second_char in _ALPHABET:
+            name = first_char + second_char
             if name not in reserved:
                 yield name
-    for c1 in 'abcdefghijklmnopqrstuvwxyz':
-        for c2 in 'abcdefghijklmnopqrstuvwxyz':
-            for c3 in 'abcdefghijklmnopqrstuvwxyz':
-                name = c1 + c2 + c3
+    for first_char in _ALPHABET:
+        for second_char in _ALPHABET:
+            for third_char in _ALPHABET:
+                name = first_char + second_char + third_char
                 if name not in reserved:
                     yield name
 
 
-def _dedupe_name(base, reserved):
+def _dedupe_name(base: str, reserved: set) -> str:
     """Return base or base2, base3, ... until a non-reserved name is found."""
     if base not in reserved:
         return base
-    n = 2
+    counter = 2
     while True:
-        candidate = f'{base}{n}'
+        candidate = f'{base}{counter}'
         if candidate not in reserved:
             return candidate
-        n += 1
+        counter += 1
 
 
-def _infer_from_init(init):
+def _infer_from_init(init: dict | None) -> str | None:
     """Infer a variable name from its initializer expression."""
     if not isinstance(init, dict) or 'type' not in init:
         return None
@@ -180,11 +201,11 @@ def _infer_from_init(init):
         if is_identifier(callee) and callee.get('name') == 'require' and len(args) == 1:
             arg = args[0]
             if arg.get('type') == 'Literal' and isinstance(arg.get('value'), str):
-                mod = arg['value']
-                if mod in _REQUIRE_NAMES:
-                    return _REQUIRE_NAMES[mod]
+                module_name = arg['value']
+                if module_name in _REQUIRE_NAMES:
+                    return _REQUIRE_NAMES[module_name]
                 # Derive name from module path, sanitized to valid identifier
-                base = mod.split('/')[-1].split('\\')[-1]
+                base = module_name.split('/')[-1].split('\\')[-1]
                 base = base.split('.')[0]  # strip file extension
                 base = re.sub(r'[^a-zA-Z0-9_]', '_', base)
                 base = re.sub(r'^[0-9]+', '', base)  # can't start with digit
@@ -200,20 +221,19 @@ def _infer_from_init(init):
             if is_identifier(obj) and is_identifier(prop):
                 obj_name = obj.get('name')
                 prop_name = prop.get('name')
-                if obj_name == 'Buffer' and prop_name == 'from':
-                    return 'buf'
-                if obj_name == 'JSON' and prop_name == 'parse':
-                    return 'data'
-                if obj_name == 'JSON' and prop_name == 'stringify':
-                    return 'json'
-                if obj_name == 'Object' and prop_name == 'keys':
-                    return 'keys'
-                if obj_name == 'Object' and prop_name == 'values':
-                    return 'values'
-                if obj_name == 'Object' and prop_name == 'entries':
-                    return 'entries'
-                if obj_name == 'Object' and prop_name == 'getOwnPropertyNames':
-                    return 'keys'
+                match (obj_name, prop_name):
+                    case ('Buffer', 'from'):
+                        return 'buf'
+                    case ('JSON', 'parse'):
+                        return 'data'
+                    case ('JSON', 'stringify'):
+                        return 'json'
+                    case ('Object', 'keys') | ('Object', 'getOwnPropertyNames'):
+                        return 'keys'
+                    case ('Object', 'values'):
+                        return 'values'
+                    case ('Object', 'entries'):
+                        return 'entries'
 
     # new Date() → "date"
     if init_type == 'NewExpression':
@@ -226,34 +246,28 @@ def _infer_from_init(init):
             if is_identifier(prop):
                 return _CONSTRUCTOR_NAMES.get(prop.get('name'))
 
-    # [] → "arr"
-    if init_type == 'ArrayExpression':
-        return 'arr'
-
-    # {} → "obj"
-    if init_type == 'ObjectExpression':
-        return 'obj'
-
-    # "string" → "str"
-    if init_type == 'Literal':
-        val = init.get('value')
-        if isinstance(val, str):
-            return 'str'
-        if isinstance(val, bool):
-            return 'flag'
-
-    # await expr → infer from the inner expression
-    if init_type == 'AwaitExpression':
-        return _infer_from_init(init.get('argument'))
+    match init_type:
+        case 'ArrayExpression':
+            return 'arr'
+        case 'ObjectExpression':
+            return 'obj'
+        case 'Literal':
+            value = init.get('value')
+            if isinstance(value, str):
+                return 'str'
+            if isinstance(value, bool):
+                return 'flag'
+        case 'AwaitExpression':
+            return _infer_from_init(init.get('argument'))
 
     return None
 
 
-def _infer_from_usage(binding):
+def _infer_from_usage(binding: object) -> str | None:
     """Infer a variable name from how it's used at reference sites."""
     # Check what methods are called on this variable
     methods = set()
-    for ref_node, ref_parent, ref_key, ref_index in binding.references:
+    for ref_node, ref_parent, ref_key, _ref_index in binding.references:
         if not ref_parent:
             continue
         # x.method() — ref is object of MemberExpression
@@ -262,26 +276,9 @@ def _infer_from_usage(binding):
             if is_identifier(prop) and not ref_parent.get('computed'):
                 methods.add(prop.get('name'))
 
-    # fs-like methods
-    _FS_METHODS = {
-        'readFileSync',
-        'writeFileSync',
-        'existsSync',
-        'mkdirSync',
-        'statSync',
-        'readdirSync',
-        'unlinkSync',
-        'createWriteStream',
-        'createReadStream',
-        'readFile',
-        'writeFile',
-        'appendFileSync',
-    }
     if methods & _FS_METHODS:
         return 'fs'
 
-    # path-like methods
-    _PATH_METHODS = {'join', 'resolve', 'basename', 'dirname', 'extname', 'normalize'}
     if methods & _PATH_METHODS and not (methods - _PATH_METHODS - {'sep'}):
         return 'path'
 
@@ -308,7 +305,7 @@ def _infer_from_usage(binding):
     return None
 
 
-def _infer_loop_var(binding):
+def _infer_loop_var(binding: object) -> bool | None:
     """Check if this binding is a for-loop counter."""
     node = binding.node
     if not isinstance(node, dict):
@@ -319,40 +316,40 @@ def _infer_loop_var(binding):
     init = node.get('init')
     if not init or init.get('type') != 'Literal':
         return None
-    val = init.get('value')
-    if not isinstance(val, (int, float)):
+    value = init.get('value')
+    if not isinstance(value, (int, float)):
         return None
     # Check if any assignment is an UpdateExpression (i++, i--)
     if binding.assignments:
-        for assign in binding.assignments:
-            if isinstance(assign, dict) and assign.get('type') == 'UpdateExpression':
+        for assignment in binding.assignments:
+            if isinstance(assignment, dict) and assignment.get('type') == 'UpdateExpression':
                 return True
     # Also check references for UpdateExpression parents
-    for ref_node, ref_parent, ref_key, ref_index in binding.references:
+    for _ref_node, ref_parent, _ref_key, _ref_index in binding.references:
         if ref_parent and ref_parent.get('type') == 'UpdateExpression':
             return True
     return None
 
 
-def _collect_pattern_idents(pattern, result):
+def _collect_pattern_idents(pattern: dict | None, result: list) -> None:
     """Collect all Identifier nodes from a destructuring pattern."""
     if not isinstance(pattern, dict):
         return
-    pat_type = pattern.get('type')
-    if pat_type == 'Identifier':
+    pattern_type = pattern.get('type')
+    if pattern_type == 'Identifier':
         result.append(pattern)
-    elif pat_type == 'ArrayPattern':
-        for elem in pattern.get('elements', []):
-            if elem:
-                _collect_pattern_idents(elem, result)
-    elif pat_type == 'ObjectPattern':
+    elif pattern_type == 'ArrayPattern':
+        for element in pattern.get('elements', []):
+            if element:
+                _collect_pattern_idents(element, result)
+    elif pattern_type == 'ObjectPattern':
         for prop in pattern.get('properties', []):
-            val = prop.get('value', prop.get('argument'))
-            if val:
-                _collect_pattern_idents(val, result)
-    elif pat_type == 'RestElement':
+            value = prop.get('value', prop.get('argument'))
+            if value:
+                _collect_pattern_idents(value, result)
+    elif pattern_type == 'RestElement':
         _collect_pattern_idents(pattern.get('argument'), result)
-    elif pat_type == 'AssignmentPattern':
+    elif pattern_type == 'AssignmentPattern':
         _collect_pattern_idents(pattern.get('left'), result)
 
 
@@ -361,26 +358,29 @@ class VariableRenamer(Transform):
 
     rebuild_scope = True
 
-    def execute(self):
-        scope_tree, _ = build_scope_tree(self.ast)
+    def execute(self) -> bool:
+        if self.scope_tree is not None:
+            scope_tree = self.scope_tree
+        else:
+            scope_tree, _ = build_scope_tree(self.ast)
 
         # Collect all non-obfuscated names across the entire tree to avoid conflicts
         reserved = set(_JS_RESERVED)
         self._collect_reserved(scope_tree, reserved)
 
         # Rename bindings scope by scope
-        gen = _name_generator(reserved)
+        generator = _name_generator(reserved)
         # Track loop var counter for i, j, k assignment
         self._loop_letters = list('ijklmn')
         self._loop_idx = 0
-        self._rename_scope(scope_tree, gen, reserved)
+        self._rename_scope(scope_tree, generator, reserved)
 
         # Fix duplicate names in destructuring patterns (can come from broken obfuscated input)
         self._fix_destructuring_dupes(reserved)
 
         return self.has_changed()
 
-    def _collect_reserved(self, scope, reserved):
+    def _collect_reserved(self, scope: object, reserved: set) -> None:
         """Collect all non-_0x binding names so we never generate a conflict."""
         for name in scope.bindings:
             if not _OBF_RE.match(name):
@@ -388,21 +388,21 @@ class VariableRenamer(Transform):
         for child in scope.children:
             self._collect_reserved(child, reserved)
 
-    def _rename_scope(self, scope, gen, reserved):
+    def _rename_scope(self, scope: object, generator: object, reserved: set) -> None:
         """Rename all _0x bindings in this scope and its children."""
         for name, binding in list(scope.bindings.items()):
             if not _OBF_RE.match(name):
                 continue
 
-            new_name = self._pick_name(binding, gen, reserved)
+            new_name = self._pick_name(binding, generator, reserved)
             reserved.add(new_name)
             self._apply_rename(binding, new_name)
             self.set_changed()
 
         for child in scope.children:
-            self._rename_scope(child, gen, reserved)
+            self._rename_scope(child, generator, reserved)
 
-    def _pick_name(self, binding, gen, reserved):
+    def _pick_name(self, binding: object, generator: object, reserved: set) -> str:
         """Pick the best name for a binding using heuristics, with fallback."""
         # 1. Check if it's a loop counter → i, j, k
         if _infer_loop_var(binding):
@@ -437,9 +437,9 @@ class VariableRenamer(Transform):
                 pass  # Fall through to sequential
 
         # 5. Fallback: sequential name from generator
-        return next(gen)
+        return next(generator)
 
-    def _apply_rename(self, binding, new_name):
+    def _apply_rename(self, binding: object, new_name: str) -> None:
         """Rename a binding at its declaration site and all reference sites."""
         old_name = binding.name
 
@@ -469,14 +469,14 @@ class VariableRenamer(Transform):
                             arg['name'] = new_name
 
         # 2. Rename at all reference sites
-        for ref_node, ref_parent, ref_key, ref_index in binding.references:
+        for ref_node, _ref_parent, _ref_key, _ref_index in binding.references:
             if ref_node.get('type') == 'Identifier' and ref_node.get('name') == old_name:
                 ref_node['name'] = new_name
 
         # 3. Update binding.name
         binding.name = new_name
 
-    def _fix_destructuring_dupes(self, reserved):
+    def _fix_destructuring_dupes(self, reserved: set) -> None:
         """Fix duplicate identifier names in destructuring patterns.
 
         Obfuscators sometimes produce invalid code like `const [a, a, a] = x;`.
@@ -487,15 +487,15 @@ class VariableRenamer(Transform):
         the last step of the renamer post-pass.
         """
 
-        def enter(node, parent, key, index):
+        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
             if node.get('type') != 'VariableDeclarator':
                 return
-            pat = node.get('id')
-            if not pat or pat.get('type') not in ('ArrayPattern', 'ObjectPattern'):
+            pattern = node.get('id')
+            if not pattern or pattern.get('type') not in ('ArrayPattern', 'ObjectPattern'):
                 return
             # Collect all identifier nodes in the pattern
             idents = []
-            _collect_pattern_idents(pat, idents)
+            _collect_pattern_idents(pattern, idents)
             seen = {}
             for ident_node in idents:
                 name = ident_node.get('name')
