@@ -695,3 +695,95 @@ class TestMissingBindingInCollectReferences:
         root_scope, _ = build_scope_tree(ast)
         # 'x' is not declared, so no binding should exist
         assert root_scope.get_own_binding('x') is None
+
+
+# ---------------------------------------------------------------------------
+# Deep AST test (exercises iterative fallback at depth > 500)
+# ---------------------------------------------------------------------------
+
+
+class TestDeepASTScope:
+    """Verify that build_scope_tree handles ASTs deeper than 500."""
+
+    def test_deep_nested_functions(self):
+        """Build deeply nested function scopes and verify bindings resolve."""
+        # Build a chain: Program -> func0 body -> func1 body -> ... -> funcN body -> var x = 1;
+        var_decl = {
+            'type': 'VariableDeclaration',
+            'kind': 'var',
+            'declarations': [
+                {
+                    'type': 'VariableDeclarator',
+                    'id': {'type': 'Identifier', 'name': 'x'},
+                    'init': {'type': 'Literal', 'value': 1, 'raw': '1'},
+                }
+            ],
+        }
+        # Reference to x
+        ref_stmt = {
+            'type': 'ExpressionStatement',
+            'expression': {'type': 'Identifier', 'name': 'x'},
+        }
+        node = {'type': 'BlockStatement', 'body': [var_decl, ref_stmt]}
+        depth = 600
+        for i in range(depth):
+            node = {
+                'type': 'FunctionDeclaration',
+                'id': {'type': 'Identifier', 'name': f'f{i}'},
+                'params': [],
+                'body': node,
+            }
+        ast = {'type': 'Program', 'sourceType': 'script', 'body': [node]}
+
+        root_scope, node_scope = build_scope_tree(ast)
+        # Should have created many scopes without stack overflow
+        assert len(node_scope) > depth
+        # The innermost x binding should be resolvable
+        # Walk to the deepest function scope
+        scope = root_scope
+        for _ in range(depth):
+            assert len(scope.children) >= 1
+            scope = scope.children[0]
+        x_binding = scope.get_own_binding('x')
+        assert x_binding is not None
+        assert x_binding.kind == 'var'
+
+    def test_deep_block_statements(self):
+        """Build deeply nested block statements and verify scope creation."""
+        # Innermost has a let binding
+        inner = {
+            'type': 'BlockStatement',
+            'body': [
+                {
+                    'type': 'VariableDeclaration',
+                    'kind': 'let',
+                    'declarations': [
+                        {
+                            'type': 'VariableDeclarator',
+                            'id': {'type': 'Identifier', 'name': 'deep'},
+                            'init': {'type': 'Literal', 'value': 42, 'raw': '42'},
+                        }
+                    ],
+                }
+            ],
+        }
+        node = inner
+        for _ in range(600):
+            node = {'type': 'BlockStatement', 'body': [node]}
+        ast = {'type': 'Program', 'sourceType': 'script', 'body': [node]}
+
+        root_scope, node_scope = build_scope_tree(ast)
+        # Should complete without stack overflow
+        assert root_scope is not None
+        # The 'deep' binding should exist somewhere in the scope tree
+        found = False
+
+        def _check(scope):
+            nonlocal found
+            if scope.get_own_binding('deep'):
+                found = True
+            for child in scope.children:
+                _check(child)
+
+        _check(root_scope)
+        assert found
