@@ -8,7 +8,7 @@ Python package.
 from .deobfuscator import Deobfuscator
 
 
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 
 def deobfuscate(code: str, max_iterations: int = 50) -> str:
