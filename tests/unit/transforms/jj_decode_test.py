@@ -82,3 +82,24 @@ class TestJJDecode:
         result = jj_decode(jj_line)
         assert result is not None
         assert '<script' in result.lower() or 'script' in result.lower()
+
+    def test_real_sample_5bcc_octal_escapes(self):
+        """Octal escapes like \\40 must not over-consume digits.
+
+        Sample 5bcc... contains \\401 which is \\40 (space) + literal '1',
+        NOT octal 401 = 257 (U+0101).
+        """
+        sample_path = os.path.join(_MALJS_DIR, '5bcc28e366085efa625515684fdc9648')
+        if not os.path.isfile(sample_path):
+            pytest.skip('Sample file not available')
+
+        with open(sample_path) as f:
+            lines = f.readlines()
+
+        result = jj_decode(lines[0].strip())
+        assert result is not None
+        # All characters must be ASCII — no off-by-256 artifacts
+        assert all(ord(c) < 128 for c in result), (
+            'Found non-ASCII chars: '
+            + ', '.join(f'U+{ord(c):04X}' for c in result if ord(c) > 127)
+        )

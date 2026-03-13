@@ -541,11 +541,14 @@ def _decode_escapes(s):
                 except ValueError:
                     pass
 
-            # Octal escape \NNN (1-3 digits)
+            # Octal escape: JS allows \0-\377 (max value 255).
+            # First digit 0-3: up to 3 total digits (\000-\377).
+            # First digit 4-7: up to 2 total digits (\40-\77).
             if '0' <= nch <= '7':
+                max_digits = 3 if nch <= '3' else 2
                 octal = ''
                 j = i + 1
-                while j < len(s) and j < i + 4 and '0' <= s[j] <= '7':
+                while j < len(s) and j < i + 1 + max_digits and '0' <= s[j] <= '7':
                     octal += s[j]
                     j += 1
                 result.append(chr(int(octal, 8)))
