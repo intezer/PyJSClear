@@ -1,7 +1,6 @@
 """Variable scope and binding analysis for ESTree ASTs."""
 
 from collections.abc import Callable
-from enum import StrEnum
 
 from .utils.ast_helpers import _CHILD_KEYS
 from .utils.ast_helpers import get_child_keys
@@ -16,25 +15,15 @@ _list = list
 _MAX_RECURSIVE_DEPTH = 500
 
 
-class BindingKind(StrEnum):
-    """Kind of variable binding in a scope."""
-
-    VAR = 'var'
-    LET = 'let'
-    CONST = 'const'
-    FUNCTION = 'function'
-    PARAM = 'param'
-
-
 class Binding:
     """Single variable binding within a scope, tracking references and assignments."""
 
     __slots__ = ('name', 'node', 'kind', 'scope', 'references', 'assignments')
 
-    def __init__(self, name: str, node: dict, kind: BindingKind, scope: 'Scope') -> None:
+    def __init__(self, name: str, node: dict, kind: str, scope: 'Scope') -> None:
         self.name: str = name
         self.node: dict = node
-        self.kind: BindingKind = kind
+        self.kind: str = kind  # 'var', 'let', 'const', 'function', 'param'
         self.scope: Scope = scope
         self.references: list[tuple[dict, dict | None, str | None, int | None]] = []
         self.assignments: list[dict] = []
@@ -42,13 +31,12 @@ class Binding:
     @property
     def is_constant(self) -> bool:
         """Return True if the binding is never reassigned after declaration."""
-        match self.kind:
-            case BindingKind.CONST:
-                return True
-            case BindingKind.FUNCTION:
-                return len(self.assignments) == 0
-            case _:
-                return len(self.assignments) == 0
+        if self.kind == 'const':
+            return True
+        if self.kind == 'function':
+            return len(self.assignments) == 0
+        # var/let/param: constant if exactly one init and no reassignments
+        return len(self.assignments) == 0
 
 
 class Scope:
@@ -65,9 +53,9 @@ class Scope:
         if parent:
             parent.children.append(self)
 
-    def add_binding(self, name: str, node: dict, kind: BindingKind | str) -> Binding:
+    def add_binding(self, name: str, node: dict, kind: str) -> Binding:
         """Create and register a new binding in this scope."""
-        binding = Binding(name, node, BindingKind(kind), self)
+        binding = Binding(name, node, kind, self)
         self.bindings[name] = binding
         return binding
 
@@ -245,22 +233,22 @@ def _process_function_declaration(
     all_scopes.append(new_scope)
 
     if node_type == 'FunctionDeclaration' and node.get('id'):
-        scope.add_binding(node['id']['name'], node, BindingKind.FUNCTION)
+        scope.add_binding(node['id']['name'], node, 'function')
     elif node_type == 'FunctionExpression' and node.get('id'):
-        new_scope.add_binding(node['id']['name'], node, BindingKind.FUNCTION)
+        new_scope.add_binding(node['id']['name'], node, 'function')
 
     for parameter in node.get('params', []):
         parameter_type = parameter.get('type')
         if parameter_type == 'Identifier':
-            new_scope.add_binding(parameter['name'], parameter, BindingKind.PARAM)
+            new_scope.add_binding(parameter['name'], parameter, 'param')
         elif parameter_type == 'AssignmentPattern':
             left_node = parameter.get('left', {})
             if left_node.get('type') == 'Identifier':
-                new_scope.add_binding(left_node['name'], parameter, BindingKind.PARAM)
+                new_scope.add_binding(left_node['name'], parameter, 'param')
         elif parameter_type == 'RestElement':
             argument_node = parameter.get('argument')
             if argument_node and argument_node.get('type') == 'Identifier':
-                new_scope.add_binding(argument_node['name'], parameter, BindingKind.PARAM)
+                new_scope.add_binding(argument_node['name'], parameter, 'param')
 
     body_node = node.get('body')
     if not body_node:
@@ -288,12 +276,12 @@ def _process_class_declaration(
     if class_identifier and class_identifier.get('type') == 'Identifier':
         binding_name = class_identifier['name']
         if node_type == 'ClassDeclaration':
-            scope.add_binding(binding_name, node, BindingKind.FUNCTION)
+            scope.add_binding(binding_name, node, 'function')
         else:
             inner_scope = Scope(scope, node)
             node_scope[id(node)] = inner_scope
             all_scopes.append(inner_scope)
-            inner_scope.add_binding(binding_name, node, BindingKind.FUNCTION)
+            inner_scope.add_binding(binding_name, node, 'function')
     superclass_node = node.get('superClass')
     body_node = node.get('body')
     if body_node:
@@ -341,7 +329,7 @@ def _process_catch_clause(
     all_scopes.append(catch_scope)
     catch_parameter = node.get('param')
     if catch_parameter and catch_parameter.get('type') == 'Identifier':
-        catch_scope.add_binding(catch_parameter['name'], catch_parameter, BindingKind.PARAM)
+        catch_scope.add_binding(catch_parameter['name'], catch_parameter, 'param')
     statements = catch_body.get('body', [])
     for index in range(len(statements) - 1, -1, -1):
         push_target.append((statements[index], catch_scope))

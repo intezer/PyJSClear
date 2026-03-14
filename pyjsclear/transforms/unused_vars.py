@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from ..scope import BindingKind
 from ..scope import Scope
 from ..scope import build_scope_tree
 from ..traverser import REMOVE
@@ -64,7 +63,7 @@ class UnusedVariableRemover(Transform):
         is_global = scope.parent is None
 
         for name, binding in scope.bindings.items():
-            if binding.references or binding.kind == BindingKind.PARAM:
+            if binding.references or binding.kind == 'param':
                 continue
             if is_global and not name.startswith('_0x'):
                 continue

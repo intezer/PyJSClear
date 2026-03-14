@@ -9,7 +9,6 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from ..scope import BindingKind
 from ..scope import build_scope_tree
 from ..traverser import REMOVE
 from ..traverser import traverse
@@ -118,7 +117,7 @@ class ReassignmentRemover(Transform):
         for name, binding in list(scope.bindings.items()):
             if not binding.is_constant:
                 continue
-            if binding.kind == BindingKind.PARAM:
+            if binding.kind == 'param':
                 continue
 
             target_name = self._get_simple_init_target(binding)
@@ -175,7 +174,7 @@ class ReassignmentRemover(Transform):
     def _process_assignment_aliases(self, scope: Scope) -> None:
         """Inline `var x; x = y;` patterns by replacing reads of x with y."""
         for name, binding in list(scope.bindings.items()):
-            if binding.is_constant or binding.kind == BindingKind.PARAM:
+            if binding.is_constant or binding.kind == 'param':
                 continue
 
             node = binding.node

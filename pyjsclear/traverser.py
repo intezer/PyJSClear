@@ -1,7 +1,6 @@
 """ESTree AST traversal with visitor pattern."""
 
 from collections.abc import Callable
-from enum import IntEnum
 
 from .utils.ast_helpers import _CHILD_KEYS
 from .utils.ast_helpers import get_child_keys
@@ -13,156 +12,147 @@ REMOVE = object()
 SKIP = object()
 
 # Local aliases for hot-path performance (~15% faster traversal)
-_dict_type = dict
-_list_type = list
-_builtin_type = type
+_dict = dict
+_list = list
+_type = type
 
 # Max recursion depth before falling back to iterative traversal.
 _MAX_RECURSIVE_DEPTH = 500
 
-
-class _StackOp(IntEnum):
-    """Opcodes for iterative traverse stack frames."""
-
-    ENTER = 0
-    EXIT = 1
-    LIST_START = 2
-    LIST_RESUME = 3
+# Stack frame opcodes for iterative traverse
+_OP_ENTER = 0
+_OP_EXIT = 1
+_OP_LIST_START = 2
+_OP_LIST_RESUME = 3
 
 
-def _apply_remove(parent: dict | None, key: str | None, index: int | None) -> None:
-    """Remove a child node from its parent, either by index or by key."""
-    if parent is None:
-        return
-    if index is not None:
-        parent[key].pop(index)
-    else:
-        parent[key] = None
-
-
-def _apply_replacement(
-    parent: dict | None,
-    key: str | None,
-    index: int | None,
-    replacement: dict,
-) -> None:
-    """Replace a child node in its parent with a replacement node."""
-    if parent is None:
-        return
-    if index is not None:
-        parent[key][index] = replacement
-    else:
-        parent[key] = replacement
-
-
-def _traverse_iterative(
-    node: dict,
-    enter_function: Callable | None,
-    exit_function: Callable | None,
-) -> None:
-    """Iterative stack-based AST traverse supporting enter and exit callbacks."""
+def _traverse_iterative(node: dict, enter_fn: Callable | None, exit_fn: Callable | None) -> None:
+    """Iterative stack-based traverse. Handles both enter and exit callbacks."""
     child_keys_map = _CHILD_KEYS
-    remove_sentinel = REMOVE
-    skip_sentinel = SKIP
-    get_keys = get_child_keys
+    _REMOVE = REMOVE
+    _SKIP = SKIP
+    _get_child_keys = get_child_keys
 
-    stack: list[tuple] = [(_StackOp.ENTER, node, None, None, None)]
+    stack = [(_OP_ENTER, node, None, None, None)]
     stack_pop = stack.pop
     stack_append = stack.append
 
     while stack:
         frame = stack_pop()
-        operation = frame[0]
+        op = frame[0]
 
-        match operation:
-            case _StackOp.ENTER:
-                current_node = frame[1]
-                parent = frame[2]
-                key = frame[3]
-                index = frame[4]
+        if op == _OP_ENTER:
+            current_node = frame[1]
+            parent = frame[2]
+            key = frame[3]
+            index = frame[4]
 
-                node_type = current_node.get('type')
-                if node_type is None:
+            node_type = current_node.get('type')
+            if node_type is None:
+                continue
+
+            if enter_fn:
+                result = enter_fn(current_node, parent, key, index)
+                if result is _REMOVE:
+                    if parent is not None:
+                        if index is not None:
+                            parent[key].pop(index)
+                        else:
+                            parent[key] = None
                     continue
-
-                if enter_function:
-                    result = enter_function(current_node, parent, key, index)
-                    if result is remove_sentinel:
-                        _apply_remove(parent, key, index)
-                        continue
-                    if result is skip_sentinel:
-                        if exit_function:
-                            exit_result = exit_function(current_node, parent, key, index)
-                            if exit_result is remove_sentinel:
-                                _apply_remove(parent, key, index)
-                            elif _builtin_type(exit_result) is _dict_type and 'type' in exit_result:
-                                _apply_replacement(parent, key, index, exit_result)
-                        continue
-                    if _builtin_type(result) is _dict_type and 'type' in result:
-                        current_node = result
-                        _apply_replacement(parent, key, index, current_node)
-                        node_type = current_node.get('type')
-
-                if exit_function:
-                    stack_append((_StackOp.EXIT, current_node, parent, key, index))
-
-                child_keys = child_keys_map.get(node_type)
-                if child_keys is None:
-                    child_keys = get_keys(current_node)
-
-                for key_index in range(len(child_keys) - 1, -1, -1):
-                    child_key = child_keys[key_index]
-                    child = current_node.get(child_key)
-                    if child is None:
-                        continue
-                    if _builtin_type(child) is _list_type:
-                        stack_append((_StackOp.LIST_START, current_node, child_key, 0, None))
-                    elif _builtin_type(child) is _dict_type and 'type' in child:
-                        stack_append((_StackOp.ENTER, child, current_node, child_key, None))
-
-            case _StackOp.EXIT:
-                current_node = frame[1]
-                parent = frame[2]
-                key = frame[3]
-                index = frame[4]
-                result = exit_function(current_node, parent, key, index)
-                if result is remove_sentinel:
-                    _apply_remove(parent, key, index)
-                elif _builtin_type(result) is _dict_type and 'type' in result:
-                    _apply_replacement(parent, key, index, result)
-
-            case _StackOp.LIST_START:
-                parent_node = frame[1]
-                child_key = frame[2]
-                list_index = frame[3]
-                child_list = parent_node[child_key]
-                if list_index >= len(child_list):
+                if result is _SKIP:
+                    if exit_fn:
+                        exit_result = exit_fn(current_node, parent, key, index)
+                        if exit_result is _REMOVE:
+                            if parent is not None:
+                                if index is not None:
+                                    parent[key].pop(index)
+                                else:
+                                    parent[key] = None
+                        elif _type(exit_result) is _dict and 'type' in exit_result:
+                            if parent is not None:
+                                if index is not None:
+                                    parent[key][index] = exit_result
+                                else:
+                                    parent[key] = exit_result
                     continue
-                item = child_list[list_index]
-                if _builtin_type(item) is _dict_type and 'type' in item:
-                    stack_append((_StackOp.LIST_RESUME, parent_node, child_key, list_index, len(child_list)))
-                    stack_append((_StackOp.ENTER, item, parent_node, child_key, list_index))
-                else:
-                    stack_append((_StackOp.LIST_START, parent_node, child_key, list_index + 1, None))
+                if _type(result) is _dict and 'type' in result:
+                    current_node = result
+                    if parent is not None:
+                        if index is not None:
+                            parent[key][index] = current_node
+                        else:
+                            parent[key] = current_node
+                    node_type = current_node.get('type')
 
-            case _StackOp.LIST_RESUME:
-                parent_node = frame[1]
-                child_key = frame[2]
-                list_index = frame[3]
-                previous_length = frame[4]
-                child_list = parent_node[child_key]
-                current_length = len(child_list)
-                next_index = list_index if current_length < previous_length else list_index + 1
-                if next_index < current_length:
-                    stack_append((_StackOp.LIST_START, parent_node, child_key, next_index, None))
+            if exit_fn:
+                stack_append((_OP_EXIT, current_node, parent, key, index))
+
+            child_keys = child_keys_map.get(node_type)
+            if child_keys is None:
+                child_keys = _get_child_keys(current_node)
+
+            for key_index in range(len(child_keys) - 1, -1, -1):
+                child_key = child_keys[key_index]
+                child = current_node.get(child_key)
+                if child is None:
+                    continue
+                if _type(child) is _list:
+                    stack_append((_OP_LIST_START, current_node, child_key, 0, None))
+                elif _type(child) is _dict and 'type' in child:
+                    stack_append((_OP_ENTER, child, current_node, child_key, None))
+
+        elif op == _OP_EXIT:
+            current_node = frame[1]
+            parent = frame[2]
+            key = frame[3]
+            index = frame[4]
+            result = exit_fn(current_node, parent, key, index)
+            if result is _REMOVE:
+                if parent is not None:
+                    if index is not None:
+                        parent[key].pop(index)
+                    else:
+                        parent[key] = None
+            elif _type(result) is _dict and 'type' in result:
+                if parent is not None:
+                    if index is not None:
+                        parent[key][index] = result
+                    else:
+                        parent[key] = result
+
+        elif op == _OP_LIST_START:
+            parent_node = frame[1]
+            child_key = frame[2]
+            list_index = frame[3]
+            child_list = parent_node[child_key]
+            if list_index >= len(child_list):
+                continue
+            item = child_list[list_index]
+            if _type(item) is _dict and 'type' in item:
+                stack_append((_OP_LIST_RESUME, parent_node, child_key, list_index, len(child_list)))
+                stack_append((_OP_ENTER, item, parent_node, child_key, list_index))
+            else:
+                stack_append((_OP_LIST_START, parent_node, child_key, list_index + 1, None))
+
+        elif op == _OP_LIST_RESUME:
+            parent_node = frame[1]
+            child_key = frame[2]
+            list_index = frame[3]
+            previous_length = frame[4]
+            child_list = parent_node[child_key]
+            current_length = len(child_list)
+            next_index = list_index if current_length < previous_length else list_index + 1
+            if next_index < current_length:
+                stack_append((_OP_LIST_START, parent_node, child_key, next_index, None))
 
 
-def _traverse_enter_only(node: dict, enter_function: Callable) -> None:
+def _traverse_enter_only(node: dict, enter_fn: Callable) -> None:
     """Recursive enter-only traverse with depth-limited fallback to iterative."""
     child_keys_map = _CHILD_KEYS
-    remove_sentinel = REMOVE
-    skip_sentinel = SKIP
-    get_keys = get_child_keys
+    _REMOVE = REMOVE
+    _SKIP = SKIP
+    _get_child_keys = get_child_keys
     max_depth = _MAX_RECURSIVE_DEPTH
 
     def _visit(
@@ -176,37 +166,45 @@ def _traverse_enter_only(node: dict, enter_function: Callable) -> None:
         if node_type is None:
             return
 
-        result = enter_function(current_node, parent, key, index)
-        if result is remove_sentinel:
-            _apply_remove(parent, key, index)
+        result = enter_fn(current_node, parent, key, index)
+        if result is _REMOVE:
+            if parent is not None:
+                if index is not None:
+                    parent[key].pop(index)
+                else:
+                    parent[key] = None
             return
-        if result is skip_sentinel:
+        if result is _SKIP:
             return
-        if _builtin_type(result) is _dict_type and 'type' in result:
+        if _type(result) is _dict and 'type' in result:
             current_node = result
-            _apply_replacement(parent, key, index, current_node)
+            if parent is not None:
+                if index is not None:
+                    parent[key][index] = current_node
+                else:
+                    parent[key] = current_node
             node_type = current_node['type']
 
         # Fall back to iterative for deep subtrees
         if depth > max_depth:
-            _traverse_iterative(current_node, enter_function, None)
+            _traverse_iterative(current_node, enter_fn, None)
             return
 
         child_keys = child_keys_map.get(node_type)
         if child_keys is None:
-            child_keys = get_keys(current_node)
+            child_keys = _get_child_keys(current_node)
 
         next_depth = depth + 1
         for child_key in child_keys:
             child = current_node.get(child_key)
             if child is None:
                 continue
-            if _builtin_type(child) is _list_type:
+            if _type(child) is _list:
                 child_length = len(child)
                 item_index = 0
                 while item_index < child_length:
                     item = child[item_index]
-                    if _builtin_type(item) is _dict_type and 'type' in item:
+                    if _type(item) is _dict and 'type' in item:
                         _visit(item, current_node, child_key, item_index, next_depth)
                         new_length = len(child)
                         if new_length < child_length:
@@ -214,10 +212,10 @@ def _traverse_enter_only(node: dict, enter_function: Callable) -> None:
                             continue
                         child_length = new_length
                     item_index += 1
-            elif _builtin_type(child) is _dict_type and 'type' in child:
+            elif _type(child) is _dict and 'type' in child:
                 _visit(child, current_node, child_key, None, next_depth)
 
-    if _builtin_type(node) is _dict_type and 'type' in node:
+    if _type(node) is _dict and 'type' in node:
         _visit(node, None, None, None, 0)
 
 
@@ -231,17 +229,17 @@ def traverse(node: dict, visitor: dict | object) -> None:
     Uses recursive traversal for enter-only visitors (fast path) with
     automatic fallback to iterative for deep subtrees.
     """
-    if isinstance(visitor, _dict_type):
-        enter_function = visitor.get('enter')
-        exit_function = visitor.get('exit')
+    if isinstance(visitor, _dict):
+        enter_fn = visitor.get('enter')
+        exit_fn = visitor.get('exit')
     else:
-        enter_function = getattr(visitor, 'enter', None)
-        exit_function = getattr(visitor, 'exit', None)
+        enter_fn = getattr(visitor, 'enter', None)
+        exit_fn = getattr(visitor, 'exit', None)
 
-    if exit_function is None and enter_function is not None:
-        _traverse_enter_only(node, enter_function)
+    if exit_fn is None and enter_fn is not None:
+        _traverse_enter_only(node, enter_fn)
     else:
-        _traverse_iterative(node, enter_function, exit_function)
+        _traverse_iterative(node, enter_fn, exit_fn)
 
 
 def _simple_traverse_iterative(node: dict, callback: Callable) -> None:
@@ -266,12 +264,12 @@ def _simple_traverse_iterative(node: dict, callback: Callable) -> None:
             child = current_node.get(key)
             if child is None:
                 continue
-            if _builtin_type(child) is _list_type:
+            if _type(child) is _list:
                 for item_index in range(len(child) - 1, -1, -1):
                     item = child[item_index]
-                    if _builtin_type(item) is _dict_type and 'type' in item:
+                    if _type(item) is _dict and 'type' in item:
                         stack_append((item, current_node))
-            elif _builtin_type(child) is _dict_type and 'type' in child:
+            elif _type(child) is _dict and 'type' in child:
                 stack_append((child, current_node))
 
 
@@ -296,11 +294,11 @@ def _simple_traverse_recursive(node: dict, callback: Callable) -> None:
                 child = current_node.get(key)
                 if child is None:
                     continue
-                if _builtin_type(child) is _list_type:
+                if _type(child) is _list:
                     for item in child:
-                        if _builtin_type(item) is _dict_type and 'type' in item:
+                        if _type(item) is _dict and 'type' in item:
                             _simple_traverse_iterative(item, callback)
-                elif _builtin_type(child) is _dict_type and 'type' in child:
+                elif _type(child) is _dict and 'type' in child:
                     _simple_traverse_iterative(child, callback)
             return
 
@@ -312,14 +310,14 @@ def _simple_traverse_recursive(node: dict, callback: Callable) -> None:
             child = current_node.get(key)
             if child is None:
                 continue
-            if _builtin_type(child) is _list_type:
+            if _type(child) is _list:
                 for item in child:
-                    if _builtin_type(item) is _dict_type and 'type' in item:
+                    if _type(item) is _dict and 'type' in item:
                         _visit(item, current_node, next_depth)
-            elif _builtin_type(child) is _dict_type and 'type' in child:
+            elif _type(child) is _dict and 'type' in child:
                 _visit(child, current_node, next_depth)
 
-    if _builtin_type(node) is _dict_type and 'type' in node:
+    if _type(node) is _dict and 'type' in node:
         _visit(node, None, 0)
 
 
@@ -360,12 +358,12 @@ def build_parent_map(ast: dict) -> dict[int, tuple[dict | None, str | None, int 
             child = current_node.get(child_key)
             if child is None:
                 continue
-            if _builtin_type(child) is _list_type:
+            if _type(child) is _list:
                 for item_index in range(len(child) - 1, -1, -1):
                     item = child[item_index]
-                    if _builtin_type(item) is _dict_type and 'type' in item:
+                    if _type(item) is _dict and 'type' in item:
                         stack.append((item, current_node, child_key, item_index))
-            elif _builtin_type(child) is _dict_type and 'type' in child:
+            elif _type(child) is _dict and 'type' in child:
                 stack.append((child, current_node, child_key, None))
 
     return parent_map

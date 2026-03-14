@@ -28,12 +28,6 @@ def deobfuscate(code: str, max_iterations: int = 50) -> str:
     return Deobfuscator(code, max_iterations=max_iterations).execute()
 
 
-def _write_output(output_path: str | Path, content: str) -> None:
-    """Write deobfuscated content to the given file path."""
-    with open(output_path, 'w') as output_file:
-        output_file.write(content)
-
-
 def deobfuscate_file(
     input_path: str | Path,
     output_path: str | Path | None = None,
@@ -57,5 +51,6 @@ def deobfuscate_file(
     if not output_path:
         return result
 
-    _write_output(output_path, result)
+    with open(output_path, 'w') as output_file:
+        output_file.write(result)
     return result != code

@@ -20,7 +20,6 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from ..scope import BindingKind
 from ..scope import build_scope_tree
 from ..traverser import REMOVE
 from ..traverser import simple_traverse
@@ -120,7 +119,7 @@ class SingleUseVarInliner(Transform):
         for _name, binding in list(scope.bindings.items()):
             if not binding.is_constant:
                 continue
-            if binding.kind == BindingKind.PARAM:
+            if binding.kind == 'param':
                 continue
 
             declarator_node = binding.node

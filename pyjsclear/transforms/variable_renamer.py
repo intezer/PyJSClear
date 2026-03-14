@@ -14,7 +14,6 @@ import re
 from collections.abc import Generator
 from typing import TYPE_CHECKING
 
-from ..scope import BindingKind
 from ..scope import build_scope_tree
 from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
@@ -434,7 +433,7 @@ class VariableRenamer(Transform):
                     return candidate
 
         # 2. Check init expression (require, new, [], {}, etc.)
-        if binding.kind in (BindingKind.VAR, BindingKind.LET, BindingKind.CONST):
+        if binding.kind in ('var', 'let', 'const'):
             node = binding.node
             if isinstance(node, dict) and node.get('type') == 'VariableDeclarator':
                 initializer = node.get('init')
@@ -448,7 +447,7 @@ class VariableRenamer(Transform):
             return _dedupe_name(hint, reserved_names)
 
         # 4. For catch clause params, use 'error'
-        if binding.kind == BindingKind.PARAM:
+        if binding.kind == 'param':
             node = binding.node
             if isinstance(node, dict) and node.get('type') == 'Identifier':
                 # Catch params typically have _0x... names and are rarely used
@@ -465,7 +464,7 @@ class VariableRenamer(Transform):
         node = binding.node
         if isinstance(node, dict):
             match binding.kind:
-                case BindingKind.VAR | BindingKind.LET | BindingKind.CONST:
+                case 'var' | 'let' | 'const':
                     declaration_id = node.get('id')
                     if (
                         declaration_id
@@ -473,11 +472,11 @@ class VariableRenamer(Transform):
                         and declaration_id.get('name') == old_name
                     ):
                         declaration_id['name'] = new_name
-                case BindingKind.FUNCTION:
+                case 'function':
                     function_id = node.get('id')
                     if function_id and function_id.get('type') == 'Identifier' and function_id.get('name') == old_name:
                         function_id['name'] = new_name
-                case BindingKind.PARAM:
+                case 'param':
                     match node.get('type'):
                         case 'Identifier' if node.get('name') == old_name:
                             node['name'] = new_name
