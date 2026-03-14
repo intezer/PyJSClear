@@ -46,91 +46,68 @@ class ExpressionSimplifier(Transform):
 
     def execute(self) -> bool:
         """Run all expression simplification passes and return whether AST changed."""
-        self._simplify_unary_binary()
-        self._simplify_conditionals()
-        self._simplify_awaits()
-        self._simplify_comma_calls()
+        self._simplify_all()
         self._simplify_method_calls()
         return self.has_changed()
 
-    def _simplify_unary_binary(self) -> None:
-        """Fold constant unary and binary expressions."""
+    def _simplify_all(self) -> None:
+        """Single-pass simplification of unary/binary, conditionals, awaits, and comma calls."""
 
         def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
-            match node.get('type', ''):
-                case 'UnaryExpression':
-                    result = self._simplify_unary(node)
-                case 'BinaryExpression':
-                    result = self._simplify_binary(node)
-                case _:
-                    return None
-            if result is not None:
-                self.set_changed()
-                return result
-            return None
+            node_type = node.get('type', '')
 
-        traverse(self.ast, {'enter': enter})
-
-    def _simplify_conditionals(self) -> None:
-        """Convert test ? false : true → !test."""
-
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
-            if node.get('type') != 'ConditionalExpression':
+            if node_type == 'UnaryExpression':
+                result = self._simplify_unary(node)
+                if result is not None:
+                    self.set_changed()
+                    return result
                 return None
-            consequent = node.get('consequent')
-            alternate = node.get('alternate')
-            if (
-                is_literal(consequent)
-                and consequent.get('value') is False
-                and is_literal(alternate)
-                and alternate.get('value') is True
-            ):
-                self.set_changed()
-                return {
-                    'type': 'UnaryExpression',
-                    'operator': '!',
-                    'prefix': True,
-                    'argument': node['test'],
-                }
+
+            if node_type == 'BinaryExpression':
+                result = self._simplify_binary(node)
+                if result is not None:
+                    self.set_changed()
+                    return result
+                return None
+
+            if node_type == 'ConditionalExpression':
+                consequent = node.get('consequent')
+                alternate = node.get('alternate')
+                if (
+                    is_literal(consequent)
+                    and consequent.get('value') is False
+                    and is_literal(alternate)
+                    and alternate.get('value') is True
+                ):
+                    self.set_changed()
+                    return {
+                        'type': 'UnaryExpression',
+                        'operator': '!',
+                        'prefix': True,
+                        'argument': node['test'],
+                    }
+                return None
+
+            if node_type == 'AwaitExpression':
+                argument = node.get('argument')
+                if isinstance(argument, dict) and argument.get('type') == 'SequenceExpression':
+                    expressions = argument.get('expressions', [])
+                    if len(expressions) > 1:
+                        node['argument'] = expressions[-1]
+                        self.set_changed()
+                return None
+
+            if node_type == 'CallExpression':
+                callee = node.get('callee')
+                if isinstance(callee, dict) and callee.get('type') == 'SequenceExpression':
+                    expressions = callee.get('expressions', [])
+                    if len(expressions) >= 2:
+                        if all(isinstance(e, dict) and e.get('type') == 'Literal' for e in expressions[:-1]):
+                            node['callee'] = expressions[-1]
+                            self.set_changed()
+                return None
+
             return None
-
-        traverse(self.ast, {'enter': enter})
-
-    def _simplify_awaits(self) -> None:
-        """Simplify await (0x0, expr) → await expr."""
-
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
-            if node.get('type') != 'AwaitExpression':
-                return
-            argument = node.get('argument')
-            if not isinstance(argument, dict) or argument.get('type') != 'SequenceExpression':
-                return
-            expressions = argument.get('expressions', [])
-            if len(expressions) <= 1:
-                return
-            node['argument'] = expressions[-1]
-            self.set_changed()
-
-        traverse(self.ast, {'enter': enter})
-
-    def _simplify_comma_calls(self) -> None:
-        """Simplify (0, expr)(args) → expr(args)."""
-
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
-            if node.get('type') != 'CallExpression':
-                return
-            callee = node.get('callee')
-            if not isinstance(callee, dict) or callee.get('type') != 'SequenceExpression':
-                return
-            expressions = callee.get('expressions', [])
-            if len(expressions) < 2:
-                return
-            # Only simplify when the leading expressions are side-effect-free literals
-            for expression in expressions[:-1]:
-                if not isinstance(expression, dict) or expression.get('type') != 'Literal':
-                    return
-            node['callee'] = expressions[-1]
-            self.set_changed()
 
         traverse(self.ast, {'enter': enter})
 

@@ -29,12 +29,17 @@ def _should_skip_reference(reference_parent: dict | None, reference_key: str | N
     return False
 
 
-def _find_and_remove_declarator(
+def _batch_remove_declarators(
     ast: dict,
-    declarator_node: dict,
+    declarator_nodes: set[int],
     set_changed: callable,
 ) -> None:
-    """Walk AST to find and remove a VariableDeclarator from its parent declaration."""
+    """Remove multiple VariableDeclarators in a single AST traversal.
+
+    *declarator_nodes* is a set of id() values for the declarator dicts to remove.
+    """
+    if not declarator_nodes:
+        return
 
     def enter(
         node: dict,
@@ -45,15 +50,16 @@ def _find_and_remove_declarator(
         if node.get('type') != 'VariableDeclaration':
             return None
         declarations = node.get('declarations', [])
-        for declaration_index, declaration in enumerate(declarations):
-            if declaration is not declarator_node:
-                continue
-            declarations.pop(declaration_index)
-            set_changed()
-            if not declarations:
-                return REMOVE
-            return SKIP
-        return None
+        original_len = len(declarations)
+        # Filter in-place, keeping only non-target declarators
+        kept = [d for d in declarations if id(d) not in declarator_nodes]
+        if len(kept) == original_len:
+            return None
+        set_changed()
+        if not kept:
+            return REMOVE
+        declarations[:] = kept
+        return SKIP
 
     traverse(ast, {'enter': enter})
 
@@ -113,6 +119,7 @@ class ConstantProp(Transform):
         bindings_replaced: set[int],
     ) -> None:
         """Remove declarations whose bindings were fully propagated."""
+        to_remove: set[int] = set()
         for binding_id in bindings_replaced:
             binding = replacements[binding_id][0]
             if binding.assignments:
@@ -122,4 +129,5 @@ class ConstantProp(Transform):
                 continue
             if declarator_node.get('type') != 'VariableDeclarator':
                 continue
-            _find_and_remove_declarator(self.ast, declarator_node, self.set_changed)
+            to_remove.add(id(declarator_node))
+        _batch_remove_declarators(self.ast, to_remove, self.set_changed)

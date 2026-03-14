@@ -583,7 +583,7 @@ class TestAwaitSingleExpressionUnchanged:
             ],
         }
         es2 = ExpressionSimplifier(ast)
-        es2._simplify_awaits()
+        es2._simplify_all()
         # Should not change because len(exprs) <= 1
         assert ast['body'][0]['expression']['argument']['type'] == 'SequenceExpression'
 
@@ -604,7 +604,7 @@ class TestAwaitSingleExpressionUnchanged:
             ],
         }
         es = ExpressionSimplifier(ast)
-        es._simplify_awaits()
+        es._simplify_all()
         assert ast['body'][0]['expression']['argument']['type'] == 'SequenceExpression'
 
 

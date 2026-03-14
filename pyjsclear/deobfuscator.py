@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import sys
-from typing import TYPE_CHECKING
-
 from .generator import generate
 from .parser import parse
 from .scope import build_scope_tree
@@ -56,14 +53,9 @@ from .transforms.unreachable_code import UnreachableCodeRemover
 from .transforms.unused_vars import UnusedVariableRemover
 from .transforms.variable_renamer import VariableRenamer
 from .transforms.xor_string_decode import XorStringDecoder
-from .traverser import simple_traverse
+from .utils.ast_helpers import _CHILD_KEYS
+from .utils.ast_helpers import get_child_keys
 
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    # Type alias for detector/decoder pairs used in pre-passes
-    PrePassEntry = tuple[Callable[[str], bool], Callable[[str], str | None]]
 
 _SCOPE_TRANSFORMS: frozenset[type] = frozenset(
     {
@@ -133,24 +125,40 @@ _LITE_MAX_ITERATIONS: int = 10
 _NODE_COUNT_LIMIT: int = 50_000  # skip ControlFlowRecoverer above this
 _VERY_LARGE_NODE_COUNT: int = 100_000  # cap iterations to 3
 
-# Ordered detector/decoder pairs for the pre-pass stage.
-_PRE_PASS_ENTRIES: list[PrePassEntry] = [
-    (is_jsfuck, jsfuck_decode),
-    (is_aa_encoded, aa_decode),
-    (is_jj_encoded, jj_decode),
-    (is_eval_packed, eval_unpack),
-]
-
 
 def _count_nodes(syntax_tree: dict) -> int:
-    """Return the total number of nodes in *syntax_tree*."""
-    count: int = 0
+    """Return the total number of nodes in *syntax_tree*.
 
-    def _increment(node: dict, parent: dict | None) -> None:
-        nonlocal count
+    Uses a direct iterative loop instead of simple_traverse to avoid
+    per-node callback overhead.
+    """
+    child_keys_map = _CHILD_KEYS
+    _get_child_keys = get_child_keys
+    _dict = dict
+    _list = list
+    _type = type
+
+    count = 0
+    stack = [syntax_tree]
+    while stack:
+        node = stack.pop()
+        node_type = node.get('type')
+        if node_type is None:
+            continue
         count += 1
-
-    simple_traverse(syntax_tree, _increment)
+        child_keys = child_keys_map.get(node_type)
+        if child_keys is None:
+            child_keys = _get_child_keys(node)
+        for key in child_keys:
+            child = node.get(key)
+            if child is None:
+                continue
+            if _type(child) is _list:
+                for item in child:
+                    if _type(item) is _dict and 'type' in item:
+                        stack.append(item)
+            elif _type(child) is _dict and 'type' in child:
+                stack.append(child)
     return count
 
 
@@ -173,14 +181,26 @@ class Deobfuscator:
         Returns the decoded source when a known encoding is found, or ``None``
         to continue with the normal AST pipeline.
         """
-        # Look up via module globals so unittest.mock.patch can intercept.
-        module = sys.modules[__name__]
-        for detector, decoder in _PRE_PASS_ENTRIES:
-            if not getattr(module, detector.__name__)(code):
-                continue
-            decoded = getattr(module, decoder.__name__)(code)
+        if is_jsfuck(code):
+            decoded = jsfuck_decode(code)
             if decoded:
                 return decoded
+
+        if is_aa_encoded(code):
+            decoded = aa_decode(code)
+            if decoded:
+                return decoded
+
+        if is_jj_encoded(code):
+            decoded = jj_decode(code)
+            if decoded:
+                return decoded
+
+        if is_eval_packed(code):
+            decoded = eval_unpack(code)
+            if decoded:
+                return decoded
+
         return None
 
     def execute(self) -> str:
