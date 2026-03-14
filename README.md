@@ -4,7 +4,7 @@
 
 # PyJSClear
 
-Pure Python JavaScript deobfuscator.
+Pure Python JavaScript deobfuscator for malware analysis and security automation.
 
 ## Installation
 
@@ -71,14 +71,14 @@ variables and converts var/let to const.
 - Anti-tamper / anti-debug removal
 - Variable renaming (_0x… → readable names)
 
-Large files (>500 KB / >50 K AST nodes) automatically use a lite mode
+Large files (>500 KB / >50K AST nodes) automatically use a lite mode
 that skips expensive transforms.
 
 ## Limitations
 
 - **Best results on obfuscator.io output.** JSFuck, JJEncode, AAEncode, and eval-packed code are fully decoded; other obfuscation tools may only partially deobfuscate.
 - **Large files get reduced treatment.** Files >500 KB or ASTs >50 K nodes skip expensive transforms; files >2 MB use a minimal lite mode.
-- **Recursive AST traversal** may hit Python's default recursion limit (~1 000 frames) on extremely deep nesting; the deobfuscator catches this and returns the best partial result.
+- **Very deep AST nesting** — traversal automatically falls back from recursion to an iterative strategy at depth thresholds, but pathologically deep inputs may still produce partial results.
 
 ## License
 
