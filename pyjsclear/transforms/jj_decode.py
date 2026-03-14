@@ -35,13 +35,19 @@ def is_jj_encoded(code: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-_OBJECT_STR = '[object Object]'
+_OBJECT_STRING = '[object Object]'
 
 # Single-char JS escape sequences
 _SINGLE_CHAR_ESCAPES: dict[str, str] = {
-    'n': '\n', 'r': '\r', 't': '\t',
-    '\\': '\\', "'": "'", '"': '"',
-    '/': '/', 'b': '\b', 'f': '\f',
+    'n': '\n',
+    'r': '\r',
+    't': '\t',
+    '\\': '\\',
+    "'": "'",
+    '"': '"',
+    '/': '/',
+    'b': '\b',
+    'f': '\f',
 }
 
 
@@ -84,7 +90,7 @@ def _split_at_depth_zero(text: str, delimiter: str) -> list[str]:
             index += 1
             continue
 
-        if depth == 0 and text[index:index + len(delimiter)] == delimiter:
+        if depth == 0 and text[index : index + len(delimiter)] == delimiter:
             parts.append(''.join(current))
             current = []
             index += len(delimiter)
@@ -130,13 +136,13 @@ def _find_matching_close(text: str, start: int, open_character: str, close_chara
 # ---------------------------------------------------------------------------
 
 
-def _parse_symbol_table(stmt: str, varname: str) -> dict[str, int | str] | None:
+def _parse_symbol_table(statement: str, varname: str) -> dict[str, int | str] | None:
     """Parse the ``$={___:++$, ...}`` statement and return a dict
     mapping property names to their resolved values (ints or chars)."""
     prefix = varname + '='
-    body = stmt.strip()
+    body = statement.strip()
     if body.startswith(prefix):
-        body = body[len(prefix):]
+        body = body[len(prefix) :]
 
     body = body.strip()
     if body.startswith('{') and body.endswith('}'):
@@ -156,7 +162,7 @@ def _parse_symbol_table(stmt: str, varname: str) -> dict[str, int | str] | None:
         if colon_index == -1:
             continue
         key = entry[:colon_index].strip()
-        value_expr = entry[colon_index + 1:].strip()
+        value_expr = entry[colon_index + 1 :].strip()
 
         if value_expr.startswith('++'):
             counter += 1
@@ -185,11 +191,11 @@ def _parse_symbol_table(stmt: str, varname: str) -> dict[str, int | str] | None:
 
             coercion_part = value_expr[:bracket_start].strip()
             # The index is the current counter value
-            idx = counter
+            resolved_index = counter
 
-            coercion_str = _eval_coercion(coercion_part, varname)
-            if coercion_str is not None and 0 <= idx < len(coercion_str):
-                table[key] = coercion_str[idx]
+            coercion_string = _eval_coercion(coercion_part, varname)
+            if coercion_string is not None and 0 <= resolved_index < len(coercion_string):
+                table[key] = coercion_string[resolved_index]
         else:
             try:
                 table[key] = int(value_expr)
@@ -199,41 +205,41 @@ def _parse_symbol_table(stmt: str, varname: str) -> dict[str, int | str] | None:
     return table
 
 
-def _eval_coercion(expr: str, varname: str) -> str | None:
+def _eval_coercion(expression: str, varname: str) -> str | None:
     """Evaluate a coercion expression to a string.
 
     Handles:  (![]+"")  -> "false",  (!""+"") -> "true",
     ({}+"") -> "[object Object]",  ($[$]+"") -> "undefined",
     ((!$)+"") -> "false".
     """
-    expr = expr.strip()
-    if expr.startswith('(') and expr.endswith(')'):
-        expr = expr[1:-1].strip()
+    expression = expression.strip()
+    if expression.startswith('(') and expression.endswith(')'):
+        expression = expression[1:-1].strip()
     # Strip +"" suffix
     for suffix in ('+""', "+''"):
-        if expr.endswith(suffix):
-            expr = expr[:len(expr) - len(suffix)].strip()
+        if expression.endswith(suffix):
+            expression = expression[: len(expression) - len(suffix)].strip()
             break
     else:
         return None
 
-    if expr == '![]':
+    if expression == '![]':
         return 'false'
-    if expr in ('!""', "!''"):
+    if expression in ('!""', "!''"):
         return 'true'
-    if expr == '{}':
-        return _OBJECT_STR
+    if expression == '{}':
+        return _OBJECT_STRING
     # VARNAME[VARNAME] -> undefined
-    if expr == varname + '[' + varname + ']':
+    if expression == varname + '[' + varname + ']':
         return 'undefined'
     # (!VARNAME) where VARNAME is object -> false
-    if expr in ('!' + varname, '(!' + varname + ')'):
+    if expression in ('!' + varname, '(!' + varname + ')'):
         return 'false'
     # General X[X] pattern
-    if re.match(r'^([a-zA-Z_$][a-zA-Z0-9_$]*)\[\1\]$', expr):
+    if re.match(r'^([a-zA-Z_$][a-zA-Z0-9_$]*)\[\1\]$', expression):
         return 'undefined'
     # VARNAME.KEY where KEY is not in table -> undefined
-    if re.match(r'^' + re.escape(varname) + r'\.[a-zA-Z_$][a-zA-Z0-9_$]*$', expr):
+    if re.match(r'^' + re.escape(varname) + r'\.[a-zA-Z_$][a-zA-Z0-9_$]*$', expression):
         return 'undefined'
     return None
 
@@ -246,7 +252,12 @@ def _eval_coercion(expr: str, varname: str) -> str | None:
 _MAX_EVAL_DEPTH = 100
 
 
-def _eval_expr(expr: str, table: dict[str, int | str], varname: str, depth: int = 0) -> str | None:
+def _eval_expression(
+    expression: str,
+    table: dict[str, int | str],
+    varname: str,
+    depth: int = 0,
+) -> str | None:
     """Evaluate a JJEncode expression to a string value.
 
     Handles symbol-table references, string literals, coercion
@@ -256,31 +267,30 @@ def _eval_expr(expr: str, table: dict[str, int | str], varname: str, depth: int 
     if depth > _MAX_EVAL_DEPTH:
         return None
 
-    expr = expr.strip()
-    if not expr:
+    expression = expression.strip()
+    if not expression:
         return None
 
     prefix = varname + '.'
 
-    # String literal — decode JS escape sequences
-    if len(expr) >= 2:
-        if (expr[0] == '"' and expr[-1] == '"') or \
-           (expr[0] == "'" and expr[-1] == "'"):
-            return _decode_js_string_literal(expr[1:-1])
+    # String literal -- decode JS escape sequences
+    if len(expression) >= 2:
+        if (expression[0] == '"' and expression[-1] == '"') or (expression[0] == "'" and expression[-1] == "'"):
+            return _decode_js_string_literal(expression[1:-1])
 
-    # Bare varname — at this point it's the symbol table object
-    if expr == varname:
-        return _OBJECT_STR
+    # Bare varname -- at this point it's the symbol table object
+    if expression == varname:
+        return _OBJECT_STRING
 
     # Parenthesised expression possibly followed by [index]
     # Strip nested parens iteratively before delegating to _eval_inner
-    if expr.startswith('('):
-        close = _find_matching_close(expr, 0, '(', ')')
+    if expression.startswith('('):
+        close = _find_matching_close(expression, 0, '(', ')')
         if close != -1:
-            inner = expr[1:close].strip()
-            rest = expr[close + 1:].strip()
+            inner = expression[1:close].strip()
+            rest = expression[close + 1 :].strip()
 
-            # Iteratively unwrap pure parenthesised expressions: (((...expr...)))
+            # Iteratively unwrap pure parenthesised expressions
             while inner.startswith('(') and not rest:
                 inner_close = _find_matching_close(inner, 0, '(', ')')
                 if inner_close == len(inner) - 1:
@@ -288,56 +298,56 @@ def _eval_expr(expr: str, table: dict[str, int | str], varname: str, depth: int 
                 else:
                     break
 
-            val = _eval_inner(inner, table, varname, depth + 1)
+            value = _eval_inner(inner, table, varname, depth + 1)
             if not rest:
-                return val
+                return value
             # Check for [index] after the paren
             if rest.startswith('[') and rest.endswith(']'):
-                if val is None:
+                if value is None:
                     return None
-                index_expr = rest[1:-1].strip()
-                idx = _resolve_int(index_expr, table, varname)
-                if isinstance(val, str) and idx is not None and 0 <= idx < len(val):
-                    return val[idx]
+                index_expression = rest[1:-1].strip()
+                resolved_index = _resolve_int(index_expression, table, varname)
+                if isinstance(value, str) and resolved_index is not None and 0 <= resolved_index < len(value):
+                    return value[resolved_index]
                 return None
             return None
 
     # Symbol table reference: VARNAME.KEY
-    if expr.startswith(prefix) and '+' not in expr and '[' not in expr and '=' not in expr:
-        key = expr[len(prefix):]
-        val = table.get(key)
-        if val is not None:
-            return str(val) if isinstance(val, int) else val
+    if expression.startswith(prefix) and '+' not in expression and '[' not in expression and '=' not in expression:
+        key = expression[len(prefix) :]
+        value = table.get(key)
+        if value is not None:
+            return str(value) if isinstance(value, int) else value
         return None
 
-    # VARNAME.KEY[VARNAME.KEY2] — string indexing into a table value
-    if expr.startswith(prefix) and '[' in expr and '=' not in expr:
-        bracket_pos = expr.index('[')
-        key = expr[len(prefix):bracket_pos]
-        str_val = table.get(key)
-        if isinstance(str_val, str) and expr.endswith(']'):
-            index_expr = expr[bracket_pos + 1:-1]
-            idx = _resolve_int(index_expr, table, varname)
-            if idx is not None and 0 <= idx < len(str_val):
-                return str_val[idx]
+    # VARNAME.KEY[VARNAME.KEY2] -- string indexing into a table value
+    if expression.startswith(prefix) and '[' in expression and '=' not in expression:
+        bracket_pos = expression.index('[')
+        key = expression[len(prefix) : bracket_pos]
+        string_value = table.get(key)
+        if isinstance(string_value, str) and expression.endswith(']'):
+            index_expression = expression[bracket_pos + 1 : -1]
+            resolved_index = _resolve_int(index_expression, table, varname)
+            if resolved_index is not None and 0 <= resolved_index < len(string_value):
+                return string_value[resolved_index]
         return None
 
     # Coercion with index: (![]+"")[$._$_]
-    if expr.endswith(']'):
-        val = _eval_coercion_indexed(expr, table, varname)
-        if val is not None:
-            return val
+    if expression.endswith(']'):
+        value = _eval_coercion_indexed(expression, table, varname)
+        if value is not None:
+            return value
 
-    # Concatenation: expr + expr + ...
-    if '+' in expr:
-        tokens = _split_at_depth_zero(expr, '+')
+    # Concatenation: expression + expression + ...
+    if '+' in expression:
+        tokens = _split_at_depth_zero(expression, '+')
         if len(tokens) > 1:
             parts = []
             for token in tokens:
-                token_val = _eval_expr(token, table, varname, depth + 1)
-                if token_val is None:
+                token_value = _eval_expression(token, table, varname, depth + 1)
+                if token_value is None:
                     return None
-                parts.append(token_val)
+                parts.append(token_value)
             return ''.join(parts)
 
     return None
@@ -345,7 +355,9 @@ def _eval_expr(expr: str, table: dict[str, int | str], varname: str, depth: int 
 
 def _eval_inner(inner: str, table: dict[str, int | str], varname: str, depth: int = 0) -> str | None:
     """Evaluate the inside of a parenthesised expression.
-    Handles sub-assignments and simple expressions."""
+
+    Handles sub-assignments and simple expressions.
+    """
     if depth > _MAX_EVAL_DEPTH:
         return None
 
@@ -355,31 +367,31 @@ def _eval_inner(inner: str, table: dict[str, int | str], varname: str, depth: in
     if inner.startswith(prefix):
         eq_pos = _find_top_level_eq(inner)
         if eq_pos is not None:
-            key = inner[len(prefix):eq_pos]
-            rhs = inner[eq_pos + 1:]
-            val = _eval_expr(rhs, table, varname, depth + 1)
-            if val is not None:
-                table[key] = val
-                return val
+            key = inner[len(prefix) : eq_pos]
+            right_side = inner[eq_pos + 1 :]
+            value = _eval_expression(right_side, table, varname, depth + 1)
+            if value is not None:
+                table[key] = value
+                return value
 
     # Coercion expression like !$+"" or ![]+"", etc.
-    coercion_str = _eval_coercion(inner, varname)
-    if coercion_str is not None:
-        return coercion_str
+    coercion_string = _eval_coercion(inner, varname)
+    if coercion_string is not None:
+        return coercion_string
 
     # Just a nested expression
-    return _eval_expr(inner, table, varname, depth + 1)
+    return _eval_expression(inner, table, varname, depth + 1)
 
 
-def _find_top_level_eq(expr: str) -> int | None:
+def _find_top_level_eq(expression: str) -> int | None:
     """Find the position of the first ``=`` at depth 0 that is not ``==``."""
     depth = 0
     in_string = None
     index = 0
-    while index < len(expr):
-        character = expr[index]
+    while index < len(expression):
+        character = expression[index]
         if in_string is not None:
-            if character == '\\' and index + 1 < len(expr):
+            if character == '\\' and index + 1 < len(expression):
                 index += 2
                 continue
             if character == in_string:
@@ -394,7 +406,7 @@ def _find_top_level_eq(expr: str) -> int | None:
             depth -= 1
         elif character == '=' and depth == 0:
             # Check not ==
-            if index + 1 < len(expr) and expr[index + 1] == '=':
+            if index + 1 < len(expression) and expression[index + 1] == '=':
                 index += 2
                 continue
             return index
@@ -402,20 +414,19 @@ def _find_top_level_eq(expr: str) -> int | None:
     return None
 
 
-def _eval_coercion_indexed(expr: str, table: dict[str, int | str], varname: str) -> str | None:
-    """Handle ``(![]+"")[$._$_]`` — coercion string indexed by a
-    symbol table reference."""
-    if not expr.endswith(']'):
+def _eval_coercion_indexed(expression: str, table: dict[str, int | str], varname: str) -> str | None:
+    """Handle ``(![]+"")[$._$_]`` -- coercion string indexed by a symbol table reference."""
+    if not expression.endswith(']'):
         return None
 
-    bracket_end = len(expr) - 1
+    bracket_end = len(expression) - 1
     depth = 0
     bracket_start = -1
     scan = bracket_end
     while scan >= 0:
-        if expr[scan] == ']':
+        if expression[scan] == ']':
             depth += 1
-        elif expr[scan] == '[':
+        elif expression[scan] == '[':
             depth -= 1
             if depth == 0:
                 bracket_start = scan
@@ -425,34 +436,34 @@ def _eval_coercion_indexed(expr: str, table: dict[str, int | str], varname: str)
     if bracket_start <= 0:
         return None
 
-    coercion_part = expr[:bracket_start].strip()
-    index_expr = expr[bracket_start + 1:bracket_end].strip()
+    coercion_part = expression[:bracket_start].strip()
+    index_expression = expression[bracket_start + 1 : bracket_end].strip()
 
-    coercion_str = _eval_coercion(coercion_part, varname)
-    if coercion_str is None:
+    coercion_string = _eval_coercion(coercion_part, varname)
+    if coercion_string is None:
         return None
 
-    idx = _resolve_int(index_expr, table, varname)
-    if idx is None:
+    resolved_index = _resolve_int(index_expression, table, varname)
+    if resolved_index is None:
         return None
 
-    if 0 <= idx < len(coercion_str):
-        return coercion_str[idx]
+    if 0 <= resolved_index < len(coercion_string):
+        return coercion_string[resolved_index]
     return ''
 
 
-def _resolve_int(expr: str, table: dict[str, int | str], varname: str) -> int | None:
-    """Resolve an expression to an integer."""
-    expr = expr.strip()
+def _resolve_int(expression: str, table: dict[str, int | str], varname: str) -> int | None:
+    """Resolve a JJEncode expression to an integer value."""
+    expression = expression.strip()
     prefix = varname + '.'
-    if expr.startswith(prefix):
-        key = expr[len(prefix):]
-        val = table.get(key)
-        if isinstance(val, int):
-            return val
+    if expression.startswith(prefix):
+        key = expression[len(prefix) :]
+        value = table.get(key)
+        if isinstance(value, int):
+            return value
         return None
     try:
-        return int(expr)
+        return int(expression)
     except ValueError:
         return None
 
@@ -462,31 +473,31 @@ def _resolve_int(expr: str, table: dict[str, int | str], varname: str) -> int | 
 # ---------------------------------------------------------------------------
 
 
-def _parse_augment_statement(stmt: str, table: dict[str, int | str], varname: str) -> None:
+def _parse_augment_statement(statement: str, table: dict[str, int | str], varname: str) -> None:
     """Parse statements that build multi-character strings like
     "constructor" and "return" by concatenation, and store
     intermediate single-char sub-assignments into the table."""
-    stmt = stmt.strip()
+    statement = statement.strip()
     prefix = varname + '.'
 
-    # Find top-level = to split LHS and RHS
-    eq_pos = _find_top_level_eq(stmt)
+    # Find top-level = to split left/right sides
+    eq_pos = _find_top_level_eq(statement)
     if eq_pos is None:
         return
-    lhs = stmt[:eq_pos].strip()
-    rhs = stmt[eq_pos + 1:].strip()
+    left_side = statement[:eq_pos].strip()
+    right_side = statement[eq_pos + 1 :].strip()
 
-    if not lhs.startswith(prefix):
+    if not left_side.startswith(prefix):
         return
-    top_key = lhs[len(prefix):]
+    top_key = left_side[len(prefix) :]
 
-    # Evaluate the RHS: it's a + concatenation of terms
-    tokens = _split_at_depth_zero(rhs, '+')
+    # Evaluate the right side: it's a + concatenation of terms
+    tokens = _split_at_depth_zero(right_side, '+')
     resolved = []
     for token in tokens:
-        val = _eval_expr(token, table, varname)
-        if val is not None:
-            resolved.append(val)
+        value = _eval_expression(token, table, varname)
+        if value is not None:
+            resolved.append(value)
         else:
             resolved.append('?')
 
@@ -530,9 +541,9 @@ def _decode_escapes(text: str) -> str:
 
             # Unicode escape \uNNNN
             if next_character == 'u' and index + 5 < len(text):
-                hex_str = text[index + 2:index + 6]
+                hex_digits = text[index + 2 : index + 6]
                 try:
-                    result.append(chr(int(hex_str, 16)))
+                    result.append(chr(int(hex_digits, 16)))
                     index += 6
                     continue
                 except ValueError:
@@ -540,9 +551,9 @@ def _decode_escapes(text: str) -> str:
 
             # Hex escape \xNN
             if next_character == 'x' and index + 3 < len(text):
-                hex_str = text[index + 2:index + 4]
+                hex_digits = text[index + 2 : index + 4]
                 try:
-                    result.append(chr(int(hex_str, 16)))
+                    result.append(chr(int(hex_digits, 16)))
                     index += 4
                     continue
                 except ValueError:
@@ -584,25 +595,25 @@ def _decode_escapes(text: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _extract_payload_expression(stmt: str, varname: str) -> str | None:
+def _extract_payload_expression(statement: str, varname: str) -> str | None:
     """Extract the inner concatenation expression from the payload
     statement ``$.$($.$(EXPR)())()``."""
     # Find VARNAME.$(VARNAME.$(
     inner_prefix = varname + '.$(' + varname + '.$('
-    idx = stmt.find(inner_prefix)
-    if idx == -1:
+    prefix_index = statement.find(inner_prefix)
+    if prefix_index == -1:
         return None
 
-    start = idx + len(inner_prefix)
+    start = prefix_index + len(inner_prefix)
 
     # Find matching ) for the inner $.$(
     depth = 1
     in_string = None
     index = start
-    while index < len(stmt):
-        character = stmt[index]
+    while index < len(statement):
+        character = statement[index]
         if in_string is not None:
-            if character == '\\' and index + 1 < len(stmt):
+            if character == '\\' and index + 1 < len(statement):
                 index += 2
                 continue
             if character == in_string:
@@ -618,7 +629,7 @@ def _extract_payload_expression(stmt: str, varname: str) -> str | None:
         elif character == ')':
             depth -= 1
             if depth == 0:
-                return stmt[start:index]
+                return statement[start:index]
         index += 1
 
     return None
@@ -634,21 +645,21 @@ def jj_decode(code: str) -> str | None:
     ``None`` on any failure."""
     try:
         return _jj_decode_inner(code)
-    except (ValueError, TypeError, IndexError, KeyError, OverflowError,
-            AttributeError, re.error):
+    except (ValueError, TypeError, IndexError, KeyError, OverflowError, AttributeError, re.error):
         return None
 
 
 def _jj_decode_inner(code: str) -> str | None:
+    """Core decode logic, called by jj_decode with exception handling."""
     if not code or not code.strip():
         return None
 
     stripped = code.strip()
 
-    match = re.match(r'^([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*~\s*\[\s*\]', stripped)
-    if not match:
+    pattern_match = re.match(r'^([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=\s*~\s*\[\s*\]', stripped)
+    if not pattern_match:
         return None
-    varname = match.group(1)
+    varname = pattern_match.group(1)
 
     # Find the JJEncode line
     jj_line = None
@@ -662,10 +673,10 @@ def _jj_decode_inner(code: str) -> str | None:
         return None
 
     # Split into semicolon-delimited statements at depth 0
-    stmts = _split_at_depth_zero(jj_line, ';')
-    stmts = [statement.strip() for statement in stmts if statement.strip()]
+    statements = _split_at_depth_zero(jj_line, ';')
+    statements = [entry.strip() for entry in statements if entry.strip()]
 
-    if len(stmts) < 5:
+    if len(statements) < 5:
         return None
 
     # Statement 0: VARNAME=~[]
@@ -675,20 +686,19 @@ def _jj_decode_inner(code: str) -> str | None:
     # Statement 4: VARNAME.$=...   (Function constructor)
     # Statement 5 (last): payload invocation
 
-    # --- Parse symbol table ---
-    symbol_table = _parse_symbol_table(stmts[1], varname)
+    symbol_table = _parse_symbol_table(statements[1], varname)
     if symbol_table is None:
         return None
 
-    # --- Parse statement 2 (constructor string + sub-assignments) ---
-    _parse_augment_statement(stmts[2], symbol_table, varname)
+    # Parse statement 2 (constructor string + sub-assignments)
+    _parse_augment_statement(statements[2], symbol_table, varname)
 
-    # --- Parse statement 3 (return string) ---
-    _parse_augment_statement(stmts[3], symbol_table, varname)
+    # Parse statement 3 (return string)
+    _parse_augment_statement(statements[3], symbol_table, varname)
 
-    # --- Extract payload from the last statement ---
-    payload_stmt = stmts[-1]
-    inner = _extract_payload_expression(payload_stmt, varname)
+    # Extract payload from the last statement
+    payload_statement = statements[-1]
+    inner = _extract_payload_expression(payload_statement, varname)
     if inner is None:
         return None
 
@@ -696,25 +706,25 @@ def _jj_decode_inner(code: str) -> str | None:
     tokens = _split_at_depth_zero(inner, '+')
     resolved = []
     for token in tokens:
-        val = _eval_expr(token, symbol_table, varname)
-        if val is None:
+        value = _eval_expression(token, symbol_table, varname)
+        if value is None:
             return None
-        resolved.append(val)
+        resolved.append(value)
 
-    payload_str = ''.join(resolved)
+    payload_string = ''.join(resolved)
 
     # Result should be: return"..."
-    if not payload_str.startswith('return'):
+    if not payload_string.startswith('return'):
         return None
-    payload_str = payload_str[len('return'):]
+    payload_string = payload_string[len('return') :]
 
     # Strip surrounding quotes
-    payload_str = payload_str.strip()
-    if len(payload_str) >= 2 and payload_str[0] == '"' and payload_str[-1] == '"':
-        payload_str = payload_str[1:-1]
-    elif len(payload_str) >= 2 and payload_str[0] == "'" and payload_str[-1] == "'":
-        payload_str = payload_str[1:-1]
+    payload_string = payload_string.strip()
+    if len(payload_string) >= 2 and payload_string[0] == '"' and payload_string[-1] == '"':
+        payload_string = payload_string[1:-1]
+    elif len(payload_string) >= 2 and payload_string[0] == "'" and payload_string[-1] == "'":
+        payload_string = payload_string[1:-1]
     else:
         return None
 
-    return _decode_escapes(payload_str)
+    return _decode_escapes(payload_string)

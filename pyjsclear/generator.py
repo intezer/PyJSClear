@@ -1,5 +1,7 @@
 """ESTree AST to JavaScript code generator."""
+
 from __future__ import annotations
+
 
 # Operator precedence (higher = binds tighter)
 _PRECEDENCE = {
@@ -72,9 +74,9 @@ def generate(node: dict | None, indent: int = 0) -> str:
         return str(node)
 
     node_type = node.get('type', '')
-    gen = _GENERATORS.get(node_type)
-    if gen:
-        return gen(node, indent)
+    generator_function = _GENERATORS.get(node_type)
+    if generator_function:
+        return generator_function(node, indent)
     return f'/* unknown: {node_type} */'
 
 
@@ -153,12 +155,12 @@ def _gen_function(node: dict, indent: int, is_expression: bool = False) -> str:
     name = generate(node['id'], indent) if node.get('id') else ''
     params = ', '.join(generate(param, indent) for param in node.get('params', []))
     async_prefix = 'async ' if node.get('async') else ''
-    gen_prefix = '*' if node.get('generator') else ''
+    generator_prefix = '*' if node.get('generator') else ''
     body = generate(node['body'], indent)
     if name:
-        return f'{async_prefix}function{gen_prefix} {name}({params}) {body}'
+        return f'{async_prefix}function{generator_prefix} {name}({params}) {body}'
     # Anonymous: always put space before parens (Babel style)
-    return f'{async_prefix}function{gen_prefix} ({params}) {body}'
+    return f'{async_prefix}function{generator_prefix} ({params}) {body}'
 
 
 def _gen_function_decl(node: dict, indent: int) -> str:
@@ -172,13 +174,13 @@ def _gen_function_expr(node: dict, indent: int) -> str:
 def _gen_arrow(node: dict, indent: int) -> str:
     params = node.get('params', [])
     async_prefix = 'async ' if node.get('async') else ''
-    param_str = '(' + ', '.join(generate(param, indent) for param in params) + ')'
+    parameter_string = '(' + ', '.join(generate(param, indent) for param in params) + ')'
     body = node.get('body', {})
-    body_str = generate(body, indent)
+    body_string = generate(body, indent)
     # Wrap object literal in parens to avoid ambiguity with block
     if body.get('type') == 'ObjectExpression':
-        body_str = '(' + body_str + ')'
-    return f'{async_prefix}{param_str} => {body_str}'
+        body_string = '(' + body_string + ')'
+    return f'{async_prefix}{parameter_string} => {body_string}'
 
 
 def _gen_return(node: dict, indent: int) -> str:
@@ -344,13 +346,13 @@ def _gen_assignment(node: dict, indent: int) -> str:
 
 def _gen_member(node: dict, indent: int) -> str:
     object_code = generate(node['object'], indent)
-    obj_type = node['object'].get('type', '')
+    object_type = node['object'].get('type', '')
     computed = node.get('computed')
 
     needs_parens = False
-    if obj_type == 'Literal' and isinstance(node['object'].get('value'), (int, float)):
+    if object_type == 'Literal' and isinstance(node['object'].get('value'), (int, float)):
         needs_parens = not computed
-    elif obj_type in (
+    elif object_type in (
         'BinaryExpression',
         'UnaryExpression',
         'ConditionalExpression',
@@ -364,12 +366,12 @@ def _gen_member(node: dict, indent: int) -> str:
         object_code = f'({object_code})'
 
     property_code = generate(node['property'], indent)
-    dot = '?.' if node.get('optional') else '.'
+    accessor = '?.' if node.get('optional') else '.'
     if computed:
         if node.get('optional'):
             return f'{object_code}?.[{property_code}]'
         return f'{object_code}[{property_code}]'
-    return f'{object_code}{dot}{property_code}'
+    return f'{object_code}{accessor}{property_code}'
 
 
 def _gen_call(node: dict, indent: int) -> str:
@@ -377,18 +379,18 @@ def _gen_call(node: dict, indent: int) -> str:
     callee_type = node['callee'].get('type', '')
     if callee_type in ('FunctionExpression', 'ArrowFunctionExpression', 'SequenceExpression'):
         callee = f'({callee})'
-    args = ', '.join(generate(argument, indent) for argument in node.get('arguments', []))
+    argument_string = ', '.join(generate(argument, indent) for argument in node.get('arguments', []))
     if node.get('optional'):
-        return f'{callee}?.({args})'
-    return f'{callee}({args})'
+        return f'{callee}?.({argument_string})'
+    return f'{callee}({argument_string})'
 
 
 def _gen_new(node: dict, indent: int) -> str:
     callee = generate(node['callee'], indent)
-    args = node.get('arguments', [])
-    if args:
-        arg_str = ', '.join(generate(argument, indent) for argument in args)
-        return f'new {callee}({arg_str})'
+    arguments = node.get('arguments', [])
+    if arguments:
+        argument_string = ', '.join(generate(argument, indent) for argument in arguments)
+        return f'new {callee}({argument_string})'
     return f'new {callee}()'
 
 
@@ -407,14 +409,13 @@ def _gen_conditional(node: dict, indent: int) -> str:
 
 
 def _gen_sequence(node: dict, indent: int) -> str:
-    exprs = ', '.join(generate(expression, indent) for expression in node.get('expressions', []))
-    return exprs
+    return ', '.join(generate(expression, indent) for expression in node.get('expressions', []))
 
 
 def _gen_bracket_list(elements: list, indent: int) -> str:
     """Generate a bracketed list of elements, replacing None with empty slots."""
-    elems = [generate(element, indent) if element is not None else '' for element in elements]
-    return '[' + ', '.join(elems) + ']'
+    generated_elements = [generate(element, indent) if element is not None else '' for element in elements]
+    return '[' + ', '.join(generated_elements) + ']'
 
 
 def _gen_array(node: dict, indent: int) -> str:
@@ -568,8 +569,8 @@ def _gen_method_def(node: dict, indent: int) -> str:
             return f'{static_prefix}set {key}({params}) {body}'
         case _:
             async_prefix = 'async ' if value.get('async') else ''
-            gen_prefix = '*' if value.get('generator') else ''
-            return f'{static_prefix}{async_prefix}{gen_prefix}{key}({params}) {body}'
+            generator_prefix = '*' if value.get('generator') else ''
+            return f'{static_prefix}{async_prefix}{generator_prefix}{key}({params}) {body}'
 
 
 def _gen_yield(node: dict, indent: int) -> str:
@@ -639,9 +640,9 @@ def _gen_import_declaration(node: dict, indent: int) -> str:
     specifiers = node.get('specifiers', [])
     if not specifiers:
         return f'import {source}'
-    default_specifiers = [s for s in specifiers if s.get('type') == 'ImportDefaultSpecifier']
-    namespace_specifiers = [s for s in specifiers if s.get('type') == 'ImportNamespaceSpecifier']
-    named_specifiers = [s for s in specifiers if s.get('type') == 'ImportSpecifier']
+    default_specifiers = [spec for spec in specifiers if spec.get('type') == 'ImportDefaultSpecifier']
+    namespace_specifiers = [spec for spec in specifiers if spec.get('type') == 'ImportNamespaceSpecifier']
+    named_specifiers = [spec for spec in specifiers if spec.get('type') == 'ImportSpecifier']
     parts = []
     if default_specifiers:
         parts.append(_gen_import_specifier(default_specifiers[0], indent))

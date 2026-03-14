@@ -1,5 +1,7 @@
 """Remove dead expression statements (standalone numeric literals like `0;`)."""
 
+from __future__ import annotations
+
 from ..traverser import REMOVE
 from ..traverser import traverse
 from .base import Transform
@@ -13,17 +15,29 @@ class DeadExpressionRemover(Transform):
     """
 
     def execute(self) -> bool:
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> object:
-            if node.get('type') != 'ExpressionStatement':
-                return
-            expression = node.get('expression')
-            if not isinstance(expression, dict) or expression.get('type') != 'Literal':
-                return
-            value = expression.get('value')
-            # Only remove numeric literals (not strings/booleans/null/regex)
-            if isinstance(value, (int, float)) and not isinstance(value, bool):
-                self.set_changed()
-                return REMOVE
-
-        traverse(self.ast, {'enter': enter})
+        """Traverse the AST and remove dead numeric literal statements."""
+        traverse(self.ast, {'enter': self._enter_visitor})
         return self.has_changed()
+
+    def _enter_visitor(
+        self,
+        node: dict,
+        parent: dict | None,
+        key: str | None,
+        index: int | None,
+    ) -> object | None:
+        """Remove numeric literal expression statements, return REMOVE or None."""
+        if node.get('type') != 'ExpressionStatement':
+            return None
+
+        expression = node.get('expression')
+        if not isinstance(expression, dict) or expression.get('type') != 'Literal':
+            return None
+
+        value = expression.get('value')
+        # only remove numeric literals (not strings/booleans/null/regex)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            self.set_changed()
+            return REMOVE
+
+        return None

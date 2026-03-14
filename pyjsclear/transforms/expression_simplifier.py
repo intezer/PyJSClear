@@ -1,5 +1,7 @@
 """Evaluate static unary/binary expressions to literals."""
 
+from __future__ import annotations
+
 import math
 from typing import Any
 
@@ -43,95 +45,74 @@ class ExpressionSimplifier(Transform):
     """Simplify constant unary/binary expressions to literals."""
 
     def execute(self) -> bool:
-        self._simplify_unary_binary()
-        self._simplify_conditionals()
-        self._simplify_awaits()
-        self._simplify_comma_calls()
+        """Run all expression simplification passes and return whether AST changed."""
+        self._simplify_all()
         self._simplify_method_calls()
         return self.has_changed()
 
-    def _simplify_unary_binary(self) -> None:
-        """Fold constant unary and binary expressions."""
+    def _simplify_all(self) -> None:
+        """Single-pass simplification of unary/binary, conditionals, awaits, and comma calls."""
 
         def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
-            match node.get('type', ''):
-                case 'UnaryExpression':
-                    result = self._simplify_unary(node)
-                case 'BinaryExpression':
-                    result = self._simplify_binary(node)
-                case _:
-                    return None
-            if result is not None:
-                self.set_changed()
-                return result
-            return None
+            node_type = node.get('type', '')
 
-        traverse(self.ast, {'enter': enter})
-
-    def _simplify_conditionals(self) -> None:
-        """Convert test ? false : true → !test."""
-
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
-            if node.get('type') != 'ConditionalExpression':
+            if node_type == 'UnaryExpression':
+                result = self._simplify_unary(node)
+                if result is not None:
+                    self.set_changed()
+                    return result
                 return None
-            consequent = node.get('consequent')
-            alternate = node.get('alternate')
-            if (
-                is_literal(consequent)
-                and consequent.get('value') is False
-                and is_literal(alternate)
-                and alternate.get('value') is True
-            ):
-                self.set_changed()
-                return {
-                    'type': 'UnaryExpression',
-                    'operator': '!',
-                    'prefix': True,
-                    'argument': node['test'],
-                }
+
+            if node_type == 'BinaryExpression':
+                result = self._simplify_binary(node)
+                if result is not None:
+                    self.set_changed()
+                    return result
+                return None
+
+            if node_type == 'ConditionalExpression':
+                consequent = node.get('consequent')
+                alternate = node.get('alternate')
+                if (
+                    is_literal(consequent)
+                    and consequent.get('value') is False
+                    and is_literal(alternate)
+                    and alternate.get('value') is True
+                ):
+                    self.set_changed()
+                    return {
+                        'type': 'UnaryExpression',
+                        'operator': '!',
+                        'prefix': True,
+                        'argument': node['test'],
+                    }
+                return None
+
+            if node_type == 'AwaitExpression':
+                argument = node.get('argument')
+                if isinstance(argument, dict) and argument.get('type') == 'SequenceExpression':
+                    expressions = argument.get('expressions', [])
+                    if len(expressions) > 1:
+                        node['argument'] = expressions[-1]
+                        self.set_changed()
+                return None
+
+            if node_type == 'CallExpression':
+                callee = node.get('callee')
+                if isinstance(callee, dict) and callee.get('type') == 'SequenceExpression':
+                    expressions = callee.get('expressions', [])
+                    if len(expressions) >= 2:
+                        if all(isinstance(e, dict) and e.get('type') == 'Literal' for e in expressions[:-1]):
+                            node['callee'] = expressions[-1]
+                            self.set_changed()
+                return None
+
             return None
-
-        traverse(self.ast, {'enter': enter})
-
-    def _simplify_awaits(self) -> None:
-        """Simplify await (0x0, expr) → await expr."""
-
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
-            if node.get('type') != 'AwaitExpression':
-                return
-            argument = node.get('argument')
-            if not isinstance(argument, dict) or argument.get('type') != 'SequenceExpression':
-                return
-            expressions = argument.get('expressions', [])
-            if len(expressions) <= 1:
-                return
-            node['argument'] = expressions[-1]
-            self.set_changed()
-
-        traverse(self.ast, {'enter': enter})
-
-    def _simplify_comma_calls(self) -> None:
-        """Simplify (0, expr)(args) → expr(args)."""
-
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
-            if node.get('type') != 'CallExpression':
-                return
-            callee = node.get('callee')
-            if not isinstance(callee, dict) or callee.get('type') != 'SequenceExpression':
-                return
-            expressions = callee.get('expressions', [])
-            if len(expressions) < 2:
-                return
-            # Only simplify when the leading expressions are side-effect-free literals
-            for expression in expressions[:-1]:
-                if not isinstance(expression, dict) or expression.get('type') != 'Literal':
-                    return
-            node['callee'] = expressions[-1]
-            self.set_changed()
 
         traverse(self.ast, {'enter': enter})
 
     def _simplify_unary(self, node: dict) -> dict | None:
+        """Fold a constant unary expression into a single literal node."""
         operator = node.get('operator', '')
         if operator not in _RESOLVABLE_UNARY:
             return None
@@ -156,6 +137,7 @@ class ExpressionSimplifier(Transform):
         return self._value_to_node(result)
 
     def _simplify_binary(self, node: dict) -> dict | None:
+        """Fold a constant binary expression into a single literal node."""
         operator = node.get('operator', '')
         if operator not in _RESOLVABLE_BINARY:
             return None
@@ -181,6 +163,7 @@ class ExpressionSimplifier(Transform):
         return self._value_to_node(result)
 
     def _simplify_expr(self, node: Any) -> Any:
+        """Recursively simplify a sub-expression if it is unary or binary."""
         if not isinstance(node, dict):
             return node
         match node.get('type', ''):
@@ -193,6 +176,7 @@ class ExpressionSimplifier(Transform):
         return node
 
     def _is_negative_numeric(self, node: Any) -> bool:
+        """Check whether node is a unary-minus wrapping a numeric literal."""
         return (
             isinstance(node, dict)
             and node.get('type') == 'UnaryExpression'
@@ -202,6 +186,7 @@ class ExpressionSimplifier(Transform):
         )
 
     def _get_resolvable_value(self, node: Any) -> tuple[Any, bool]:
+        """Extract a Python value from a constant AST node, returning (value, resolved)."""
         if not isinstance(node, dict):
             return None, False
         match node.get('type', ''):
@@ -224,6 +209,7 @@ class ExpressionSimplifier(Transform):
         return None, False
 
     def _apply_unary(self, operator: str, value: Any) -> Any:
+        """Evaluate a JS unary operator on a resolved Python value."""
         match operator:
             case '-':
                 return -self._js_to_number(value)
@@ -242,6 +228,7 @@ class ExpressionSimplifier(Transform):
                 return None  # JS undefined
 
     def _apply_binary(self, operator: str, left: Any, right: Any) -> Any:
+        """Evaluate a JS binary operator on two resolved Python values."""
         match operator:
             case '+':
                 if isinstance(left, str) or isinstance(right, str):
@@ -311,6 +298,7 @@ class ExpressionSimplifier(Transform):
         return left == right and type(left) == type(right)
 
     def _js_truthy(self, value: Any) -> bool:
+        """Return whether a JS value is truthy per JS coercion rules."""
         if value is None or value is _JS_NULL:
             return False
         match value:
@@ -326,6 +314,7 @@ class ExpressionSimplifier(Transform):
                 return bool(value)
 
     def _js_typeof(self, value: Any) -> str:
+        """Return the JS typeof string for a resolved Python value."""
         if value is _JS_NULL:
             return 'object'  # typeof null === 'object' in JS
         if value is None:
@@ -347,6 +336,7 @@ class ExpressionSimplifier(Transform):
         return int(self._js_to_number(value))
 
     def _js_to_number(self, value: Any) -> int | float:
+        """Coerce a Python value to a number following JS Number() semantics."""
         if value is _JS_NULL:
             return 0  # Number(null) → 0
         if value is None:
@@ -371,6 +361,7 @@ class ExpressionSimplifier(Transform):
                 return 0
 
     def _js_to_string(self, value: Any) -> str:
+        """Coerce a Python value to a string following JS String() semantics."""
         if value is _JS_NULL:
             return 'null'
         if value is None:
@@ -390,7 +381,7 @@ class ExpressionSimplifier(Transform):
                 return str(value)
 
     def _js_compare(self, left: Any, right: Any) -> int | float:
-        # JS compares strings lexicographically, not numerically
+        """Compare two JS values, returning -1/0/1 or NaN for uncomparable."""
         if isinstance(left, str) and isinstance(right, str):
             if left < right:
                 return -1
@@ -412,6 +403,7 @@ class ExpressionSimplifier(Transform):
         return 0
 
     def _value_to_node(self, value: Any) -> dict | None:
+        """Convert a resolved Python value back into an AST literal node."""
         if value is _JS_NULL:
             return make_literal(None)  # null literal
         if value is None:
@@ -448,19 +440,23 @@ class ExpressionSimplifier(Transform):
             callee = node.get('callee')
             if not isinstance(callee, dict) or callee.get('type') != 'MemberExpression':
                 return None
-            prop = callee.get('property')
-            if not prop:
+            property_node = callee.get('property')
+            if not property_node:
                 return None
-            method_name = prop.get('name') if prop.get('type') == 'Identifier' else None
+            method_name = property_node.get('name') if property_node.get('type') == 'Identifier' else None
             if not method_name:
                 return None
 
             # (N).toString() → "N"
             if method_name == 'toString' and len(node.get('arguments', [])) == 0:
-                obj = callee.get('object')
-                if is_numeric_literal(obj):
-                    val = obj['value']
-                    string_value = str(int(val)) if isinstance(val, float) and val == int(val) else str(val)
+                object_node = callee.get('object')
+                if is_numeric_literal(object_node):
+                    numeric_value = object_node['value']
+                    string_value = (
+                        str(int(numeric_value))
+                        if isinstance(numeric_value, float) and numeric_value == int(numeric_value)
+                        else str(numeric_value)
+                    )
                     self.set_changed()
                     return make_literal(string_value)
 
@@ -475,30 +471,24 @@ class ExpressionSimplifier(Transform):
 
         traverse(self.ast, {'enter': enter})
 
-    def _try_eval_buffer_from_tostring(self, obj: Any, arguments: list) -> str | None:
+    def _try_eval_buffer_from_tostring(self, object_node: Any, arguments: list) -> str | None:
         """Try to evaluate Buffer.from([...nums...]).toString(encoding)."""
-        if not isinstance(obj, dict) or obj.get('type') != 'CallExpression':
+        if not isinstance(object_node, dict) or object_node.get('type') != 'CallExpression':
             return None
-        callee = obj.get('callee')
+        callee = object_node.get('callee')
         if not isinstance(callee, dict) or callee.get('type') != 'MemberExpression':
             return None
         # Check for Buffer.from
         buffer_object = callee.get('object')
         buffer_property = callee.get('property')
-        if not (
-            buffer_object
-            and buffer_object.get('type') == 'Identifier'
-            and buffer_object.get('name') == 'Buffer'
-        ):
+        if not (buffer_object and buffer_object.get('type') == 'Identifier' and buffer_object.get('name') == 'Buffer'):
             return None
         if not (
-            buffer_property
-            and buffer_property.get('type') == 'Identifier'
-            and buffer_property.get('name') == 'from'
+            buffer_property and buffer_property.get('type') == 'Identifier' and buffer_property.get('name') == 'from'
         ):
             return None
         # First arg must be an array of numbers
-        call_args = obj.get('arguments', [])
+        call_args = object_node.get('arguments', [])
         if not call_args or call_args[0].get('type') != 'ArrayExpression':
             return None
         elements = call_args[0].get('elements', [])
@@ -506,10 +496,15 @@ class ExpressionSimplifier(Transform):
         for element in elements:
             if not is_numeric_literal(element):
                 return None
-            val = element['value']
-            if not isinstance(val, (int, float)) or val != int(val) or val < 0 or val > 255:
+            element_value = element['value']
+            if (
+                not isinstance(element_value, (int, float))
+                or element_value != int(element_value)
+                or element_value < 0
+                or element_value > 255
+            ):
                 return None
-            byte_values.append(int(val))
+            byte_values.append(int(element_value))
         # Determine encoding for toString
         encoding = 'utf8'
         if arguments and is_literal(arguments[0]) and isinstance(arguments[0].get('value'), str):

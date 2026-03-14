@@ -9,6 +9,8 @@ Detects patterns like:
 And removes the assignment statements when the property is only written, never read.
 """
 
+from __future__ import annotations
+
 from ..traverser import REMOVE
 from ..traverser import simple_traverse
 from ..traverser import traverse
@@ -17,7 +19,10 @@ from ..utils.ast_helpers import is_side_effect_free
 from .base import Transform
 
 
-# Objects that may be externally observed — never remove their property assignments.
+# Pair of (object_name, property_name) for tracking member accesses.
+PropertyPair = tuple[str, str]
+
+# Objects that may be externally observed; never remove their property assignments.
 _GLOBAL_OBJECTS = frozenset(
     {
         'module',
@@ -42,109 +47,193 @@ _GLOBAL_OBJECTS = frozenset(
     }
 )
 
+# AST node types whose parameters are externally provided.
+_FUNCTION_NODE_TYPES = frozenset(
+    {
+        'FunctionDeclaration',
+        'FunctionExpression',
+        'ArrowFunctionExpression',
+    }
+)
+
+# AST node types that pass identifiers as arguments.
+_CALL_NODE_TYPES = frozenset(
+    {
+        'CallExpression',
+        'NewExpression',
+    }
+)
+
+
+def _collect_local_variables(
+    node: dict,
+    _parent: dict | None,
+    local_variables: set[str],
+    escaped_names: set[str],
+) -> None:
+    """Record locally declared variable names and mark function params as escaped."""
+    if not isinstance(node, dict):
+        return
+    node_type = node.get('type')
+    if node_type == 'VariableDeclarator':
+        variable_id = node.get('id')
+        if variable_id and is_identifier(variable_id):
+            local_variables.add(variable_id['name'])
+    if node_type in _FUNCTION_NODE_TYPES:
+        for parameter in node.get('params', []):
+            if is_identifier(parameter):
+                escaped_names.add(parameter['name'])
+
+
+def _track_escaped_identifier(
+    node: dict,
+    parent: dict,
+    escaped_names: set[str],
+) -> None:
+    """Mark an identifier as escaped if it flows to an external context."""
+    identifier_name = node.get('name', '')
+    if identifier_name in _GLOBAL_OBJECTS:
+        escaped_names.add(identifier_name)
+
+    parent_type = parent.get('type')
+
+    # RHS of assignment to a member (e.g., r.exports = object_ref)
+    if parent_type == 'AssignmentExpression' and node is parent.get('right'):
+        left_side = parent.get('left')
+        if left_side and left_side.get('type') == 'MemberExpression':
+            escaped_names.add(identifier_name)
+
+    # Function/method argument
+    if parent_type in _CALL_NODE_TYPES:
+        if node in parent.get('arguments', []):
+            escaped_names.add(identifier_name)
+
+    # Return value
+    if parent_type == 'ReturnStatement':
+        escaped_names.add(identifier_name)
+
+
+def _extract_member_pair(node: dict) -> PropertyPair | None:
+    """Extract (object_name, property_name) from a non-computed MemberExpression."""
+    if node.get('computed'):
+        return None
+    object_node = node.get('object')
+    property_node = node.get('property')
+    if not object_node or not is_identifier(object_node):
+        return None
+    if not property_node or not is_identifier(property_node):
+        return None
+    return (object_node['name'], property_node['name'])
+
+
+def _collect_member_accesses(
+    node: dict,
+    parent: dict | None,
+    write_counts: dict[PropertyPair, int],
+    read_pairs: set[PropertyPair],
+    escaped_names: set[str],
+) -> None:
+    """Collect member property writes, reads, and escaped identifiers."""
+    if not isinstance(node, dict):
+        return
+    node_type = node.get('type')
+
+    if node_type == 'Identifier' and parent:
+        _track_escaped_identifier(node, parent, escaped_names)
+        return
+
+    if node_type != 'MemberExpression':
+        return
+
+    member_pair = _extract_member_pair(node)
+    if member_pair is None:
+        return
+
+    # Write (assignment target) vs read
+    if parent and parent.get('type') == 'AssignmentExpression' and node is parent.get('left'):
+        write_counts[member_pair] = write_counts.get(member_pair, 0) + 1
+    else:
+        read_pairs.add(member_pair)
+
+
+def _is_removable_dead_assignment(
+    node: dict,
+    dead_properties: set[PropertyPair],
+) -> bool:
+    """Check whether a node is a dead property assignment that can be removed."""
+    if node.get('type') != 'ExpressionStatement':
+        return False
+    expression = node.get('expression')
+    if not expression or expression.get('type') != 'AssignmentExpression':
+        return False
+    left_side = expression.get('left')
+    if not left_side or left_side.get('type') != 'MemberExpression' or left_side.get('computed'):
+        return False
+
+    member_pair = _extract_member_pair(left_side)
+    if member_pair is None or member_pair not in dead_properties:
+        return False
+
+    right_side = expression.get('right')
+    return is_side_effect_free(right_side)
+
 
 class DeadObjectPropRemover(Transform):
     """Remove object property assignments where the property is never read."""
 
     def execute(self) -> bool:
-        # Phase 1: Find all obj.PROP = value statements and all obj.PROP reads.
-        # Also track which objects "escape" (are assigned to external refs, passed as
-        # function arguments, or returned) — their properties may be read externally.
-        writes: dict[tuple[str, str], int] = {}  # (obj_name, prop_name) -> count
-        reads: set[tuple[str, str]] = set()  # set of (obj_name, prop_name)
-        escaped: set[str] = set()  # set of obj_name that escape
+        """Scan for write-only object properties and remove their assignments."""
+        write_counts: dict[PropertyPair, int] = {}
+        read_pairs: set[PropertyPair] = set()
+        escaped_names: set[str] = set()
+        local_variables: set[str] = set()
 
-        # Phase 0: Collect locally declared variable names (var/let/const).
-        # Only properties on locally declared objects are candidates for removal.
-        local_vars: set[str] = set()
+        # Phase 1: collect locally declared variables and mark function params as escaped.
+        simple_traverse(
+            self.ast,
+            lambda node, parent: _collect_local_variables(
+                node,
+                parent,
+                local_variables,
+                escaped_names,
+            ),
+        )
 
-        def collect_locals(node: dict, parent: dict | None) -> None:
-            if not isinstance(node, dict):
-                return
-            node_type = node.get('type')
-            if node_type == 'VariableDeclarator':
-                variable_id = node.get('id')
-                if variable_id and is_identifier(variable_id):
-                    local_vars.add(variable_id['name'])
-            # Function/arrow params are externally provided — mark as escaped
-            if node_type in ('FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'):
-                for param in node.get('params', []):
-                    if is_identifier(param):
-                        escaped.add(param['name'])
+        # Phase 2: collect member property writes, reads, and escaped identifiers.
+        simple_traverse(
+            self.ast,
+            lambda node, parent: _collect_member_accesses(
+                node,
+                parent,
+                write_counts,
+                read_pairs,
+                escaped_names,
+            ),
+        )
 
-        simple_traverse(self.ast, collect_locals)
-
-        def collect(node: dict, parent: dict | None) -> None:
-            if not isinstance(node, dict):
-                return
-            node_type = node.get('type')
-
-            # Track identifiers that escape
-            if node_type == 'Identifier' and parent:
-                name = node.get('name', '')
-                if name in _GLOBAL_OBJECTS:
-                    escaped.add(name)
-                parent_type = parent.get('type')
-                # RHS of assignment to a member (e.g., r.exports = obj)
-                if parent_type == 'AssignmentExpression' and node is parent.get('right'):
-                    left = parent.get('left')
-                    if left and left.get('type') == 'MemberExpression':
-                        escaped.add(name)
-                # Function/method argument
-                if parent_type in ('CallExpression', 'NewExpression'):
-                    if node in parent.get('arguments', []):
-                        escaped.add(name)
-                # Return value
-                if parent_type == 'ReturnStatement':
-                    escaped.add(name)
-
-            # Track member access patterns
-            if node_type != 'MemberExpression':
-                return
-            if node.get('computed'):
-                return
-            obj = node.get('object')
-            prop = node.get('property')
-            if not obj or not is_identifier(obj) or not prop or not is_identifier(prop):
-                return
-            pair = (obj['name'], prop['name'])
-
-            # Check if this is a write (assignment target)
-            if parent and parent.get('type') == 'AssignmentExpression' and node is parent.get('left'):
-                writes[pair] = writes.get(pair, 0) + 1
-            else:
-                reads.add(pair)
-
-        simple_traverse(self.ast, collect)
-
-        # Find properties that are written but never read.
-        # Only consider locally declared objects that haven't escaped.
-        dead_props = {pair for pair in writes if pair not in reads and pair[0] in local_vars and pair[0] not in escaped}
-        if not dead_props:
+        # Find properties that are written but never read on local, non-escaped objects.
+        dead_properties: set[PropertyPair] = {
+            property_pair
+            for property_pair in write_counts
+            if property_pair not in read_pairs
+            and property_pair[0] in local_variables
+            and property_pair[0] not in escaped_names
+        }
+        if not dead_properties:
             return False
 
-        # Phase 2: Remove dead assignment statements
-        def remove_dead(node: dict, parent: dict | None, key: str | None, index: int | None) -> object:
-            if node.get('type') != 'ExpressionStatement':
-                return
-            expr = node.get('expression')
-            if not expr or expr.get('type') != 'AssignmentExpression':
-                return
-            left = expr.get('left')
-            if not left or left.get('type') != 'MemberExpression' or left.get('computed'):
-                return
-            obj = left.get('object')
-            prop = left.get('property')
-            if not obj or not is_identifier(obj) or not prop or not is_identifier(prop):
-                return
-            pair = (obj['name'], prop['name'])
-            if pair not in dead_props:
-                return
-            # Only remove if the RHS is side-effect-free
-            rhs = expr.get('right')
-            if is_side_effect_free(rhs):
+        # Phase 3: remove dead assignment statements.
+        def remove_dead(
+            node: dict,
+            _parent: dict | None,
+            _key: str | None,
+            _index: int | None,
+        ) -> object | None:
+            """Traverse callback that removes dead property assignments."""
+            if _is_removable_dead_assignment(node, dead_properties):
                 self.set_changed()
                 return REMOVE
+            return None
 
         traverse(self.ast, {'enter': remove_dead})
         return self.has_changed()

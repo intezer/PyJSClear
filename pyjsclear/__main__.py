@@ -7,6 +7,7 @@ from . import deobfuscate
 
 
 def main() -> None:
+    """Parse CLI arguments and run the deobfuscator."""
     parser = argparse.ArgumentParser(description='Deobfuscate JavaScript files.')
     parser.add_argument('input', help='Input JS file (use - for stdin)')
     parser.add_argument('-o', '--output', help='Output file (default: stdout)')

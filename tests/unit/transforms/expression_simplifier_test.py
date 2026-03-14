@@ -4,8 +4,8 @@ import math
 
 import pytest
 
-from pyjsclear.transforms.expression_simplifier import ExpressionSimplifier
 from pyjsclear.transforms.expression_simplifier import _JS_NULL
+from pyjsclear.transforms.expression_simplifier import ExpressionSimplifier
 from tests.unit.conftest import normalize
 from tests.unit.conftest import roundtrip
 
@@ -583,7 +583,7 @@ class TestAwaitSingleExpressionUnchanged:
             ],
         }
         es2 = ExpressionSimplifier(ast)
-        es2._simplify_awaits()
+        es2._simplify_all()
         # Should not change because len(exprs) <= 1
         assert ast['body'][0]['expression']['argument']['type'] == 'SequenceExpression'
 
@@ -604,7 +604,7 @@ class TestAwaitSingleExpressionUnchanged:
             ],
         }
         es = ExpressionSimplifier(ast)
-        es._simplify_awaits()
+        es._simplify_all()
         assert ast['body'][0]['expression']['argument']['type'] == 'SequenceExpression'
 
 

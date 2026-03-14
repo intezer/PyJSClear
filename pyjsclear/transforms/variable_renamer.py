@@ -1,14 +1,18 @@
 """Rename obfuscated _0x-prefixed identifiers to readable names.
 
 Uses heuristic analysis of how variables are initialized and used to
-pick meaningful names (e.g. require("fs") → fs, loop counter → i).
+pick meaningful names (e.g. require("fs") -> fs, loop counter -> i).
 Falls back to sequential short names (a, b, c, ...) when no heuristic matches.
 
-Only renames bindings tracked by scope analysis — free variables and
+Only renames bindings tracked by scope analysis -- free variables and
 globals are left untouched.
 """
 
+from __future__ import annotations
+
 import re
+from collections.abc import Generator
+from typing import TYPE_CHECKING
 
 from ..scope import build_scope_tree
 from ..traverser import traverse
@@ -16,7 +20,12 @@ from ..utils.ast_helpers import is_identifier
 from .base import Transform
 
 
-_OBF_RE = re.compile(r'^_0x[0-9a-fA-F]+$')
+if TYPE_CHECKING:
+    from ..scope import Binding
+    from ..scope import Scope
+
+
+_OBFUSCATED_PATTERN = re.compile(r'^_0x[0-9a-fA-F]+$')
 
 _JS_RESERVED = frozenset(
     {
@@ -90,8 +99,8 @@ _JS_RESERVED = frozenset(
     }
 )
 
-# Maps require("module") → preferred variable name
-_REQUIRE_NAMES = {
+# Maps require('module') to preferred variable name
+_REQUIRE_NAMES: dict[str, str] = {
     'fs': 'fs',
     'path': 'path',
     'os': 'os',
@@ -99,7 +108,7 @@ _REQUIRE_NAMES = {
     'https': 'https',
     'url': 'url',
     'crypto': 'crypto',
-    'child_process': 'cp',
+    'child_process': 'child_proc',
     'process': 'proc',
     'net': 'net',
     'dns': 'dns',
@@ -110,33 +119,33 @@ _REQUIRE_NAMES = {
     'util': 'util',
     'buffer': 'buffer',
     'assert': 'assert',
-    'querystring': 'qs',
+    'querystring': 'query_string',
     'node-fetch': 'fetch',
     'axios': 'axios',
     'express': 'express',
 }
 
-# Maps constructor name → preferred variable name
-_CONSTRUCTOR_NAMES = {
+# Maps constructor name to preferred variable name
+_CONSTRUCTOR_NAMES: dict[str, str] = {
     'Date': 'date',
     'RegExp': 'regex',
-    'Error': 'err',
-    'TypeError': 'err',
-    'RangeError': 'err',
+    'Error': 'error',
+    'TypeError': 'error',
+    'RangeError': 'error',
     'Map': 'map',
     'Set': 'set',
-    'WeakMap': 'wm',
-    'WeakSet': 'ws',
+    'WeakMap': 'weak_map',
+    'WeakSet': 'weak_set',
     'Promise': 'promise',
     'Uint8Array': 'bytes',
-    'ArrayBuffer': 'buf',
+    'ArrayBuffer': 'buffer',
     'URLSearchParams': 'params',
     'URL': 'url',
     'FormData': 'form',
 }
 
 # fs-like methods
-_FS_METHODS = {
+_FS_METHODS: set[str] = {
     'readFileSync',
     'writeFileSync',
     'existsSync',
@@ -152,78 +161,78 @@ _FS_METHODS = {
 }
 
 # path-like methods
-_PATH_METHODS = {'join', 'resolve', 'basename', 'dirname', 'extname', 'normalize'}
+_PATH_METHODS: set[str] = {'join', 'resolve', 'basename', 'dirname', 'extname', 'normalize'}
 
 _ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 
 
-def _name_generator(reserved: set) -> object:
+def _name_generator(reserved_names: set[str]) -> Generator[str, None, None]:
     """Yield short identifier names, skipping reserved and taken names."""
-    for char in _ALPHABET:
-        if char not in reserved:
-            yield char
-    for first_char in _ALPHABET:
-        for second_char in _ALPHABET:
-            name = first_char + second_char
-            if name not in reserved:
+    for character in _ALPHABET:
+        if character not in reserved_names:
+            yield character
+    for first_character in _ALPHABET:
+        for second_character in _ALPHABET:
+            name = first_character + second_character
+            if name not in reserved_names:
                 yield name
-    for first_char in _ALPHABET:
-        for second_char in _ALPHABET:
-            for third_char in _ALPHABET:
-                name = first_char + second_char + third_char
-                if name not in reserved:
+    for first_character in _ALPHABET:
+        for second_character in _ALPHABET:
+            for third_character in _ALPHABET:
+                name = first_character + second_character + third_character
+                if name not in reserved_names:
                     yield name
 
 
-def _dedupe_name(base: str, reserved: set) -> str:
-    """Return base or base2, base3, ... until a non-reserved name is found."""
-    if base not in reserved:
-        return base
+def _dedupe_name(base_name: str, reserved_names: set[str]) -> str:
+    """Return base_name or base_name2, base_name3, ... until a non-reserved name is found."""
+    if base_name not in reserved_names:
+        return base_name
     counter = 2
     while True:
-        candidate = f'{base}{counter}'
-        if candidate not in reserved:
+        candidate = f'{base_name}{counter}'
+        if candidate not in reserved_names:
             return candidate
         counter += 1
 
 
-def _infer_from_init(init: dict | None) -> str | None:
+def _infer_from_init(initializer: dict | None) -> str | None:
     """Infer a variable name from its initializer expression."""
-    if not isinstance(init, dict) or 'type' not in init:
+    if not isinstance(initializer, dict) or 'type' not in initializer:
         return None
 
-    init_type = init.get('type')
+    initializer_type = initializer.get('type')
 
-    # require("fs") → "fs"
-    if init_type == 'CallExpression':
-        callee = init.get('callee')
-        args = init.get('arguments', [])
-        if is_identifier(callee) and callee.get('name') == 'require' and len(args) == 1:
-            arg = args[0]
-            if arg.get('type') == 'Literal' and isinstance(arg.get('value'), str):
-                module_name = arg['value']
+    # require('fs') -> 'fs'
+    if initializer_type == 'CallExpression':
+        callee = initializer.get('callee')
+        arguments = initializer.get('arguments', [])
+        if is_identifier(callee) and callee.get('name') == 'require' and len(arguments) == 1:
+            argument = arguments[0]
+            if argument.get('type') == 'Literal' and isinstance(argument.get('value'), str):
+                module_name = argument['value']
                 if module_name in _REQUIRE_NAMES:
                     return _REQUIRE_NAMES[module_name]
                 # Derive name from module path, sanitized to valid identifier
-                base = module_name.split('/')[-1].split('\\')[-1]
-                base = base.split('.')[0]  # strip file extension
-                base = re.sub(r'[^a-zA-Z0-9_]', '_', base)
-                base = re.sub(r'^[0-9]+', '', base)  # can't start with digit
-                base = base.strip('_')
-                if base and base not in _JS_RESERVED:
-                    return base
-                return None  # fall through to other heuristics
+                base_name = module_name.split('/')[-1].split('\\')[-1]
+                base_name = base_name.split('.')[0]
+                base_name = re.sub(r'[^a-zA-Z0-9_]', '_', base_name)
+                base_name = re.sub(r'^[0-9]+', '', base_name)
+                base_name = base_name.strip('_')
+                if base_name and base_name not in _JS_RESERVED:
+                    return base_name
+                return None
 
-        # Buffer.from(...) → "buf"
+        # Buffer.from(...) -> 'buffer'
         if callee and callee.get('type') == 'MemberExpression':
-            obj = callee.get('object')
-            prop = callee.get('property')
-            if is_identifier(obj) and is_identifier(prop):
-                obj_name = obj.get('name')
-                prop_name = prop.get('name')
-                match (obj_name, prop_name):
+            object_node = callee.get('object')
+            property_node = callee.get('property')
+            if is_identifier(object_node) and is_identifier(property_node):
+                object_name = object_node.get('name')
+                property_name = property_node.get('name')
+                match (object_name, property_name):
                     case ('Buffer', 'from'):
-                        return 'buf'
+                        return 'buffer'
                     case ('JSON', 'parse'):
                         return 'data'
                     case ('JSON', 'stringify'):
@@ -235,46 +244,46 @@ def _infer_from_init(init: dict | None) -> str | None:
                     case ('Object', 'entries'):
                         return 'entries'
 
-    # new Date() → "date"
-    if init_type == 'NewExpression':
-        callee = init.get('callee')
+    # new Date() -> 'date'
+    if initializer_type == 'NewExpression':
+        callee = initializer.get('callee')
         if is_identifier(callee):
             return _CONSTRUCTOR_NAMES.get(callee.get('name'))
-        # new require("url").URLSearchParams() → "params"
+        # new require('url').URLSearchParams() -> 'params'
         if callee and callee.get('type') == 'MemberExpression':
-            prop = callee.get('property')
-            if is_identifier(prop):
-                return _CONSTRUCTOR_NAMES.get(prop.get('name'))
+            property_node = callee.get('property')
+            if is_identifier(property_node):
+                return _CONSTRUCTOR_NAMES.get(property_node.get('name'))
 
-    match init_type:
+    match initializer_type:
         case 'ArrayExpression':
-            return 'arr'
+            return 'array'
         case 'ObjectExpression':
-            return 'obj'
+            return 'object'
         case 'Literal':
-            value = init.get('value')
+            value = initializer.get('value')
             if isinstance(value, str):
-                return 'str'
+                return 'string'
             if isinstance(value, bool):
                 return 'flag'
         case 'AwaitExpression':
-            return _infer_from_init(init.get('argument'))
+            return _infer_from_init(initializer.get('argument'))
 
     return None
 
 
-def _infer_from_usage(binding: object) -> str | None:
-    """Infer a variable name from how it's used at reference sites."""
+def _infer_from_usage(binding: Binding) -> str | None:
+    """Infer a variable name from how it is used at reference sites."""
     # Check what methods are called on this variable
-    methods = set()
-    for ref_node, ref_parent, ref_key, _ref_index in binding.references:
-        if not ref_parent:
+    methods: set[str] = set()
+    for reference_node, reference_parent, reference_key, _reference_index in binding.references:
+        if not reference_parent:
             continue
-        # x.method() — ref is object of MemberExpression
-        if ref_parent.get('type') == 'MemberExpression' and ref_key == 'object':
-            prop = ref_parent.get('property')
-            if is_identifier(prop) and not ref_parent.get('computed'):
-                methods.add(prop.get('name'))
+        # variable.method() -- reference is object of MemberExpression
+        if reference_parent.get('type') == 'MemberExpression' and reference_key == 'object':
+            property_node = reference_parent.get('property')
+            if is_identifier(property_node) and not reference_parent.get('computed'):
+                methods.add(property_node.get('name'))
 
     if methods & _FS_METHODS:
         return 'fs'
@@ -288,35 +297,34 @@ def _infer_from_usage(binding: object) -> str | None:
 
     # child_process-like
     if methods & {'spawn', 'exec', 'execSync', 'fork'}:
-        return 'cp'
+        return 'child_proc'
 
-    # http/https-like
+    # http/https-like (too ambiguous)
     if methods & {'get', 'request', 'createServer'} and 'statusCode' not in methods:
-        return None  # too ambiguous
+        return None
 
     # response-like
     if methods & {'statusCode', 'headers', 'pipe'}:
-        return 'res'
+        return 'response'
 
     # error-like
     if 'message' in methods and 'stack' in methods:
-        return 'err'
+        return 'error'
 
     return None
 
 
-def _infer_loop_var(binding: object) -> bool | None:
+def _infer_loop_var(binding: Binding) -> bool | None:
     """Check if this binding is a for-loop counter."""
     node = binding.node
     if not isinstance(node, dict):
         return None
-    # For var/let declarations, check if the VariableDeclarator is inside a ForStatement init
     if node.get('type') != 'VariableDeclarator':
         return None
-    init = node.get('init')
-    if not init or init.get('type') != 'Literal':
+    initializer = node.get('init')
+    if not initializer or initializer.get('type') != 'Literal':
         return None
-    value = init.get('value')
+    value = initializer.get('value')
     if not isinstance(value, (int, float)):
         return None
     # Check if any assignment is an UpdateExpression (i++, i--)
@@ -325,32 +333,32 @@ def _infer_loop_var(binding: object) -> bool | None:
             if isinstance(assignment, dict) and assignment.get('type') == 'UpdateExpression':
                 return True
     # Also check references for UpdateExpression parents
-    for _ref_node, ref_parent, _ref_key, _ref_index in binding.references:
-        if ref_parent and ref_parent.get('type') == 'UpdateExpression':
+    for _reference_node, reference_parent, _reference_key, _reference_index in binding.references:
+        if reference_parent and reference_parent.get('type') == 'UpdateExpression':
             return True
     return None
 
 
-def _collect_pattern_idents(pattern: dict | None, result: list) -> None:
+def _collect_pattern_identifiers(pattern: dict | None, result: list[dict]) -> None:
     """Collect all Identifier nodes from a destructuring pattern."""
     if not isinstance(pattern, dict):
         return
-    pattern_type = pattern.get('type')
-    if pattern_type == 'Identifier':
-        result.append(pattern)
-    elif pattern_type == 'ArrayPattern':
-        for element in pattern.get('elements', []):
-            if element:
-                _collect_pattern_idents(element, result)
-    elif pattern_type == 'ObjectPattern':
-        for prop in pattern.get('properties', []):
-            value = prop.get('value', prop.get('argument'))
-            if value:
-                _collect_pattern_idents(value, result)
-    elif pattern_type == 'RestElement':
-        _collect_pattern_idents(pattern.get('argument'), result)
-    elif pattern_type == 'AssignmentPattern':
-        _collect_pattern_idents(pattern.get('left'), result)
+    match pattern.get('type'):
+        case 'Identifier':
+            result.append(pattern)
+        case 'ArrayPattern':
+            for element in pattern.get('elements', []):
+                if element:
+                    _collect_pattern_identifiers(element, result)
+        case 'ObjectPattern':
+            for property_node in pattern.get('properties', []):
+                value = property_node.get('value', property_node.get('argument'))
+                if value:
+                    _collect_pattern_identifiers(value, result)
+        case 'RestElement':
+            _collect_pattern_identifiers(pattern.get('argument'), result)
+        case 'AssignmentPattern':
+            _collect_pattern_identifiers(pattern.get('left'), result)
 
 
 class VariableRenamer(Transform):
@@ -359,124 +367,145 @@ class VariableRenamer(Transform):
     rebuild_scope = True
 
     def execute(self) -> bool:
+        """Run the renaming transform on the AST, returning True if any changes were made."""
         if self.scope_tree is not None:
             scope_tree = self.scope_tree
         else:
             scope_tree, _ = build_scope_tree(self.ast)
 
         # Collect all non-obfuscated names across the entire tree to avoid conflicts
-        reserved = set(_JS_RESERVED)
-        self._collect_reserved(scope_tree, reserved)
+        reserved_names: set[str] = set(_JS_RESERVED)
+        self._collect_reserved_names(scope_tree, reserved_names)
 
         # Rename bindings scope by scope
-        generator = _name_generator(reserved)
+        generator = _name_generator(reserved_names)
         # Track loop var counter for i, j, k assignment
-        self._loop_letters = list('ijklmn')
-        self._loop_idx = 0
-        self._rename_scope(scope_tree, generator, reserved)
+        self._loop_letters: list[str] = list('ijklmn')
+        self._loop_index: int = 0
+        self._rename_scope(scope_tree, generator, reserved_names)
 
-        # Fix duplicate names in destructuring patterns (can come from broken obfuscated input)
-        self._fix_destructuring_dupes(reserved)
+        # Fix duplicate names in destructuring patterns (from broken obfuscated input)
+        self._fix_destructuring_dupes(reserved_names)
 
         return self.has_changed()
 
-    def _collect_reserved(self, scope: object, reserved: set) -> None:
+    def _collect_reserved_names(self, scope: Scope, reserved_names: set[str]) -> None:
         """Collect all non-_0x binding names so we never generate a conflict."""
         for name in scope.bindings:
-            if not _OBF_RE.match(name):
-                reserved.add(name)
-        for child in scope.children:
-            self._collect_reserved(child, reserved)
+            if not _OBFUSCATED_PATTERN.match(name):
+                reserved_names.add(name)
+        for child_scope in scope.children:
+            self._collect_reserved_names(child_scope, reserved_names)
 
-    def _rename_scope(self, scope: object, generator: object, reserved: set) -> None:
+    def _rename_scope(
+        self,
+        scope: Scope,
+        generator: Generator[str, None, None],
+        reserved_names: set[str],
+    ) -> None:
         """Rename all _0x bindings in this scope and its children."""
         for name, binding in list(scope.bindings.items()):
-            if not _OBF_RE.match(name):
+            if not _OBFUSCATED_PATTERN.match(name):
                 continue
 
-            new_name = self._pick_name(binding, generator, reserved)
-            reserved.add(new_name)
+            new_name = self._pick_name(binding, generator, reserved_names)
+            reserved_names.add(new_name)
             self._apply_rename(binding, new_name)
             self.set_changed()
 
-        for child in scope.children:
-            self._rename_scope(child, generator, reserved)
+        for child_scope in scope.children:
+            self._rename_scope(child_scope, generator, reserved_names)
 
-    def _pick_name(self, binding: object, generator: object, reserved: set) -> str:
+    def _pick_name(
+        self,
+        binding: Binding,
+        generator: Generator[str, None, None],
+        reserved_names: set[str],
+    ) -> str:
         """Pick the best name for a binding using heuristics, with fallback."""
-        # 1. Check if it's a loop counter → i, j, k
+        # 1. Check if it is a loop counter -> i, j, k
         if _infer_loop_var(binding):
-            while self._loop_idx < len(self._loop_letters):
-                letter = self._loop_letters[self._loop_idx]
-                self._loop_idx += 1
-                candidate = _dedupe_name(letter, reserved)
-                if candidate not in reserved:
+            while self._loop_index < len(self._loop_letters):
+                letter = self._loop_letters[self._loop_index]
+                self._loop_index += 1
+                candidate = _dedupe_name(letter, reserved_names)
+                if candidate not in reserved_names:
                     return candidate
 
         # 2. Check init expression (require, new, [], {}, etc.)
         if binding.kind in ('var', 'let', 'const'):
             node = binding.node
             if isinstance(node, dict) and node.get('type') == 'VariableDeclarator':
-                init = node.get('init')
-                hint = _infer_from_init(init)
+                initializer = node.get('init')
+                hint = _infer_from_init(initializer)
                 if hint:
-                    return _dedupe_name(hint, reserved)
+                    return _dedupe_name(hint, reserved_names)
 
         # 3. Check usage patterns (what methods are called on it)
         hint = _infer_from_usage(binding)
         if hint:
-            return _dedupe_name(hint, reserved)
+            return _dedupe_name(hint, reserved_names)
 
-        # 4. For catch clause params, use "err"
+        # 4. For catch clause params, use 'error'
         if binding.kind == 'param':
-            # Check if this is a catch param by looking at context
             node = binding.node
             if isinstance(node, dict) and node.get('type') == 'Identifier':
-                # We can't easily tell from scope alone, but catch params typically
-                # have names like _0x... and are rarely used — try "err"
-                pass  # Fall through to sequential
+                # Catch params typically have _0x... names and are rarely used
+                pass
 
         # 5. Fallback: sequential name from generator
         return next(generator)
 
-    def _apply_rename(self, binding: object, new_name: str) -> None:
+    def _apply_rename(self, binding: Binding, new_name: str) -> None:
         """Rename a binding at its declaration site and all reference sites."""
         old_name = binding.name
 
-        # 1. Rename at declaration site
+        # Rename at declaration site
         node = binding.node
         if isinstance(node, dict):
-            kind = binding.kind
-            if kind in ('var', 'let', 'const'):
-                decl_id = node.get('id')
-                if decl_id and decl_id.get('type') == 'Identifier' and decl_id.get('name') == old_name:
-                    decl_id['name'] = new_name
-            elif kind == 'function':
-                func_id = node.get('id')
-                if func_id and func_id.get('type') == 'Identifier' and func_id.get('name') == old_name:
-                    func_id['name'] = new_name
-            elif kind == 'param':
-                match node.get('type'):
-                    case 'Identifier' if node.get('name') == old_name:
-                        node['name'] = new_name
-                    case 'AssignmentPattern':
-                        left = node.get('left')
-                        if left and left.get('type') == 'Identifier' and left.get('name') == old_name:
-                            left['name'] = new_name
-                    case 'RestElement':
-                        arg = node.get('argument')
-                        if arg and arg.get('type') == 'Identifier' and arg.get('name') == old_name:
-                            arg['name'] = new_name
+            match binding.kind:
+                case 'var' | 'let' | 'const':
+                    declaration_id = node.get('id')
+                    if (
+                        declaration_id
+                        and declaration_id.get('type') == 'Identifier'
+                        and declaration_id.get('name') == old_name
+                    ):
+                        declaration_id['name'] = new_name
+                case 'function':
+                    function_id = node.get('id')
+                    if function_id and function_id.get('type') == 'Identifier' and function_id.get('name') == old_name:
+                        function_id['name'] = new_name
+                case 'param':
+                    match node.get('type'):
+                        case 'Identifier' if node.get('name') == old_name:
+                            node['name'] = new_name
+                        case 'AssignmentPattern':
+                            left_node = node.get('left')
+                            if (
+                                left_node
+                                and left_node.get('type') == 'Identifier'
+                                and left_node.get('name') == old_name
+                            ):
+                                left_node['name'] = new_name
+                        case 'RestElement':
+                            argument_node = node.get('argument')
+                            if (
+                                argument_node
+                                and argument_node.get('type') == 'Identifier'
+                                and argument_node.get('name') == old_name
+                            ):
+                                argument_node['name'] = new_name
 
-        # 2. Rename at all reference sites
-        for ref_node, _ref_parent, _ref_key, _ref_index in binding.references:
-            if ref_node.get('type') == 'Identifier' and ref_node.get('name') == old_name:
-                ref_node['name'] = new_name
+        # Rename at all reference sites
+        for reference_node, _reference_parent, _reference_key, _reference_index in binding.references:
+            if reference_node.get('type') == 'Identifier' and reference_node.get('name') == old_name:
+                reference_node['name'] = new_name
 
-        # 3. Update binding.name
+        # Update binding.name
         binding.name = new_name
 
-    def _fix_destructuring_dupes(self, reserved: set) -> None:
+    def _fix_destructuring_dupes(self, reserved_names: set[str]) -> None:
         """Fix duplicate identifier names in destructuring patterns.
 
         Obfuscators sometimes produce invalid code like `const [a, a, a] = x;`.
@@ -487,25 +516,29 @@ class VariableRenamer(Transform):
         the last step of the renamer post-pass.
         """
 
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
+        def enter(
+            node: dict,
+            parent: dict | None,
+            key: str | None,
+            index: int | None,
+        ) -> None:
             if node.get('type') != 'VariableDeclarator':
                 return
             pattern = node.get('id')
             if not pattern or pattern.get('type') not in ('ArrayPattern', 'ObjectPattern'):
                 return
-            # Collect all identifier nodes in the pattern
-            idents = []
-            _collect_pattern_idents(pattern, idents)
-            seen = {}
-            for ident_node in idents:
-                name = ident_node.get('name')
-                if name in seen:
-                    # Duplicate — assign a unique name
-                    new_name = _dedupe_name(name, reserved)
-                    reserved.add(new_name)
-                    ident_node['name'] = new_name
+            identifiers: list[dict] = []
+            _collect_pattern_identifiers(pattern, identifiers)
+            seen_names: dict[str, dict] = {}
+            for identifier_node in identifiers:
+                name = identifier_node.get('name')
+                if name in seen_names:
+                    # Duplicate -- assign a unique name
+                    unique_name = _dedupe_name(name, reserved_names)
+                    reserved_names.add(unique_name)
+                    identifier_node['name'] = unique_name
                     self.set_changed()
                 else:
-                    seen[name] = ident_node
+                    seen_names[name] = identifier_node
 
         traverse(self.ast, {'enter': enter})

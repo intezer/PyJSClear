@@ -7,10 +7,20 @@ And replaces all references to _0x3bbd10 with JSON throughout the AST.
 Works without scope analysis by scanning for VariableDeclarator nodes.
 """
 
+from __future__ import annotations
+
+from enum import StrEnum
+
 from ..traverser import traverse
 from ..utils.ast_helpers import is_identifier
 from ..utils.ast_helpers import make_identifier
 from .base import Transform
+
+
+class _AssignmentOperator(StrEnum):
+    """Assignment operators recognized when collecting aliases."""
+
+    SIMPLE = '='
 
 
 _WELL_KNOWN_GLOBALS = frozenset(
@@ -44,18 +54,25 @@ _WELL_KNOWN_GLOBALS = frozenset(
     }
 )
 
+_FUNCTION_TYPES = frozenset({'FunctionDeclaration', 'FunctionExpression'})
+
 
 class GlobalAliasInliner(Transform):
     """Replace aliases of well-known globals with the global name.
 
-    Note: this transform does not use scope analysis and may incorrectly
-    replace references if a local binding shadows the alias name.  This is
-    acceptable for the obfuscated code this tool targets, where shadowing
-    of mangled variable names is extremely unlikely.
+    Does not use scope analysis; may incorrectly replace references if a
+    local binding shadows the alias name. Acceptable for obfuscated code
+    where shadowing of mangled names is extremely unlikely.
     """
 
-    def _find_var_aliases(self, node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
-        """Collect `var alias = GLOBAL` patterns into self._aliases."""
+    def _find_var_aliases(
+        self,
+        node: dict,
+        parent: dict | None,
+        key: str | None,
+        index: int | None,
+    ) -> None:
+        """Collect ``var alias = GLOBAL`` declarator patterns."""
         if node.get('type') != 'VariableDeclarator':
             return
         declaration_id = node.get('id')
@@ -65,11 +82,17 @@ class GlobalAliasInliner(Transform):
         if initializer['name'] in _WELL_KNOWN_GLOBALS:
             self._aliases[declaration_id['name']] = initializer['name']
 
-    def _find_assignment_aliases(self, node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
-        """Collect `alias = GLOBAL` assignment patterns into self._aliases."""
+    def _find_assignment_aliases(
+        self,
+        node: dict,
+        parent: dict | None,
+        key: str | None,
+        index: int | None,
+    ) -> None:
+        """Collect ``alias = GLOBAL`` assignment patterns."""
         if node.get('type') != 'AssignmentExpression':
             return
-        if node.get('operator') != '=':
+        if node.get('operator') != _AssignmentOperator.SIMPLE:
             return
         left_node = node.get('left')
         right_node = node.get('right')
@@ -79,40 +102,43 @@ class GlobalAliasInliner(Transform):
             self._aliases[left_node['name']] = right_node['name']
 
     def _is_non_reference_position(self, parent: dict | None, key: str | None) -> bool:
-        """Return True if the identifier is in a non-reference (definition/key) position."""
+        """Return True when the identifier is in a definition or key position."""
         if not parent:
             return False
         parent_type = parent.get('type')
-        # Non-computed property name
-        if parent_type == 'MemberExpression' and key == 'property' and not parent.get('computed'):
-            return True
-        # Variable declaration target
-        if parent_type == 'VariableDeclarator' and key == 'id':
-            return True
-        # Assignment left-hand side
-        if parent_type == 'AssignmentExpression' and key == 'left':
-            return True
-        # Function/method name
-        if parent_type in ('FunctionDeclaration', 'FunctionExpression') and key == 'id':
-            return True
-        # Non-computed property key
-        if parent_type == 'Property' and key == 'key' and not parent.get('computed'):
-            return True
+        match parent_type:
+            case 'MemberExpression' if key == 'property' and not parent.get('computed'):
+                return True
+            case 'VariableDeclarator' if key == 'id':
+                return True
+            case 'AssignmentExpression' if key == 'left':
+                return True
+            case function_type if function_type in _FUNCTION_TYPES and key == 'id':
+                return True
+            case 'Property' if key == 'key' and not parent.get('computed'):
+                return True
         return False
 
-    def _replace_alias_refs(self, node: dict, parent: dict | None, key: str | None, index: int | None) -> dict | None:
-        """Replace aliased identifier references with the global name."""
+    def _replace_alias_references(
+        self,
+        node: dict,
+        parent: dict | None,
+        key: str | None,
+        index: int | None,
+    ) -> dict | None:
+        """Replace aliased identifier references with the original global name."""
         if not is_identifier(node):
             return None
         if self._is_non_reference_position(parent, key):
             return None
-        name = node.get('name')
-        if name in self._aliases:
+        identifier_name = node.get('name')
+        if identifier_name in self._aliases:
             self.set_changed()
-            return make_identifier(self._aliases[name])
+            return make_identifier(self._aliases[identifier_name])
         return None
 
     def execute(self) -> bool:
+        """Run the global alias inlining transform on the AST."""
         self._aliases: dict[str, str] = {}
 
         # Phase 1: collect `var X = GLOBAL` and `X = GLOBAL` patterns
@@ -124,5 +150,5 @@ class GlobalAliasInliner(Transform):
         traverse(self.ast, {'enter': self._find_assignment_aliases})
 
         # Phase 2: replace all alias references
-        traverse(self.ast, {'enter': self._replace_alias_refs})
+        traverse(self.ast, {'enter': self._replace_alias_references})
         return self.has_changed()

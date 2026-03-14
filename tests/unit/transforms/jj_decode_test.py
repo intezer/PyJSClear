@@ -99,7 +99,6 @@ class TestJJDecode:
         result = jj_decode(lines[0].strip())
         assert result is not None
         # All characters must be ASCII — no off-by-256 artifacts
-        assert all(ord(c) < 128 for c in result), (
-            'Found non-ASCII chars: '
-            + ', '.join(f'U+{ord(c):04X}' for c in result if ord(c) > 127)
+        assert all(ord(c) < 128 for c in result), 'Found non-ASCII chars: ' + ', '.join(
+            f'U+{ord(c):04X}' for c in result if ord(c) > 127
         )

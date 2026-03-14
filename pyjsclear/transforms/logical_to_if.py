@@ -8,9 +8,20 @@ Converts:
   return await x(), y  →  await x(); return y;
 """
 
+from __future__ import annotations
+
+from enum import StrEnum
+
 from ..utils.ast_helpers import make_block_statement
 from ..utils.ast_helpers import make_expression_statement
 from .base import Transform
+
+
+class _LogicalOperator(StrEnum):
+    """Logical operators supported for conversion."""
+
+    AND = '&&'
+    OR = '||'
 
 
 def _negate(expression: dict) -> dict:
@@ -27,6 +38,7 @@ class LogicalToIf(Transform):
     """Convert logical/comma expressions in statement position to if-statements."""
 
     def execute(self) -> bool:
+        """Run the transform and return whether the AST was modified."""
         self._transform_bodies(self.ast)
         return self.has_changed()
 
@@ -43,7 +55,8 @@ class LogicalToIf(Transform):
             elif isinstance(child, dict) and 'type' in child:
                 self._transform_bodies(child)
 
-    def _process_statement_array(self, statements: list) -> None:
+    def _process_statement_array(self, statements: list[dict]) -> None:
+        """Iterate over a statement array, replacing convertible statements in-place."""
         index = 0
         while index < len(statements):
             statement = statements[index]
@@ -60,7 +73,7 @@ class LogicalToIf(Transform):
 
             index += 1
 
-    def _try_convert_stmt(self, statement: dict) -> list | None:
+    def _try_convert_stmt(self, statement: dict) -> list[dict] | None:
         """Try to convert a statement. Returns replacement list or None."""
         match statement.get('type'):
             case 'ExpressionStatement':
@@ -69,7 +82,7 @@ class LogicalToIf(Transform):
                 return self._handle_return_stmt(statement)
         return None
 
-    def _handle_expression_stmt(self, statement: dict) -> list | None:
+    def _handle_expression_stmt(self, statement: dict) -> list[dict] | None:
         """Handle ExpressionStatement with logical or conditional."""
         expression = statement.get('expression')
         if not isinstance(expression, dict):
@@ -81,7 +94,7 @@ class LogicalToIf(Transform):
                 return self._ternary_to_if(expression)
         return None
 
-    def _handle_return_stmt(self, statement: dict) -> list | None:
+    def _handle_return_stmt(self, statement: dict) -> list[dict] | None:
         """Handle ReturnStatement with sequence or logical expressions."""
         argument = statement.get('argument')
         if not isinstance(argument, dict):
@@ -97,7 +110,7 @@ class LogicalToIf(Transform):
 
         return None
 
-    def _split_return_sequence(self, sequence: dict) -> list | None:
+    def _split_return_sequence(self, sequence: dict) -> list[dict] | None:
         """Split return (a, b, c) into a; b; return c."""
         expressions = sequence.get('expressions', [])
         if len(expressions) <= 1:
@@ -113,7 +126,7 @@ class LogicalToIf(Transform):
         new_statements.append({'type': 'ReturnStatement', 'argument': expressions[-1]})
         return new_statements
 
-    def _split_return_logical(self, logical: dict) -> list | None:
+    def _split_return_logical(self, logical: dict) -> list[dict] | None:
         """Split return a || (b(), c) into if (!a) { b(); } return c."""
         right = logical.get('right')
         if not (isinstance(right, dict) and right.get('type') == 'SequenceExpression'):
@@ -123,7 +136,7 @@ class LogicalToIf(Transform):
             return None
 
         test = logical.get('left')
-        if logical.get('operator') == '||':
+        if logical.get('operator') == _LogicalOperator.OR:
             test = _negate(test)
 
         body_statements = [make_expression_statement(expression) for expression in expressions[:-1]]
@@ -136,13 +149,13 @@ class LogicalToIf(Transform):
         return_statement = {'type': 'ReturnStatement', 'argument': expressions[-1]}
         return [if_statement, return_statement]
 
-    def _logical_to_if(self, expression: dict) -> list | None:
+    def _logical_to_if(self, expression: dict) -> list[dict] | None:
         """Convert a LogicalExpression to if-statement(s). Returns list of stmts or None."""
         left = expression.get('left')
         match expression.get('operator'):
-            case '&&':
+            case _LogicalOperator.AND:
                 test = left
-            case '||':
+            case _LogicalOperator.OR:
                 test = _negate(left)
             case _:
                 return None
@@ -156,8 +169,8 @@ class LogicalToIf(Transform):
         }
         return [if_statement]
 
-    def _ternary_to_if(self, expression: dict) -> list:
-        """Convert a ConditionalExpression to if-else. Returns list of stmts or None."""
+    def _ternary_to_if(self, expression: dict) -> list[dict]:
+        """Convert a ConditionalExpression to an if-else statement."""
         if_statement = {
             'type': 'IfStatement',
             'test': expression.get('test'),
@@ -166,8 +179,8 @@ class LogicalToIf(Transform):
         }
         return [if_statement]
 
-    def _expr_to_stmts(self, expression: dict | None) -> list:
+    def _expr_to_stmts(self, expression: dict | None) -> list[dict]:
         """Convert an expression to a list of statements."""
         if isinstance(expression, dict) and expression.get('type') == 'SequenceExpression':
-            return [make_expression_statement(e) for e in expression.get('expressions', [])]
+            return [make_expression_statement(item) for item in expression.get('expressions', [])]
         return [make_expression_statement(expression)]

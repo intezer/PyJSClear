@@ -224,11 +224,11 @@ class TestCoverageGaps:
         assert changed is True
 
     def test_get_member_prop_name_no_property(self):
-        """Line 148: _get_member_prop_name with no property returns None."""
+        """Line 148: _get_member_property_name with no property returns None."""
         ast = parse('const o = {x: 1};')
         t = ObjectSimplifier(ast)
-        assert t._get_member_prop_name({}) is None
-        assert t._get_member_prop_name({'property': None}) is None
+        assert t._get_member_property_name({}) is None
+        assert t._get_member_property_name({'property': None}) is None
 
     def test_body_not_block_not_expression(self):
         """Line 183: body that's not BlockStatement and not expression for non-arrow."""

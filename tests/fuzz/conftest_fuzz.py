@@ -5,7 +5,8 @@ import os
 import random
 import sys
 import time
-from typing import Any, Callable
+from typing import Any
+from typing import Callable
 
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -279,13 +280,13 @@ class SimpleFuzzedDataProvider:
 
     def ConsumeUnicode(self, max_length: int) -> str:
         end = min(self._pos + max_length, len(self._data))
-        chunk = self._data[self._pos:end]
+        chunk = self._data[self._pos : end]
         self._pos = end
         return chunk.decode('utf-8', errors='replace')
 
     def ConsumeBytes(self, max_length: int) -> bytes:
         end = min(self._pos + max_length, len(self._data))
-        chunk = self._data[self._pos:end]
+        chunk = self._data[self._pos : end]
         self._pos = end
         return chunk
 

@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from pyjsclear.parser import _ASYNC_MAP
+from pyjsclear.parser import _ASYNC_KEY_MAP
 from pyjsclear.parser import _fast_to_dict
 from pyjsclear.parser import parse
 
@@ -152,13 +152,13 @@ class TestFastToDictObjects:
 
 
 # ---------------------------------------------------------------------------
-# _ASYNC_MAP constant
+# _ASYNC_KEY_MAP constant
 # ---------------------------------------------------------------------------
 
 
 class TestAsyncMap:
     def test_async_map_contents(self):
-        assert _ASYNC_MAP == {'isAsync': 'async', 'allowAwait': 'await'}
+        assert _ASYNC_KEY_MAP == {'isAsync': 'async', 'allowAwait': 'await'}
 
 
 # ---------------------------------------------------------------------------

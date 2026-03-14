@@ -5,14 +5,18 @@ and javascript-deobfuscator (3 surface-cleanup modules) into a single
 Python package.
 """
 
+from pathlib import Path
+
 from .deobfuscator import Deobfuscator
 
 
-__version__ = '0.1.4'
+__all__ = ['Deobfuscator', 'deobfuscate', 'deobfuscate_file']
+
+__version__ = '0.1.5'
 
 
 def deobfuscate(code: str, max_iterations: int = 50) -> str:
-    """Deobfuscate JavaScript code. Returns cleaned source.
+    """Deobfuscate JavaScript code and return cleaned source.
 
     Args:
         code: JavaScript source code string.
@@ -24,7 +28,11 @@ def deobfuscate(code: str, max_iterations: int = 50) -> str:
     return Deobfuscator(code, max_iterations=max_iterations).execute()
 
 
-def deobfuscate_file(input_path: str, output_path: str | None = None, max_iterations: int = 50) -> str | bool:
+def deobfuscate_file(
+    input_path: str | Path,
+    output_path: str | Path | None = None,
+    max_iterations: int = 50,
+) -> str | bool:
     """Deobfuscate a JavaScript file.
 
     Args:
@@ -40,8 +48,9 @@ def deobfuscate_file(input_path: str, output_path: str | None = None, max_iterat
 
     result = deobfuscate(code, max_iterations=max_iterations)
 
-    if output_path:
-        with open(output_path, 'w') as output_file:
-            output_file.write(result)
-        return result != code
-    return result
+    if not output_path:
+        return result
+
+    with open(output_path, 'w') as output_file:
+        output_file.write(result)
+    return result != code

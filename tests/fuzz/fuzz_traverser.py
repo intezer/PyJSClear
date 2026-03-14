@@ -72,6 +72,7 @@ def TestOneInput(data: bytes) -> None:
                 return
 
         case 2:
+
             def callback(node, parent):
                 nonlocal visited
                 visited += 1
