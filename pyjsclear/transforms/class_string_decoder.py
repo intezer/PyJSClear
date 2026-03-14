@@ -30,30 +30,39 @@ from ..utils.ast_helpers import make_literal
 from .base import Transform
 
 
+# Type aliases for clarity
+ClassProperties = dict[str, dict[str, str | tuple[str, list[dict]]]]
+DecoderMap = dict[tuple[str, str], tuple[list[str], int]]
+DecodedConstants = dict[tuple[str, str], str]
+
+
 class ClassStringDecoder(Transform):
-    """Resolve class-based string encoder patterns."""
+    """Resolve class-based string encoder patterns.
+
+    Finds class variables with static string properties and decoder methods,
+    then replaces decoder calls with their decoded string literals.
+    """
 
     def execute(self) -> bool:
-        class_props: dict = {}
-        decoders: dict = {}
+        """Run the decoder transform and return whether the AST changed."""
+        class_properties: ClassProperties = {}
+        decoder_map: DecoderMap = {}
 
-        self._collect_class_props(class_props)
-        self._find_decoders(class_props, decoders)
+        self._collect_class_properties(class_properties)
+        self._find_decoders(class_properties, decoder_map)
 
-        if not decoders:
+        if not decoder_map:
             return False
 
-        self._resolve_aliases(decoders)
-
-        self._resolve_calls(decoders)
+        self._resolve_aliases(decoder_map)
+        self._resolve_calls(decoder_map)
         return self.has_changed()
 
-    def _collect_class_props(self, class_props: dict) -> None:
+    def _collect_class_properties(self, class_properties: ClassProperties) -> None:
         """Collect static property assignments on class variables.
 
-        Builds: class_props[var_name] = {prop_name: value, ...}
-        Also detects array properties that reference other props.
-        Handles assignments in ExpressionStatements and SequenceExpressions.
+        Builds: class_properties[variable_name] = {property_name: value, ...}
+        Also detects array properties that reference other properties.
         """
 
         def visit(node: dict, parent: dict) -> None:
@@ -62,37 +71,46 @@ class ClassStringDecoder(Transform):
             if node.get('operator') != '=':
                 return
 
-            var_name, prop_name = get_member_names(node.get('left'))
-            if not var_name:
+            variable_name, property_name = get_member_names(node.get('left'))
+            if not variable_name:
                 return
 
-            right = node.get('right')
-            if var_name not in class_props:
-                class_props[var_name] = {}
+            right_side = node.get('right')
+            if variable_name not in class_properties:
+                class_properties[variable_name] = {}
 
-            if is_string_literal(right):
-                class_props[var_name][prop_name] = right['value']
-            elif right and right.get('type') == 'ArrayExpression':
-                elements = right.get('elements', [])
-                class_props[var_name][prop_name] = ('array', elements)
+            if is_string_literal(right_side):
+                class_properties[variable_name][property_name] = right_side['value']
+            elif right_side and right_side.get('type') == 'ArrayExpression':
+                elements = right_side.get('elements', [])
+                class_properties[variable_name][property_name] = ('array', elements)
 
         simple_traverse(self.ast, visit)
 
-    def _resolve_array(self, class_props: dict, var_name: str, elements: list) -> list | None:
+    def _resolve_array(
+        self,
+        class_properties: ClassProperties,
+        variable_name: str,
+        elements: list[dict],
+    ) -> list[str] | None:
         """Resolve an array of MemberExpression references to string values."""
-        props = class_props.get(var_name, {})
+        properties = class_properties.get(variable_name, {})
         resolved = []
         for element in elements:
             element_object, element_property = get_member_names(element)
-            if not element_object or element_object != var_name:
+            if not element_object or element_object != variable_name:
                 return None
-            value = props.get(element_property)
+            value = properties.get(element_property)
             if not isinstance(value, str):
                 return None
             resolved.append(value)
         return resolved
 
-    def _find_decoders(self, class_props: dict, decoders: dict) -> None:
+    def _find_decoders(
+        self,
+        class_properties: ClassProperties,
+        decoder_map: DecoderMap,
+    ) -> None:
         """Find decoder methods and their associated lookup tables."""
 
         def visit(node: dict, parent: dict) -> None:
@@ -100,22 +118,15 @@ class ClassStringDecoder(Transform):
                 return
             if not node.get('static'):
                 return
-            method_key = node.get('key')
-            if not method_key:
+
+            method_name = self._extract_method_name(node)
+            if not method_name:
                 return
-            match method_key.get('type'):
-                case 'Literal' if isinstance(method_key.get('value'), str):
-                    method_name = method_key['value']
-                case 'Identifier':
-                    method_name = method_key['name']
-                case _:
-                    return
 
             function_node = node.get('value')
             if not function_node or function_node.get('type') != 'FunctionExpression':
                 return
-            params = function_node.get('params', [])
-            if len(params) != 1:
+            if len(function_node.get('params', [])) != 1:
                 return
 
             body = function_node.get('body')
@@ -125,79 +136,98 @@ class ClassStringDecoder(Transform):
             if len(statements) < 3:
                 return
 
-            table_info = self._extract_decoder_table(statements, class_props)
+            table_info = self._extract_decoder_table(statements, class_properties)
             if not table_info:
                 return
 
             lookup_table, offset = table_info
 
-            class_var = self._find_enclosing_class_var(node)
-            if not class_var:
+            class_variable = self._find_enclosing_class_variable(node)
+            if not class_variable:
                 return
 
-            decoders[(class_var, method_name)] = (lookup_table, offset)
+            decoder_map[(class_variable, method_name)] = (lookup_table, offset)
 
         simple_traverse(self.ast, visit)
 
-    def _resolve_aliases(self, decoders: dict) -> None:
-        """Find identifier aliases (X = Y) where Y is a decoder class, and register X too."""
-        decoder_classes = {cls for cls, _ in decoders}
-        new_entries = {}
+    @staticmethod
+    def _extract_method_name(method_node: dict) -> str | None:
+        """Extract the method name from a MethodDefinition node."""
+        method_key = method_node.get('key')
+        if not method_key:
+            return None
+        match method_key.get('type'):
+            case 'Literal' if isinstance(method_key.get('value'), str):
+                return method_key['value']
+            case 'Identifier':
+                return method_key['name']
+            case _:
+                return None
+
+    def _resolve_aliases(self, decoder_map: DecoderMap) -> None:
+        """Register identifier aliases (X = Y) where Y is a decoder class."""
+        decoder_classes = {class_name for class_name, _ in decoder_map}
+        new_entries: DecoderMap = {}
 
         def visit(node: dict, parent: dict) -> None:
             if node.get('type') != 'AssignmentExpression':
                 return
             if node.get('operator') != '=':
                 return
-            left = node.get('left')
-            right = node.get('right')
-            if not left or left.get('type') != 'Identifier':
+            left_side = node.get('left')
+            right_side = node.get('right')
+            if not left_side or left_side.get('type') != 'Identifier':
                 return
-            if not right or right.get('type') != 'Identifier':
+            if not right_side or right_side.get('type') != 'Identifier':
                 return
-            if right['name'] in decoder_classes:
-                alias = left['name']
-                for (cls, method), value in decoders.items():
-                    if cls == right['name']:
-                        new_entries[(alias, method)] = value
+            if right_side['name'] not in decoder_classes:
+                return
+            alias_name = left_side['name']
+            for (class_name, method), value in decoder_map.items():
+                if class_name == right_side['name']:
+                    new_entries[(alias_name, method)] = value
 
         simple_traverse(self.ast, visit)
-        decoders.update(new_entries)
+        decoder_map.update(new_entries)
 
-    def _extract_decoder_table(self, statements: list, class_props: dict) -> tuple | None:
+    def _extract_decoder_table(
+        self,
+        statements: list[dict],
+        class_properties: ClassProperties,
+    ) -> tuple[list[str], int] | None:
         """Extract the lookup table and offset from decoder method body."""
-        table_class_var = None
-        table_prop = None
+        table_class_variable = None
+        table_property = None
 
         for statement in statements:
             if statement.get('type') != 'VariableDeclaration':
                 continue
             for declaration in statement.get('declarations', []):
-                init = declaration.get('init')
-                obj_name, prop_name = get_member_names(init)
-                if not obj_name or not prop_name:
+                initializer = declaration.get('init')
+                object_name, property_name = get_member_names(initializer)
+                if not object_name or not property_name:
                     continue
-                declaration_id = declaration.get('id')
-                if declaration_id and declaration_id.get('type') == 'Identifier':
-                    table_class_var = obj_name
-                    table_prop = prop_name
+                declaration_identifier = declaration.get('id')
+                if declaration_identifier and declaration_identifier.get('type') == 'Identifier':
+                    table_class_variable = object_name
+                    table_property = property_name
 
-        if not table_class_var:
+        if not table_class_variable:
             return None
 
-        props = class_props.get(table_class_var, {})
-        array_val = props.get(table_prop)
-        if not isinstance(array_val, tuple) or array_val[0] != 'array':
+        properties = class_properties.get(table_class_variable, {})
+        array_value = properties.get(table_property)
+        if not isinstance(array_value, tuple) or array_value[0] != 'array':
             return None
 
-        resolved = self._resolve_array(class_props, table_class_var, array_val[1])
+        resolved = self._resolve_array(class_properties, table_class_variable, array_value[1])
         if not resolved:
             return None
 
         offset = self._find_offset(statements)
         return resolved, offset
 
-    def _find_offset(self, statements: list) -> int:
+    def _find_offset(self, statements: list[dict]) -> int:
         """Find the subtraction offset in the decoder loop (e.g., - 48)."""
         offset = 48
 
@@ -205,12 +235,16 @@ class ClassStringDecoder(Transform):
             nonlocal offset
             if not isinstance(node, dict):
                 return
-            if node.get('type') == 'BinaryExpression' and node.get('operator') == '-':
-                right = node.get('right')
-                if right and is_numeric_literal(right):
-                    val = right['value']
-                    if isinstance(val, (int, float)) and val > 0:
-                        offset = int(val)
+            if node.get('type') != 'BinaryExpression':
+                return
+            if node.get('operator') != '-':
+                return
+            right_side = node.get('right')
+            if not right_side or not is_numeric_literal(right_side):
+                return
+            numeric_value = right_side['value']
+            if isinstance(numeric_value, (int, float)) and numeric_value > 0:
+                offset = int(numeric_value)
 
         for statement in statements:
             if statement.get('type') == 'ForStatement':
@@ -218,83 +252,98 @@ class ClassStringDecoder(Transform):
 
         return offset
 
-    def _find_enclosing_class_var(self, method_node: dict) -> str | None:
+    def _find_enclosing_class_variable(self, method_node: dict) -> str | None:
         """Find the variable name of the class containing this method."""
-        result = [None]
+        enclosing_name: str | None = None
 
-        def _check_class_body(class_expr: dict, var_name: str) -> bool:
-            body = class_expr.get('body')
-            if body and body.get('type') == 'ClassBody':
-                for member in body.get('body', []):
-                    if member is method_node:
-                        result[0] = var_name
-                        return True
+        def check_class_body(class_expression: dict, variable_name: str) -> bool:
+            nonlocal enclosing_name
+            body = class_expression.get('body')
+            if not body or body.get('type') != 'ClassBody':
+                return False
+            for member in body.get('body', []):
+                if member is method_node:
+                    enclosing_name = variable_name
+                    return True
             return False
 
         def scan(node: dict, parent: dict) -> None:
-            if result[0]:
+            if enclosing_name:
                 return
-            if node.get('type') == 'VariableDeclarator':
-                init = node.get('init')
-                if init and init.get('type') == 'ClassExpression':
-                    declaration_id = node.get('id')
-                    if declaration_id and declaration_id.get('type') == 'Identifier':
-                        _check_class_body(init, declaration_id['name'])
-            elif node.get('type') == 'AssignmentExpression':
-                right = node.get('right')
-                if right and right.get('type') == 'ClassExpression':
-                    left = node.get('left')
-                    if left and left.get('type') == 'Identifier':
-                        _check_class_body(right, left['name'])
+            match node.get('type'):
+                case 'VariableDeclarator':
+                    initializer = node.get('init')
+                    if not initializer or initializer.get('type') != 'ClassExpression':
+                        return
+                    declaration_identifier = node.get('id')
+                    if declaration_identifier and declaration_identifier.get('type') == 'Identifier':
+                        check_class_body(initializer, declaration_identifier['name'])
+                case 'AssignmentExpression':
+                    right_side = node.get('right')
+                    if not right_side or right_side.get('type') != 'ClassExpression':
+                        return
+                    left_side = node.get('left')
+                    if left_side and left_side.get('type') == 'Identifier':
+                        check_class_body(right_side, left_side['name'])
 
         simple_traverse(self.ast, scan)
-        return result[0]
+        return enclosing_name
 
-    def _decode_call(self, lookup_table: list, offset: int, args: list) -> str | None:
+    def _decode_call(
+        self,
+        lookup_table: list[str],
+        offset: int,
+        arguments: list[dict],
+    ) -> str | None:
         """Statically evaluate a decoder call: decode([0x4f, 0x3a, ...])."""
-        if len(args) != 1:
+        if len(arguments) != 1:
             return None
-        arg = args[0]
-        if not arg or arg.get('type') != 'ArrayExpression':
+        argument = arguments[0]
+        if not argument or argument.get('type') != 'ArrayExpression':
             return None
-        elements = arg.get('elements', [])
+        elements = argument.get('elements', [])
         result = ''
         for element in elements:
             if not is_numeric_literal(element):
                 return None
-            idx = int(element['value']) - offset
-            if idx < 0 or idx >= len(lookup_table):
+            index = int(element['value']) - offset
+            if index < 0 or index >= len(lookup_table):
                 return None
-            entry = lookup_table[idx]
+            entry = lookup_table[index]
             if not entry:
                 return None
             result += entry[0]
         return result
 
-    def _resolve_calls(self, decoders: dict) -> None:
+    def _resolve_calls(self, decoder_map: DecoderMap) -> None:
         """Replace all decoder calls with their decoded string literals."""
-        decoded_constants: dict = {}
+        decoded_constants: DecodedConstants = {}
 
-        def enter(node: dict, parent: dict, key: str, index: int | None) -> dict | None:
+        def enter(
+            node: dict,
+            parent: dict,
+            key: str,
+            index: int | None,
+        ) -> dict | None:
             if node.get('type') != 'CallExpression':
                 return None
             callee = node.get('callee')
-            obj_name, method_name = get_member_names(callee)
-            if not obj_name:
+            object_name, method_name = get_member_names(callee)
+            if not object_name:
                 return None
 
-            decoder_key = (obj_name, method_name)
-            if decoder_key not in decoders:
+            decoder_key = (object_name, method_name)
+            if decoder_key not in decoder_map:
                 return None
 
-            lookup_table, offset = decoders[decoder_key]
+            lookup_table, offset = decoder_map[decoder_key]
             decoded = self._decode_call(lookup_table, offset, node.get('arguments', []))
             if decoded is None:
                 return None
 
             replacement = make_literal(decoded)
 
-            # Track the assignment target so we can inline the constant later
+            # Track assignment target for later constant inlining
             if parent and parent.get('type') == 'AssignmentExpression' and key == 'right':
                 left_object, left_property = get_member_names(parent.get('left'))
                 if left_object and left_property:
@@ -308,21 +357,26 @@ class ClassStringDecoder(Transform):
         if decoded_constants:
             self._inline_decoded_constants(decoded_constants)
 
-    def _inline_decoded_constants(self, decoded_constants: dict) -> None:
-        """Replace references like _0x279589["propName"] with the decoded string."""
+    def _inline_decoded_constants(self, decoded_constants: DecodedConstants) -> None:
+        """Replace references like _0x279589['propName'] with the decoded string."""
 
-        def enter(node: dict, parent: dict, key: str, index: int | None) -> dict | None:
+        def enter(
+            node: dict,
+            parent: dict,
+            key: str,
+            index: int | None,
+        ) -> dict | None:
             if node.get('type') != 'MemberExpression':
                 return None
             # Skip assignment targets
             if parent and parent.get('type') == 'AssignmentExpression' and key == 'left':
                 return None
 
-            obj_name, prop_name = get_member_names(node)
-            if not obj_name:
+            object_name, property_name = get_member_names(node)
+            if not object_name:
                 return None
 
-            lookup_key = (obj_name, prop_name)
+            lookup_key = (object_name, property_name)
             if lookup_key not in decoded_constants:
                 return None
 

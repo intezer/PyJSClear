@@ -1,5 +1,7 @@
 """ESTree AST to JavaScript code generator."""
+
 from __future__ import annotations
+
 
 # Operator precedence (higher = binds tighter)
 _PRECEDENCE = {
@@ -72,13 +74,14 @@ def generate(node: dict | None, indent: int = 0) -> str:
         return str(node)
 
     node_type = node.get('type', '')
-    gen = _GENERATORS.get(node_type)
-    if gen:
-        return gen(node, indent)
+    generator_function = _GENERATORS.get(node_type)
+    if generator_function:
+        return generator_function(node, indent)
     return f'/* unknown: {node_type} */'
 
 
 def _indent_str(level: int) -> str:
+    """Return indentation whitespace for the given nesting level."""
     return '  ' * level
 
 
@@ -93,6 +96,7 @@ def _is_directive(stmt: dict) -> bool:
 
 
 def _gen_program(node: dict, indent: int) -> str:
+    """Generate a full Program node, joining top-level statements."""
     parts = []
     body = node.get('body', [])
     for index, stmt in enumerate(body):
@@ -123,6 +127,7 @@ def _gen_stmt(node: dict | None, indent: int) -> str:
 
 
 def _gen_block(node: dict, indent: int) -> str:
+    """Generate a block statement wrapped in braces."""
     if not node.get('body'):
         return '{}'
     lines = ['{']
@@ -136,6 +141,7 @@ def _gen_block(node: dict, indent: int) -> str:
 
 
 def _gen_var_declaration(node: dict, indent: int) -> str:
+    """Generate var/let/const declarations."""
     kind = node.get('kind', 'var')
     declarations = []
     for declaration in node.get('declarations', []):
@@ -153,35 +159,39 @@ def _gen_function(node: dict, indent: int, is_expression: bool = False) -> str:
     name = generate(node['id'], indent) if node.get('id') else ''
     params = ', '.join(generate(param, indent) for param in node.get('params', []))
     async_prefix = 'async ' if node.get('async') else ''
-    gen_prefix = '*' if node.get('generator') else ''
+    generator_prefix = '*' if node.get('generator') else ''
     body = generate(node['body'], indent)
     if name:
-        return f'{async_prefix}function{gen_prefix} {name}({params}) {body}'
+        return f'{async_prefix}function{generator_prefix} {name}({params}) {body}'
     # Anonymous: always put space before parens (Babel style)
-    return f'{async_prefix}function{gen_prefix} ({params}) {body}'
+    return f'{async_prefix}function{generator_prefix} ({params}) {body}'
 
 
 def _gen_function_decl(node: dict, indent: int) -> str:
+    """Generate a function declaration."""
     return _gen_function(node, indent)
 
 
 def _gen_function_expr(node: dict, indent: int) -> str:
+    """Generate a function expression."""
     return _gen_function(node, indent, is_expression=True)
 
 
 def _gen_arrow(node: dict, indent: int) -> str:
+    """Generate an arrow function expression."""
     params = node.get('params', [])
     async_prefix = 'async ' if node.get('async') else ''
-    param_str = '(' + ', '.join(generate(param, indent) for param in params) + ')'
+    parameter_string = '(' + ', '.join(generate(param, indent) for param in params) + ')'
     body = node.get('body', {})
-    body_str = generate(body, indent)
+    body_string = generate(body, indent)
     # Wrap object literal in parens to avoid ambiguity with block
     if body.get('type') == 'ObjectExpression':
-        body_str = '(' + body_str + ')'
-    return f'{async_prefix}{param_str} => {body_str}'
+        body_string = '(' + body_string + ')'
+    return f'{async_prefix}{parameter_string} => {body_string}'
 
 
 def _gen_return(node: dict, indent: int) -> str:
+    """Generate a return statement."""
     argument = node.get('argument')
     if argument:
         return f'return {generate(argument, indent)}'
@@ -189,6 +199,7 @@ def _gen_return(node: dict, indent: int) -> str:
 
 
 def _gen_if(node: dict, indent: int) -> str:
+    """Generate an if/else statement."""
     test = generate(node['test'], indent)
     consequent_code = generate(node['consequent'], indent)
     if node['consequent'].get('type') != 'BlockStatement':
@@ -204,18 +215,21 @@ def _gen_if(node: dict, indent: int) -> str:
 
 
 def _gen_while(node: dict, indent: int) -> str:
+    """Generate a while loop."""
     test = generate(node['test'], indent)
     body = generate(node['body'], indent)
     return f'while ({test}) {body}'
 
 
 def _gen_do_while(node: dict, indent: int) -> str:
+    """Generate a do-while loop."""
     body = generate(node['body'], indent)
     test = generate(node['test'], indent)
     return f'do {body} while ({test})'
 
 
 def _gen_for(node: dict, indent: int) -> str:
+    """Generate a for loop."""
     init = ''
     if node.get('init'):
         init = generate(node['init'], indent)
@@ -226,6 +240,7 @@ def _gen_for(node: dict, indent: int) -> str:
 
 
 def _gen_for_in(node: dict, indent: int) -> str:
+    """Generate a for-in loop."""
     left = generate(node['left'], indent)
     right = generate(node['right'], indent)
     body = generate(node['body'], indent)
@@ -233,6 +248,7 @@ def _gen_for_in(node: dict, indent: int) -> str:
 
 
 def _gen_for_of(node: dict, indent: int) -> str:
+    """Generate a for-of loop."""
     left = generate(node['left'], indent)
     right = generate(node['right'], indent)
     body = generate(node['body'], indent)
@@ -240,6 +256,7 @@ def _gen_for_of(node: dict, indent: int) -> str:
 
 
 def _gen_switch(node: dict, indent: int) -> str:
+    """Generate a switch statement with cases."""
     discriminant = generate(node['discriminant'], indent)
     lines = [f'switch ({discriminant}) {{']
     for case in node.get('cases', []):
@@ -254,6 +271,7 @@ def _gen_switch(node: dict, indent: int) -> str:
 
 
 def _gen_try(node: dict, indent: int) -> str:
+    """Generate a try/catch/finally statement."""
     block = generate(node['block'], indent)
     result = f'try {block}'
     handler = node.get('handler')
@@ -271,32 +289,38 @@ def _gen_try(node: dict, indent: int) -> str:
 
 
 def _gen_throw(node: dict, indent: int) -> str:
+    """Generate a throw statement."""
     return f'throw {generate(node["argument"], indent)}'
 
 
 def _gen_break(node: dict, indent: int) -> str:
+    """Generate a break statement, optionally with a label."""
     if node.get('label'):
         return f'break {generate(node["label"], indent)}'
     return 'break'
 
 
 def _gen_continue(node: dict, indent: int) -> str:
+    """Generate a continue statement, optionally with a label."""
     if node.get('label'):
         return f'continue {generate(node["label"], indent)}'
     return 'continue'
 
 
 def _gen_labeled(node: dict, indent: int) -> str:
+    """Generate a labeled statement."""
     label = generate(node['label'], indent)
     body = _gen_stmt(node['body'], indent)
     return f'{label}:\n{body}'
 
 
 def _gen_expr_stmt(node: dict, indent: int) -> str:
+    """Generate an expression statement."""
     return generate(node['expression'], indent)
 
 
 def _gen_binary(node: dict, indent: int) -> str:
+    """Generate a binary expression with precedence-aware parenthesization."""
     operator = node.get('operator', '')
     left = generate(node['left'], indent)
     right = generate(node['right'], indent)
@@ -311,10 +335,12 @@ def _gen_binary(node: dict, indent: int) -> str:
 
 
 def _gen_logical(node: dict, indent: int) -> str:
+    """Generate a logical expression (delegates to binary)."""
     return _gen_binary(node, indent)
 
 
 def _gen_unary(node: dict, indent: int) -> str:
+    """Generate a unary expression (prefix or postfix)."""
     operator = node.get('operator', '')
     operand = generate(node['argument'], indent)
     operand_prec = _expr_precedence(node['argument'])
@@ -328,6 +354,7 @@ def _gen_unary(node: dict, indent: int) -> str:
 
 
 def _gen_update(node: dict, indent: int) -> str:
+    """Generate an update expression (++ or --)."""
     argument = generate(node['argument'], indent)
     operator = node.get('operator', '++')
     if node.get('prefix'):
@@ -336,6 +363,7 @@ def _gen_update(node: dict, indent: int) -> str:
 
 
 def _gen_assignment(node: dict, indent: int) -> str:
+    """Generate an assignment expression."""
     left = generate(node['left'], indent)
     right = generate(node['right'], indent)
     operator = node.get('operator', '=')
@@ -343,14 +371,15 @@ def _gen_assignment(node: dict, indent: int) -> str:
 
 
 def _gen_member(node: dict, indent: int) -> str:
+    """Generate a member expression (dot or bracket access)."""
     object_code = generate(node['object'], indent)
-    obj_type = node['object'].get('type', '')
+    object_type = node['object'].get('type', '')
     computed = node.get('computed')
 
     needs_parens = False
-    if obj_type == 'Literal' and isinstance(node['object'].get('value'), (int, float)):
+    if object_type == 'Literal' and isinstance(node['object'].get('value'), (int, float)):
         needs_parens = not computed
-    elif obj_type in (
+    elif object_type in (
         'BinaryExpression',
         'UnaryExpression',
         'ConditionalExpression',
@@ -364,31 +393,33 @@ def _gen_member(node: dict, indent: int) -> str:
         object_code = f'({object_code})'
 
     property_code = generate(node['property'], indent)
-    dot = '?.' if node.get('optional') else '.'
+    accessor = '?.' if node.get('optional') else '.'
     if computed:
         if node.get('optional'):
             return f'{object_code}?.[{property_code}]'
         return f'{object_code}[{property_code}]'
-    return f'{object_code}{dot}{property_code}'
+    return f'{object_code}{accessor}{property_code}'
 
 
 def _gen_call(node: dict, indent: int) -> str:
+    """Generate a function call expression."""
     callee = generate(node['callee'], indent)
     callee_type = node['callee'].get('type', '')
     if callee_type in ('FunctionExpression', 'ArrowFunctionExpression', 'SequenceExpression'):
         callee = f'({callee})'
-    args = ', '.join(generate(argument, indent) for argument in node.get('arguments', []))
+    argument_string = ', '.join(generate(argument, indent) for argument in node.get('arguments', []))
     if node.get('optional'):
-        return f'{callee}?.({args})'
-    return f'{callee}({args})'
+        return f'{callee}?.({argument_string})'
+    return f'{callee}({argument_string})'
 
 
 def _gen_new(node: dict, indent: int) -> str:
+    """Generate a new expression (constructor call)."""
     callee = generate(node['callee'], indent)
-    args = node.get('arguments', [])
-    if args:
-        arg_str = ', '.join(generate(argument, indent) for argument in args)
-        return f'new {callee}({arg_str})'
+    arguments = node.get('arguments', [])
+    if arguments:
+        argument_string = ', '.join(generate(argument, indent) for argument in arguments)
+        return f'new {callee}({argument_string})'
     return f'new {callee}()'
 
 
@@ -400,6 +431,7 @@ def _wrap_if_sequence(node: dict | None, code: str) -> str:
 
 
 def _gen_conditional(node: dict, indent: int) -> str:
+    """Generate a ternary conditional expression."""
     test = generate(node['test'], indent)
     consequent_code = _wrap_if_sequence(node.get('consequent'), generate(node['consequent'], indent))
     alternate_code = _wrap_if_sequence(node.get('alternate'), generate(node['alternate'], indent))
@@ -407,17 +439,18 @@ def _gen_conditional(node: dict, indent: int) -> str:
 
 
 def _gen_sequence(node: dict, indent: int) -> str:
-    exprs = ', '.join(generate(expression, indent) for expression in node.get('expressions', []))
-    return exprs
+    """Generate a comma-separated sequence expression."""
+    return ', '.join(generate(expression, indent) for expression in node.get('expressions', []))
 
 
 def _gen_bracket_list(elements: list, indent: int) -> str:
     """Generate a bracketed list of elements, replacing None with empty slots."""
-    elems = [generate(element, indent) if element is not None else '' for element in elements]
-    return '[' + ', '.join(elems) + ']'
+    generated_elements = [generate(element, indent) if element is not None else '' for element in elements]
+    return '[' + ', '.join(generated_elements) + ']'
 
 
 def _gen_array(node: dict, indent: int) -> str:
+    """Generate an array expression."""
     return _gen_bracket_list(node.get('elements', []), indent)
 
 
@@ -445,6 +478,7 @@ def _gen_object_property(property_node: dict, indent: int) -> str:
 
 
 def _gen_object(node: dict, indent: int) -> str:
+    """Generate an object expression with properties."""
     properties = node.get('properties', [])
     if not properties:
         return '{}'
@@ -456,12 +490,14 @@ def _gen_object(node: dict, indent: int) -> str:
 
 
 def _gen_property(node: dict, indent: int) -> str:
+    """Generate a standalone property node."""
     key = generate(node['key'], indent)
     value = generate(node['value'], indent)
     return f'{key}: {value}'
 
 
 def _gen_spread(node: dict, indent: int) -> str:
+    """Generate a spread element."""
     return '...' + generate(node['argument'], indent)
 
 
@@ -480,6 +516,7 @@ def _escape_string(string_value: str, raw: str | None) -> str:
 
 
 def _gen_literal(node: dict, indent: int) -> str:
+    """Generate a literal value (string, number, boolean, null, regex)."""
     raw = node.get('raw')
     value = node.get('value')
     if isinstance(value, str):
@@ -500,18 +537,22 @@ def _gen_literal(node: dict, indent: int) -> str:
 
 
 def _gen_identifier(node: dict, indent: int) -> str:
+    """Generate an identifier reference."""
     return node.get('name', '')
 
 
 def _gen_this(node: dict, indent: int) -> str:
+    """Generate a this expression."""
     return 'this'
 
 
 def _gen_empty(node: dict, indent: int) -> str:
+    """Generate an empty statement."""
     return ';'
 
 
 def _gen_template_literal(node: dict, indent: int) -> str:
+    """Generate a template literal string."""
     quasis = node.get('quasis', [])
     expressions = node.get('expressions', [])
     parts = []
@@ -524,12 +565,14 @@ def _gen_template_literal(node: dict, indent: int) -> str:
 
 
 def _gen_tagged_template(node: dict, indent: int) -> str:
+    """Generate a tagged template expression."""
     tag = generate(node['tag'], indent)
     quasi = generate(node['quasi'], indent)
     return f'{tag}{quasi}'
 
 
 def _gen_class_decl(node: dict, indent: int) -> str:
+    """Generate a class declaration or expression."""
     name = generate(node['id'], indent) if node.get('id') else ''
     superclass_clause = ''
     if node.get('superClass'):
@@ -541,6 +584,7 @@ def _gen_class_decl(node: dict, indent: int) -> str:
 
 
 def _gen_class_body(node: dict, indent: int) -> str:
+    """Generate a class body with methods."""
     if not node.get('body'):
         return '{}'
     lines = ['{']
@@ -551,6 +595,7 @@ def _gen_class_body(node: dict, indent: int) -> str:
 
 
 def _gen_method_def(node: dict, indent: int) -> str:
+    """Generate a method definition within a class body."""
     key = generate(node['key'], indent)
     if node.get('computed') or node['key'].get('type') == 'Literal':
         key = f'[{key}]'
@@ -568,11 +613,12 @@ def _gen_method_def(node: dict, indent: int) -> str:
             return f'{static_prefix}set {key}({params}) {body}'
         case _:
             async_prefix = 'async ' if value.get('async') else ''
-            gen_prefix = '*' if value.get('generator') else ''
-            return f'{static_prefix}{async_prefix}{gen_prefix}{key}({params}) {body}'
+            generator_prefix = '*' if value.get('generator') else ''
+            return f'{static_prefix}{async_prefix}{generator_prefix}{key}({params}) {body}'
 
 
 def _gen_yield(node: dict, indent: int) -> str:
+    """Generate a yield expression."""
     argument = generate(node.get('argument'), indent) if node.get('argument') else ''
     delegate = '*' if node.get('delegate') else ''
     if argument:
@@ -581,16 +627,19 @@ def _gen_yield(node: dict, indent: int) -> str:
 
 
 def _gen_await(node: dict, indent: int) -> str:
+    """Generate an await expression."""
     return f'await {generate(node["argument"], indent)}'
 
 
 def _gen_assignment_pattern(node: dict, indent: int) -> str:
+    """Generate a destructuring assignment with default value."""
     left = generate(node['left'], indent)
     right = generate(node['right'], indent)
     return f'{left} = {right}'
 
 
 def _gen_array_pattern(node: dict, indent: int) -> str:
+    """Generate an array destructuring pattern."""
     return _gen_bracket_list(node.get('elements', []), indent)
 
 
@@ -606,6 +655,7 @@ def _gen_object_pattern_part(property_node: dict, indent: int) -> str:
 
 
 def _gen_object_pattern(node: dict, indent: int) -> str:
+    """Generate an object destructuring pattern."""
     properties = [_gen_object_pattern_part(property_node, indent + 1) for property_node in node.get('properties', [])]
     if not properties:
         return '{}'
@@ -616,6 +666,7 @@ def _gen_object_pattern(node: dict, indent: int) -> str:
 
 
 def _gen_rest_element(node: dict, indent: int) -> str:
+    """Generate a rest element (...args)."""
     return '...' + generate(node['argument'], indent)
 
 
@@ -635,13 +686,14 @@ def _gen_import_specifier(specifier: dict, indent: int) -> str:
 
 
 def _gen_import_declaration(node: dict, indent: int) -> str:
+    """Generate an import declaration."""
     source = generate(node['source'], indent)
     specifiers = node.get('specifiers', [])
     if not specifiers:
         return f'import {source}'
-    default_specifiers = [s for s in specifiers if s.get('type') == 'ImportDefaultSpecifier']
-    namespace_specifiers = [s for s in specifiers if s.get('type') == 'ImportNamespaceSpecifier']
-    named_specifiers = [s for s in specifiers if s.get('type') == 'ImportSpecifier']
+    default_specifiers = [spec for spec in specifiers if spec.get('type') == 'ImportDefaultSpecifier']
+    namespace_specifiers = [spec for spec in specifiers if spec.get('type') == 'ImportNamespaceSpecifier']
+    named_specifiers = [spec for spec in specifiers if spec.get('type') == 'ImportSpecifier']
     parts = []
     if default_specifiers:
         parts.append(_gen_import_specifier(default_specifiers[0], indent))
@@ -654,6 +706,7 @@ def _gen_import_declaration(node: dict, indent: int) -> str:
 
 
 def _gen_export_specifier(specifier: dict, indent: int) -> str:
+    """Generate a single export specifier."""
     exported = generate(specifier['exported'], indent)
     local = generate(specifier['local'], indent)
     if exported == local:
@@ -662,6 +715,7 @@ def _gen_export_specifier(specifier: dict, indent: int) -> str:
 
 
 def _gen_export_named(node: dict, indent: int) -> str:
+    """Generate a named export declaration."""
     declaration = node.get('declaration')
     if declaration:
         return f'export {generate(declaration, indent)}'
@@ -674,11 +728,13 @@ def _gen_export_named(node: dict, indent: int) -> str:
 
 
 def _gen_export_default(node: dict, indent: int) -> str:
+    """Generate a default export declaration."""
     declaration = node.get('declaration', {})
     return f'export default {generate(declaration, indent)}'
 
 
 def _gen_export_all(node: dict, indent: int) -> str:
+    """Generate an export-all declaration."""
     source = generate(node['source'], indent)
     return f'export * from {source}'
 

@@ -1,5 +1,10 @@
 """Multi-pass deobfuscation orchestrator."""
 
+from __future__ import annotations
+
+import sys
+from typing import TYPE_CHECKING
+
 from .generator import generate
 from .parser import parse
 from .scope import build_scope_tree
@@ -54,8 +59,13 @@ from .transforms.xor_string_decode import XorStringDecoder
 from .traverser import simple_traverse
 
 
-# Transforms that use build_scope_tree and benefit from cached scope
-_SCOPE_TRANSFORMS = frozenset(
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    # Type alias for detector/decoder pairs used in pre-passes
+    type PrePassEntry = tuple[Callable[[str], bool], Callable[[str], str | None]]
+
+_SCOPE_TRANSFORMS: frozenset[type] = frozenset(
     {
         ConstantProp,
         SingleUseVarInliner,
@@ -70,10 +80,9 @@ _SCOPE_TRANSFORMS = frozenset(
     }
 )
 
-# StringRevealer runs first to handle string arrays before other transforms
-# modify the wrapper function structure.
-# Remaining transforms follow obfuscator-io-deobfuscator order.
-TRANSFORM_CLASSES = [
+# StringRevealer runs first to decode string arrays before other transforms
+# modify wrapper function structure. Remaining order follows obfuscator-io-deobfuscator.
+TRANSFORM_CLASSES: list[type] = [
     StringRevealer,
     HexEscapes,
     HexNumerics,
@@ -113,205 +122,250 @@ TRANSFORM_CLASSES = [
     StringRevealer,
 ]
 
-# Expensive transforms to skip in lite mode (large files)
-_EXPENSIVE_TRANSFORMS = {ControlFlowRecoverer, ProxyFunctionInliner, ObjectPacker}
+_EXPENSIVE_TRANSFORMS: frozenset[type] = frozenset({ControlFlowRecoverer, ProxyFunctionInliner, ObjectPacker})
 
-# Large file thresholds
-_LARGE_FILE_SIZE = 500_000  # 500KB - reduce iterations
-_MAX_CODE_SIZE = 2_000_000  # 2MB - use lite mode
-_LITE_MAX_ITERATIONS = 10
-_NODE_COUNT_LIMIT = 50_000  # Skip ControlFlowRecoverer above this
+_POST_PASS_TRANSFORMS: list[type] = [VariableRenamer, VarToConst, LetToConst]
+
+# File-size thresholds
+_LARGE_FILE_SIZE: int = 500_000  # 500 KB — reduce iterations
+_MAX_CODE_SIZE: int = 2_000_000  # 2 MB — use lite mode
+_LITE_MAX_ITERATIONS: int = 10
+_NODE_COUNT_LIMIT: int = 50_000  # skip ControlFlowRecoverer above this
+_VERY_LARGE_NODE_COUNT: int = 100_000  # cap iterations to 3
+
+# Ordered detector/decoder pairs for the pre-pass stage.
+_PRE_PASS_ENTRIES: list[PrePassEntry] = [
+    (is_jsfuck, jsfuck_decode),
+    (is_aa_encoded, aa_decode),
+    (is_jj_encoded, jj_decode),
+    (is_eval_packed, eval_unpack),
+]
 
 
-def _count_nodes(ast: dict) -> int:
-    """Count total AST nodes."""
-    count = 0
+def _count_nodes(syntax_tree: dict) -> int:
+    """Return the total number of nodes in *syntax_tree*."""
+    count: int = 0
 
-    def increment_count(node: dict, parent: dict | None) -> None:
+    def _increment(node: dict, parent: dict | None) -> None:
         nonlocal count
         count += 1
 
-    simple_traverse(ast, increment_count)
+    simple_traverse(syntax_tree, _increment)
     return count
 
 
 class Deobfuscator:
-    """Multi-pass JavaScript deobfuscator."""
+    """Multi-pass JavaScript deobfuscator.
+
+    Applies a configurable sequence of AST transforms in a loop until the code
+    stabilises or *max_iterations* is reached, then runs cosmetic post-passes.
+    """
+
+    _MAX_OUTER_CYCLES: int = 5
 
     def __init__(self, code: str, max_iterations: int = 50) -> None:
-        self.original_code = code
-        self.max_iterations = max_iterations
+        self.original_code: str = code
+        self.max_iterations: int = max_iterations
 
     def _run_pre_passes(self, code: str) -> str | None:
-        """Run encoding detection and eval unpacking pre-passes.
+        """Detect whole-file encodings (JSFuck, AAEncode, etc.) and decode them.
 
-        Returns decoded code if an encoding/packing was detected and decoded,
-        or None to continue with the normal AST pipeline.
+        Returns the decoded source when a known encoding is found, or ``None``
+        to continue with the normal AST pipeline.
         """
-        # JSFuck check (must be first — these are whole-file encodings)
-        if is_jsfuck(code):
-            decoded = jsfuck_decode(code)
+        # Look up via module globals so unittest.mock.patch can intercept.
+        module = sys.modules[__name__]
+        for detector, decoder in _PRE_PASS_ENTRIES:
+            if not getattr(module, detector.__name__)(code):
+                continue
+            decoded = getattr(module, decoder.__name__)(code)
             if decoded:
                 return decoded
-
-        # AAEncode check
-        if is_aa_encoded(code):
-            decoded = aa_decode(code)
-            if decoded:
-                return decoded
-
-        # JJEncode check
-        if is_jj_encoded(code):
-            decoded = jj_decode(code)
-            if decoded:
-                return decoded
-
-        # Eval packer check
-        if is_eval_packed(code):
-            decoded = eval_unpack(code)
-            if decoded:
-                return decoded
-
         return None
 
-    # Maximum number of outer re-parse cycles (generate → re-parse → re-transform)
-    _MAX_OUTER_CYCLES = 5
-
     def execute(self) -> str:
-        """Run all transforms and return cleaned source."""
+        """Run all deobfuscation passes and return cleaned JavaScript source."""
         code = self.original_code
 
-        # Pre-pass: encoding detection and eval unpacking
         decoded = self._run_pre_passes(code)
         if decoded:
-            # Feed decoded result back through the full pipeline for further cleanup
-            sub = Deobfuscator(decoded, max_iterations=self.max_iterations)
-            return sub.execute()
+            recursive_deobfuscator = Deobfuscator(decoded, max_iterations=self.max_iterations)
+            return recursive_deobfuscator.execute()
 
-        # Try to parse; if it fails, apply source-level hex decoding as fallback
+        syntax_tree = self._try_parse_or_fallback(code)
+        if isinstance(syntax_tree, str):
+            return syntax_tree
+
+        return self._transform_loop(syntax_tree, code)
+
+    def _try_parse_or_fallback(self, code: str) -> dict | str:
+        """Parse *code* into an AST, falling back to hex-decode on failure.
+
+        Returns the parsed AST dict on success, or a decoded/original source
+        string when parsing fails.
+        """
         try:
-            ast = parse(code)
+            return parse(code)
         except SyntaxError:
-            # Source-level hex decode for unparseable files (e.g. ES modules)
             decoded = decode_hex_escapes_source(code)
             if decoded != code:
                 return decoded
             return self.original_code
 
-        # Outer loop: run AST transforms until generate→re-parse converges.
-        # Post-passes (VariableRenamer, VarToConst, LetToConst) only run on
-        # the final cycle to avoid interfering with subsequent transform rounds.
+    def _transform_loop(self, syntax_tree: dict, code: str) -> str:
+        """Run the outer generate-reparse convergence loop and post-passes.
+
+        Returns the best deobfuscated source produced.
+        """
         previous_code = code
-        last_changed_ast = None
+        last_changed_tree: dict | None = None
+
         try:
             for _cycle in range(self._MAX_OUTER_CYCLES):
                 changed = self._run_ast_transforms(
-                    ast,
+                    syntax_tree,
                     code_size=len(previous_code),
                 )
 
                 if not changed:
                     break
 
-                last_changed_ast = ast
-
-                try:
-                    generated = generate(ast)
-                except Exception:
-                    break
-
-                if generated == previous_code:
+                last_changed_tree = syntax_tree
+                generated = self._try_generate(syntax_tree)
+                if generated is None or generated == previous_code:
                     break
 
                 previous_code = generated
-
-                # Re-parse for the next cycle
                 try:
-                    ast = parse(generated)
+                    syntax_tree = parse(generated)
                 except SyntaxError:
                     break
 
-            # Run post-passes on the final AST (always — they're cheap and handle
-            # cosmetic transforms like var→const even when no main transforms fired)
-            any_post_changed = False
-            for post_transform in [VariableRenamer, VarToConst, LetToConst]:
-                try:
-                    if post_transform(ast).execute():
-                        any_post_changed = True
-                except Exception:
-                    pass
+            any_post_changed = self._run_post_passes(syntax_tree)
 
-            if last_changed_ast is None and not any_post_changed:
+            if last_changed_tree is None and not any_post_changed:
                 return self.original_code
 
-            try:
-                return generate(ast)
-            except Exception:
-                return previous_code
+            return self._try_generate(syntax_tree) or previous_code
         except RecursionError:
-            # Safety net: esprima's parser is purely recursive with no depth
-            # limit, so deeply nested JS hits Python's recursion limit during
-            # parsing or re-parsing.  Our AST walkers are cheaper per level
-            # but also recursive.  Return best result so far.
+            # Deeply nested JS can exceed Python's recursion limit during
+            # parsing or AST walking. Return best result so far.
             return previous_code
 
-    def _run_ast_transforms(self, ast: dict, code_size: int = 0) -> bool:
-        """Run all AST transform passes. Returns True if any transform changed the AST."""
-        node_count = _count_nodes(ast) if code_size > _LARGE_FILE_SIZE else 0
+    @staticmethod
+    def _try_generate(syntax_tree: dict) -> str | None:
+        """Generate source from *syntax_tree*, returning ``None`` on failure."""
+        try:
+            return generate(syntax_tree)
+        except Exception:
+            return None
 
-        lite_mode = code_size > _MAX_CODE_SIZE
-        max_iterations = self.max_iterations
-        if code_size > _LARGE_FILE_SIZE:
-            max_iterations = min(max_iterations, _LITE_MAX_ITERATIONS)
+    @staticmethod
+    def _run_post_passes(syntax_tree: dict) -> bool:
+        """Run cosmetic post-passes (renaming, var-to-const).
 
-        # For very large ASTs, further reduce iterations
-        if node_count > 100_000:
-            max_iterations = min(max_iterations, 3)
+        Returns ``True`` if any post-pass modified the AST.
+        """
+        any_changed = False
+        for post_transform_class in _POST_PASS_TRANSFORMS:
+            try:
+                if post_transform_class(syntax_tree).execute():
+                    any_changed = True
+            except Exception:
+                pass
+        return any_changed
 
-        # Build transform list based on mode
-        transform_classes = TRANSFORM_CLASSES
-        if lite_mode or node_count > _NODE_COUNT_LIMIT:
-            transform_classes = [t for t in TRANSFORM_CLASSES if t not in _EXPENSIVE_TRANSFORMS]
+    def _run_ast_transforms(self, syntax_tree: dict, code_size: int = 0) -> bool:
+        """Run all AST transform passes.
 
-        # Track which transforms are no longer productive
-        skip_transforms = set()
+        Returns ``True`` if any transform modified the AST.
+        """
+        node_count = _count_nodes(syntax_tree) if code_size > _LARGE_FILE_SIZE else 0
+        iteration_limit = self._compute_iteration_limit(code_size, node_count)
+        active_transforms = self._select_transforms(code_size, node_count)
 
-        # Cache scope tree across transforms — only rebuild when a transform
-        # that modifies bindings returns changed=True
-        scope_tree = None
-        node_scope = None
-        scope_dirty = True  # Start dirty to build on first use
+        skipped_transforms: set[type] = set()
 
-        # Multi-pass transform loop
+        scope_tree: dict | None = None
+        node_scope: dict | None = None
+        scope_dirty: bool = True
+
         any_transform_changed = False
-        for iteration in range(max_iterations):
+        for iteration in range(iteration_limit):
             modified = False
-            for transform_class in transform_classes:
-                if transform_class in skip_transforms:
+            for transform_class in active_transforms:
+                if transform_class in skipped_transforms:
                     continue
-                try:
-                    # Build scope tree lazily when needed by a scope-using transform
-                    if transform_class in _SCOPE_TRANSFORMS and scope_dirty:
-                        scope_tree, node_scope = build_scope_tree(ast)
-                        scope_dirty = False
 
-                    if transform_class in _SCOPE_TRANSFORMS:
-                        transform = transform_class(ast, scope_tree=scope_tree, node_scope=node_scope)
-                    else:
-                        transform = transform_class(ast)
-                    result = transform.execute()
-                except Exception:
+                result, scope_tree, node_scope, scope_dirty = self._execute_single_transform(
+                    syntax_tree,
+                    transform_class,
+                    scope_tree,
+                    node_scope,
+                    scope_dirty,
+                )
+
+                if result is None:
                     continue
                 if result:
                     modified = True
                     any_transform_changed = True
-                    # Any AST change invalidates the cached scope tree
-                    scope_dirty = True
                 elif iteration > 0:
-                    # Skip transforms that haven't changed anything after the first pass
-                    skip_transforms.add(transform_class)
+                    skipped_transforms.add(transform_class)
 
             if not modified:
                 break
 
         return any_transform_changed
+
+    def _compute_iteration_limit(self, code_size: int, node_count: int) -> int:
+        """Determine the maximum iteration count based on file/AST size."""
+        limit = self.max_iterations
+        if code_size > _LARGE_FILE_SIZE:
+            limit = min(limit, _LITE_MAX_ITERATIONS)
+        if node_count > _VERY_LARGE_NODE_COUNT:
+            limit = min(limit, 3)
+        return limit
+
+    @staticmethod
+    def _select_transforms(code_size: int, node_count: int) -> list[type]:
+        """Return the transform list, excluding expensive ones for large inputs."""
+        if code_size > _MAX_CODE_SIZE or node_count > _NODE_COUNT_LIMIT:
+            return [transform for transform in TRANSFORM_CLASSES if transform not in _EXPENSIVE_TRANSFORMS]
+        return TRANSFORM_CLASSES
+
+    @staticmethod
+    def _execute_single_transform(
+        syntax_tree: dict,
+        transform_class: type,
+        scope_tree: dict | None,
+        node_scope: dict | None,
+        scope_dirty: bool,
+    ) -> tuple[bool | None, dict | None, dict | None, bool]:
+        """Run a single transform, rebuilding scope lazily as needed.
+
+        Returns ``(result, scope_tree, node_scope, scope_dirty)`` where
+        *result* is ``True``/``False`` for success/no-change, or ``None``
+        if the transform raised an exception.
+        """
+        try:
+            if transform_class in _SCOPE_TRANSFORMS and scope_dirty:
+                scope_tree, node_scope = build_scope_tree(syntax_tree)
+                scope_dirty = False
+
+            if transform_class in _SCOPE_TRANSFORMS:
+                transform = transform_class(
+                    syntax_tree,
+                    scope_tree=scope_tree,
+                    node_scope=node_scope,
+                )
+            else:
+                transform = transform_class(syntax_tree)
+
+            result = transform.execute()
+        except Exception:
+            return None, scope_tree, node_scope, scope_dirty
+
+        if result:
+            scope_dirty = True
+        return result, scope_tree, node_scope, scope_dirty

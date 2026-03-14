@@ -2,10 +2,10 @@
 
 import re
 
+from pyjsclear.parser import parse
 from pyjsclear.transforms.variable_renamer import VariableRenamer
 from pyjsclear.transforms.variable_renamer import _infer_from_init
 from pyjsclear.transforms.variable_renamer import _name_generator
-from pyjsclear.parser import parse
 from tests.unit.conftest import roundtrip
 
 
@@ -62,7 +62,7 @@ class TestHeuristicNaming:
         code = 'function f() { const _0x1 = require("child_process"); _0x1.spawn("a"); }'
         result, changed = roundtrip(code, VariableRenamer)
         assert changed is True
-        assert 'const cp = require("child_process")' in result
+        assert 'const child_proc = require("child_process")' in result
 
     def test_require_dedupe(self) -> None:
         """Multiple require("fs") in same scope get fs, fs2, fs3."""
@@ -83,19 +83,19 @@ class TestHeuristicNaming:
         code = 'function f() { const _0x1 = []; _0x1.push(1); }'
         result, changed = roundtrip(code, VariableRenamer)
         assert changed is True
-        assert 'const arr = []' in result
+        assert 'const array = []' in result
 
     def test_object_literal_named(self) -> None:
         code = 'function f() { const _0x1 = {}; _0x1.foo = 1; }'
         result, changed = roundtrip(code, VariableRenamer)
         assert changed is True
-        assert 'const obj = {}' in result or 'const obj =' in result
+        assert 'const object = {}' in result or 'const object =' in result
 
     def test_buffer_from_named(self) -> None:
         code = 'function f() { const _0x1 = Buffer.from("abc"); return _0x1; }'
         result, changed = roundtrip(code, VariableRenamer)
         assert changed is True
-        assert 'const buf = Buffer.from' in result
+        assert 'const buffer = Buffer.from' in result
 
     def test_json_parse_named(self) -> None:
         code = 'function f(s) { const _0x1 = JSON.parse(s); return _0x1; }'

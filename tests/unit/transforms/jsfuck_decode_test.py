@@ -71,7 +71,7 @@ class TestJSValueCoercion:
     def test_string_indexing(self):
         v = _JSValue('false', 'string')
         result = v.get_property(_JSValue(0, 'number'))
-        assert result.val == 'f'
+        assert result.value == 'f'
 
     def test_undefined_to_string(self):
         v = _JSValue(None, 'undefined')
@@ -108,7 +108,7 @@ class TestParserBasics:
         p = _Parser(tokens)
         result = p.parse()
         assert result.type == 'array'
-        assert result.val == []
+        assert result.value == []
 
     def test_not_empty_array_is_false(self):
         # ![] → false
@@ -116,7 +116,7 @@ class TestParserBasics:
         p = _Parser(tokens)
         result = p.parse()
         assert result.type == 'bool'
-        assert result.val is False
+        assert result.value is False
 
     def test_not_not_empty_array_is_true(self):
         # !![] → true
@@ -124,7 +124,7 @@ class TestParserBasics:
         p = _Parser(tokens)
         result = p.parse()
         assert result.type == 'bool'
-        assert result.val is True
+        assert result.value is True
 
     def test_unary_plus_empty_array_is_zero(self):
         # +[] → 0
@@ -132,7 +132,7 @@ class TestParserBasics:
         p = _Parser(tokens)
         result = p.parse()
         assert result.type == 'number'
-        assert result.val == 0
+        assert result.value == 0
 
     def test_unary_plus_true_is_one(self):
         # +!![] → 1
@@ -140,7 +140,7 @@ class TestParserBasics:
         p = _Parser(tokens)
         result = p.parse()
         assert result.type == 'number'
-        assert result.val == 1
+        assert result.value == 1
 
     def test_false_plus_array_is_string_false(self):
         # ![]+[] → "false"
@@ -148,7 +148,7 @@ class TestParserBasics:
         p = _Parser(tokens)
         result = p.parse()
         assert result.type == 'string'
-        assert result.val == 'false'
+        assert result.value == 'false'
 
     def test_true_plus_array_is_string_true(self):
         # !![]+[] → "true"
@@ -156,7 +156,7 @@ class TestParserBasics:
         p = _Parser(tokens)
         result = p.parse()
         assert result.type == 'string'
-        assert result.val == 'true'
+        assert result.value == 'true'
 
     def test_string_indexing_extracts_char(self):
         # (![]+[])[+[]] → "false"[0] → "f"
@@ -164,7 +164,7 @@ class TestParserBasics:
         p = _Parser(tokens)
         result = p.parse()
         assert result.type == 'string'
-        assert result.val == 'f'
+        assert result.value == 'f'
 
     def test_number_addition(self):
         # +!![]+!![] → 1 + 1 → 2
@@ -175,7 +175,7 @@ class TestParserBasics:
         # +!![]+!+[] parses as: (+!![]) + (!+[])
         # +!![] = +true = 1
         # !+[] = !0 = true → numeric addition: 1 + 1 = 2
-        assert result.val == 2
+        assert result.value == 2
 
 
 class TestJSFuckDecode:
@@ -203,7 +203,7 @@ class TestJSFuckDecode:
         tokens = _tokenize('(![]+[])[+!+[]]')
         p = _Parser(tokens)
         result = p.parse()
-        assert result.val == 'a'  # "false"[1]
+        assert result.value == 'a'  # "false"[1]
 
     def test_constructor_chain(self):
         """Test that constructor property chain resolves correctly.
@@ -223,7 +223,7 @@ class TestJSFuckDecode:
         ctor_key = _JSValue('constructor', 'string')
         ctor = flat_fn.get_property(ctor_key)
         assert ctor.type == 'function'
-        assert ctor.val == 'Function'
+        assert ctor.value == 'Function'
 
 
 class TestToStringRadix:
@@ -243,7 +243,7 @@ class TestToStringRadix:
         num = _JSValue(10, 'number')
         ts = num.get_property(_JSValue('toString', 'string'))
         assert ts.type == 'function'
-        assert ts.val == 'toString'
+        assert ts.value == 'toString'
 
     def test_tostring_radix_via_parser(self):
         """Test (10)["toString"](36) produces "a" through the parser.
@@ -257,21 +257,21 @@ class TestToStringRadix:
         radix_arg = _JSValue(36, 'number')
         result = p._call(func, [radix_arg], receiver)
         assert result.type == 'string'
-        assert result.val == 'a'
+        assert result.value == 'a'
 
     def test_tostring_radix_35_is_z(self):
         p = _Parser([])
         receiver = _JSValue(35, 'number')
         func = _JSValue('toString', 'function')
         result = p._call(func, [_JSValue(36, 'number')], receiver)
-        assert result.val == 'z'
+        assert result.value == 'z'
 
     def test_tostring_radix_10_default(self):
         p = _Parser([])
         receiver = _JSValue(255, 'number')
         func = _JSValue('toString', 'function')
         result = p._call(func, [_JSValue(16, 'number')], receiver)
-        assert result.val == 'ff'
+        assert result.value == 'ff'
 
 
 class TestJSFuckEndToEnd:
@@ -285,14 +285,14 @@ class TestJSFuckEndToEnd:
         tokens = _tokenize('(![]+[])[+!+[]]')
         p = _Parser(tokens)
         result = p.parse()
-        assert result.val == 'a'
+        assert result.value == 'a'
 
     def test_undefined_char_extraction(self):
         """([][[]]+[])[+!+[]] → "undefined"[1] → 'n'"""
         tokens = _tokenize('([][[]]+[])[+!+[]]')
         p = _Parser(tokens)
         result = p.parse()
-        assert result.val == 'n'
+        assert result.value == 'n'
 
     def test_object_string_char(self):
         """([]+{})[+!+[]] → "[object Object]"[1] → 'o'"""
@@ -305,7 +305,7 @@ class TestJSFuckEndToEnd:
         # "[object Object]"[1] = 'o'
         combined = _JSValue('[object Object]', 'string')
         result = combined.get_property(_JSValue(1, 'number'))
-        assert result.val == 'o'
+        assert result.value == 'o'
 
     def test_string_concat_builds_word(self):
         """Concatenating extracted chars builds a word.
@@ -316,7 +316,7 @@ class TestJSFuckEndToEnd:
         p = _Parser(tokens)
         result = p.parse()
         assert result.type == 'string'
-        assert result.val == 'al'
+        assert result.value == 'al'
 
     def test_function_constructor_captures_body(self):
         """Calling Function(body)() should capture the body string.

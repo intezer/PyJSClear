@@ -11,53 +11,55 @@ sequences, then converts octal/hex values back to characters.
 
 import re
 
-# Characteristic pattern present in all AAEncoded output — the execution call.
+
+# Characteristic pattern present in all AAEncoded output.
 _SIGNATURE = '\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]'
 
-# Separator between encoded characters (represents the escape character "\").
+# Separator between encoded characters (represents the escape character).
 _SEPARATOR = '(\uff9f\u0414\uff9f)[\uff9f\u03b5\uff9f]+'
 
-# Unicode hex marker — when present before a segment, the value is hex (\uXXXX).
-# Note: real AAEncode uses U+FF70 (halfwidth katakana-hiragana prolonged sound mark ｰ),
-# NOT U+30FC (fullwidth ー).
+# Unicode hex marker using U+FF70 (halfwidth katakana-hiragana prolonged sound mark).
 _UNICODE_MARKER = '(o\uff9f\uff70\uff9fo)'
 
 # Sentinel used to track unicode marker positions after replacement.
 _HEX_SENTINEL = '\x01'
 
+_HEX_CHARS = set('0123456789abcdefABCDEF')
+
 # Replacement rules: longer/more specific patterns first to avoid partial matches.
-# All patterns use U+FF70 (ｰ) to match real AAEncode output.
-_REPLACEMENTS = [
-    ('(o\uff9f\uff70\uff9fo)',                                      _HEX_SENTINEL),
+# All patterns use U+FF70 to match real AAEncode output.
+_REPLACEMENTS: list[tuple[str, str]] = [
+    ('(o\uff9f\uff70\uff9fo)', _HEX_SENTINEL),
     ('((\uff9f\uff70\uff9f) + (\uff9f\uff70\uff9f) + (\uff9f\u0398\uff9f))', '5'),
-    ('((\uff9f\uff70\uff9f) + (\uff9f\uff70\uff9f))',              '4'),
-    ('((\uff9f\uff70\uff9f) + (o^_^o))',                            '3'),
-    ('((\uff9f\uff70\uff9f) + (\uff9f\u0398\uff9f))',              '2'),
-    ('((o^_^o) - (\uff9f\u0398\uff9f))',                            '2'),
-    ('((o^_^o) + (o^_^o))',                                          '6'),
-    ('(\uff9f\uff70\uff9f)',                                        '1'),
-    ('(\uff9f\u0398\uff9f)',                                        '1'),
-    ('(c^_^o)',                                                      '0'),
-    ('(o^_^o)',                                                      '3'),
+    ('((\uff9f\uff70\uff9f) + (\uff9f\uff70\uff9f))', '4'),
+    ('((\uff9f\uff70\uff9f) + (o^_^o))', '3'),
+    ('((\uff9f\uff70\uff9f) + (\uff9f\u0398\uff9f))', '2'),
+    ('((o^_^o) - (\uff9f\u0398\uff9f))', '2'),
+    ('((o^_^o) + (o^_^o))', '6'),
+    ('(\uff9f\uff70\uff9f)', '1'),
+    ('(\uff9f\u0398\uff9f)', '1'),
+    ('(c^_^o)', '0'),
+    ('(o^_^o)', '3'),
 ]
+
+# Trailing execution wrappers that mark the end of the data region.
+_TAIL_PATTERNS: list[str] = [
+    '(\uff9f\u0414\uff9f)[\'_\']',
+    '(\uff9f\u0414\uff9f)["_"]',
+]
+
+_NON_HEX_PATTERN = re.compile(r'[^0-9a-fA-F]')
 
 
 def is_aa_encoded(code: str) -> bool:
-    """Check if *code* looks like AAEncoded JavaScript.
-
-    Returns True when the characteristic execution pattern is found.
-    """
+    """Return True if code contains the AAEncode execution signature."""
     if not isinstance(code, str):
         return False
     return _SIGNATURE in code
 
 
 def aa_decode(code: str) -> str | None:
-    """Decode AAEncoded JavaScript.
-
-    Returns the decoded source string, or ``None`` on any failure.
-    All processing is iterative (no recursion).
-    """
+    """Decode AAEncoded JavaScript, returning the source string or None on failure."""
     if not isinstance(code, str) or not is_aa_encoded(code):
         return None
 
@@ -67,84 +69,80 @@ def aa_decode(code: str) -> str | None:
         return None
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
 def _decode_impl(code: str) -> str | None:
-    """Core decoding logic."""
-    # 1. Isolate the data section.
-    #    AAEncode wraps data inside an execution pattern.  The encoded payload
-    #    is the series of segments joined by the separator, ending with a
-    #    final execution call like  (ﾟДﾟ)['_']  or  )('_');
-    #    We look for the *first* separator occurrence and take everything from
-    #    there up to the trailing execution wrapper.
+    """Core decoding: isolate data section, replace emoticons with digits, convert to chars."""
+    data = _extract_data_region(code)
+    if data is None:
+        return None
 
-    # Find the data region: everything after the initial variable setup and
-    # before the trailing execution portion.
-    # The data starts at the first separator token.
+    # Apply emoticon-to-digit replacements.
+    for original_pattern, replacement in _REPLACEMENTS:
+        data = data.replace(original_pattern, replacement)
+
+    # Split on separator to get individual character segments.
+    segments = data.split(_SEPARATOR)
+
+    result_characters = _decode_segments(segments)
+    if not result_characters:
+        return None
+
+    return ''.join(result_characters)
+
+
+def _extract_data_region(code: str) -> str | None:
+    """Extract the encoded payload between the first separator and the trailing wrapper."""
     separator_index = code.find(_SEPARATOR)
     if separator_index == -1:
         return None
 
-    # The trailing execution wrapper varies but typically looks like:
-    #   (ﾟДﾟ)['_'](ﾟΘﾟ)   or   )('_');
-    # We strip from the last occurrence of  (ﾟДﾟ)['_']  onward.
-    tail_patterns = [
-        "(\uff9f\u0414\uff9f)['_']",
-        '(\uff9f\u0414\uff9f)["_"]',
-    ]
     data = code[separator_index:]
-    for tail_pattern in tail_patterns:
+    for tail_pattern in _TAIL_PATTERNS:
         tail_position = data.rfind(tail_pattern)
         if tail_position != -1:
-            data = data[:tail_position]
-            break
+            return data[:tail_position]
 
-    # 2. Apply emoticon-to-digit replacements.
-    for original, replacement in _REPLACEMENTS:
-        data = data.replace(original, replacement)
+    return data
 
-    # 3. Split on the separator to get individual character segments.
-    segments = data.split(_SEPARATOR)
 
-    # The first element is the leading separator itself (empty or noise) — skip it.
-    # Actually, since we started data *at* the first separator, the split
-    # produces an empty first element.  Handle gracefully.
-
-    result_chars = []
+def _decode_segments(segments: list[str]) -> list[str]:
+    """Convert digit-string segments into decoded characters."""
+    result_characters: list[str] = []
     for segment in segments:
-        segment = segment.strip()
-        if not segment:
-            continue
+        decoded_character = _decode_single_segment(segment.strip())
+        if decoded_character is not None:
+            result_characters.append(decoded_character)
+    return result_characters
 
-        # Determine hex vs octal mode.
-        is_hex = _HEX_SENTINEL in segment
 
-        # Remove hex sentinel and any remaining operator/whitespace noise.
-        cleaned = segment.replace(_HEX_SENTINEL, '')
-        cleaned = cleaned.replace('+', '').replace(' ', '').strip()
-
-        if not cleaned:
-            continue
-
-        # cleaned should now be a string of digit characters.
-        if not cleaned.isdigit() and not (is_hex and all(c in '0123456789abcdefABCDEF' for c in cleaned)):
-            # If we still have non-digit residue, try harder: keep only digits.
-            cleaned = re.sub(r'[^0-9a-fA-F]', '', cleaned)
-            if not cleaned:
-                continue
-
-        try:
-            if is_hex:
-                result_chars.append(chr(int(cleaned, 16)))
-            else:
-                result_chars.append(chr(int(cleaned, 8)))
-        except (ValueError, OverflowError):
-            continue
-
-    if not result_chars:
+def _decode_single_segment(segment: str) -> str | None:
+    """Decode one segment into a character, or return None if unparseable."""
+    if not segment:
         return None
 
-    return ''.join(result_chars)
+    is_hex = _HEX_SENTINEL in segment
+
+    # Remove hex sentinel and operator/whitespace noise.
+    cleaned_digits = segment.replace(_HEX_SENTINEL, '')
+    cleaned_digits = cleaned_digits.replace('+', '').replace(' ', '').strip()
+
+    if not cleaned_digits:
+        return None
+
+    # If non-digit residue remains, strip it.
+    if not _is_valid_digit_string(cleaned_digits, is_hex):
+        cleaned_digits = _NON_HEX_PATTERN.sub('', cleaned_digits)
+        if not cleaned_digits:
+            return None
+
+    try:
+        base = 16 if is_hex else 8
+        return chr(int(cleaned_digits, base))
+    except (ValueError, OverflowError):
+        return None
+
+
+def _is_valid_digit_string(value: str, allow_hex: bool) -> bool:
+    """Check whether value contains only valid digit characters for the given base."""
+    if allow_hex:
+        return all(character in _HEX_CHARS for character in value)
+    return value.isdigit()

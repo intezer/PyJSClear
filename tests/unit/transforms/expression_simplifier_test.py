@@ -4,8 +4,8 @@ import math
 
 import pytest
 
-from pyjsclear.transforms.expression_simplifier import ExpressionSimplifier
 from pyjsclear.transforms.expression_simplifier import _JS_NULL
+from pyjsclear.transforms.expression_simplifier import ExpressionSimplifier
 from tests.unit.conftest import normalize
 from tests.unit.conftest import roundtrip
 

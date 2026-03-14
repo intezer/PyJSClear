@@ -1,10 +1,15 @@
 """Miscellaneous cleanup transforms.
 
-- Empty if removal: `if (expr) {}` → removed when expr is side-effect-free
-- Optional catch binding: `catch (e) {}` → `catch {}` when e is unused
-- Return undefined: `return undefined;` → `return;`
-- Var to const: `var x = ...` → `const x = ...` when x is never reassigned
+- Empty if removal: ``if (expr) {}`` removed when expr is side-effect-free
+- Optional catch binding: ``catch (e) {}`` to ``catch {}`` when e is unused
+- Return undefined: ``return undefined;`` to ``return;``
+- Var/let to const when binding is never reassigned
 """
+
+from __future__ import annotations
+
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from ..scope import build_scope_tree
 from ..traverser import REMOVE
@@ -15,66 +20,86 @@ from ..utils.ast_helpers import is_side_effect_free
 from .base import Transform
 
 
+if TYPE_CHECKING:
+    from ..scope import Scope
+
+
+class FunctionNodeType(StrEnum):
+    """ESTree function node types."""
+
+    DECLARATION = 'FunctionDeclaration'
+    EXPRESSION = 'FunctionExpression'
+    ARROW = 'ArrowFunctionExpression'
+
+
+_FUNCTION_NODE_TYPES = frozenset(FunctionNodeType)
+
+
 class EmptyIfRemover(Transform):
     """Remove empty if statements.
 
-    - ``if (expr) {}`` with no else → removed (when expr is side-effect-free)
-    - ``if (expr) {} else { body }`` → ``if (!expr) { body }``
+    - ``if (expr) {}`` with no else: removed (when expr is side-effect-free)
+    - ``if (expr) {} else { body }``: rewritten to ``if (!expr) { body }``
     """
 
     def execute(self) -> bool:
+        """Remove empty if-blocks, optionally flipping to the else branch."""
 
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> object:
+        def enter(
+            node: dict,
+            parent: dict | None,
+            key: str | None,
+            index: int | None,
+        ) -> object | None:
             if node.get('type') != 'IfStatement':
-                return
+                return None
             consequent = node.get('consequent')
             if not self._is_empty_block(consequent):
-                return
+                return None
             alternate = node.get('alternate')
             if not alternate:
-                # if (expr) {} — remove entirely if test is pure
                 if is_side_effect_free(node.get('test')):
                     self.set_changed()
                     return REMOVE
-            else:
-                # if (expr) {} else { body } → if (!expr) { body }
-                node['test'] = {
-                    'type': 'UnaryExpression',
-                    'operator': '!',
-                    'prefix': True,
-                    'argument': node['test'],
-                }
-                node['consequent'] = alternate
-                node['alternate'] = None
-                self.set_changed()
+                return None
+            # if (expr) {} else { body } -> if (!expr) { body }
+            node['test'] = {
+                'type': 'UnaryExpression',
+                'operator': '!',
+                'prefix': True,
+                'argument': node['test'],
+            }
+            node['consequent'] = alternate
+            node['alternate'] = None
+            self.set_changed()
+            return None
 
         traverse(self.ast, {'enter': enter})
         return self.has_changed()
 
     @staticmethod
-    def _is_empty_block(node: object) -> bool:
-        """Check if a node is an empty block statement ``{}``."""
+    def _is_empty_block(node: dict | None) -> bool:
+        """Return True if ``node`` is an empty BlockStatement."""
         if not isinstance(node, dict):
             return False
         if node.get('type') != 'BlockStatement':
             return False
-        body = node.get('body')
-        return not body
+        return not node.get('body')
 
 
 class TrailingReturnRemover(Transform):
-    """Remove trailing ``return;`` at the end of function bodies.
-
-    A bare ``return;`` as the last statement of a function or method body
-    has no effect and can be removed for cleaner output.
-    """
-
-    _FUNC_TYPES = frozenset({'FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'})
+    """Remove trailing bare ``return;`` at the end of function bodies."""
 
     def execute(self) -> bool:
+        """Strip redundant trailing return statements from function bodies."""
 
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
-            if node.get('type') not in self._FUNC_TYPES:
+        def enter(
+            node: dict,
+            parent: dict | None,
+            key: str | None,
+            index: int | None,
+        ) -> None:
+            if node.get('type') not in _FUNCTION_NODE_TYPES:
                 return
             body = node.get('body')
             if not isinstance(body, dict) or body.get('type') != 'BlockStatement':
@@ -99,46 +124,57 @@ class OptionalCatchBinding(Transform):
     """Remove unused catch clause parameters (ES2019 optional catch binding)."""
 
     def execute(self) -> bool:
+        """Nullify catch parameters that are never referenced in the body."""
 
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
+        def enter(
+            node: dict,
+            parent: dict | None,
+            key: str | None,
+            index: int | None,
+        ) -> None:
             if node.get('type') != 'CatchClause':
                 return
-            param = node.get('param')
-            if not param or not is_identifier(param):
+            parameter = node.get('param')
+            if not parameter or not is_identifier(parameter):
                 return
-            param_name = param['name']
+            parameter_name = parameter['name']
             body = node.get('body')
             if not body:
                 return
-            # Check if param_name is referenced anywhere in the catch body
-            if not self._is_name_used(body, param_name):
+            if not self._is_name_used(body, parameter_name):
                 node['param'] = None
                 self.set_changed()
 
         traverse(self.ast, {'enter': enter})
         return self.has_changed()
 
-    def _is_name_used(self, body: dict, name: str) -> bool:
-        """Check if an identifier name is used anywhere in the subtree."""
+    def _is_name_used(self, subtree: dict, identifier_name: str) -> bool:
+        """Return True if ``identifier_name`` appears anywhere in ``subtree``."""
         found = False
 
         def callback(node: dict, parent: dict | None) -> None:
             nonlocal found
             if found:
                 return
-            if is_identifier(node) and node.get('name') == name:
+            if is_identifier(node) and node.get('name') == identifier_name:
                 found = True
 
-        simple_traverse(body, callback)
+        simple_traverse(subtree, callback)
         return found
 
 
 class ReturnUndefinedCleanup(Transform):
-    """Simplify `return undefined;` to `return;`."""
+    """Simplify ``return undefined;`` to ``return;``."""
 
     def execute(self) -> bool:
+        """Replace explicit ``return undefined`` with bare ``return``."""
 
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
+        def enter(
+            node: dict,
+            parent: dict | None,
+            key: str | None,
+            index: int | None,
+        ) -> None:
             if node.get('type') != 'ReturnStatement':
                 return
             argument = node.get('argument')
@@ -155,129 +191,152 @@ class ReturnUndefinedCleanup(Transform):
 class LetToConst(Transform):
     """Convert ``let`` declarations to ``const`` when the binding is never reassigned.
 
-    Unlike ``var`` → ``const``, both ``let`` and ``const`` are block-scoped,
+    Unlike ``var`` to ``const``, both ``let`` and ``const`` are block-scoped,
     so no additional block-position checks are needed.  Only converts when:
     - The declaration has exactly one declarator with an initializer
     - The binding has no assignments after declaration
     """
 
     def execute(self) -> bool:
-        if self.scope_tree is not None:
-            scope_tree = self.scope_tree
-        else:
-            scope_tree, _ = build_scope_tree(self.ast)
-        safe_declarators: set[int] = set()
-        self._collect_let_const_candidates(scope_tree, safe_declarators)
+        """Promote single-declarator ``let`` bindings to ``const`` when safe."""
+        scope_tree = self.scope_tree if self.scope_tree is not None else build_scope_tree(self.ast)[0]
+        safe_declarator_ids: set[int] = set()
+        self._collect_let_const_candidates(scope_tree, safe_declarator_ids)
 
-        if not safe_declarators:
+        if not safe_declarator_ids:
             return False
 
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
+        def enter(
+            node: dict,
+            parent: dict | None,
+            key: str | None,
+            index: int | None,
+        ) -> None:
             if node.get('type') != 'VariableDeclaration':
                 return
             if node.get('kind') != 'let':
                 return
             declarations = node.get('declarations', [])
-            if len(declarations) == 1 and id(declarations[0]) in safe_declarators:
+            if len(declarations) == 1 and id(declarations[0]) in safe_declarator_ids:
                 node['kind'] = 'const'
                 self.set_changed()
 
         traverse(self.ast, {'enter': enter})
         return self.has_changed()
 
-    def _collect_let_const_candidates(self, scope: object, safe_declarators: set[int]) -> None:
-        """Find let bindings that are never reassigned and have initializers."""
-        for name, binding in scope.bindings.items():
+    def _collect_let_const_candidates(
+        self,
+        scope: Scope,
+        safe_declarator_ids: set[int],
+    ) -> None:
+        """Find ``let`` bindings that are never reassigned and have initializers."""
+        for binding_name, binding in scope.bindings.items():
             if binding.kind != 'let':
                 continue
             if binding.assignments:
                 continue
-            node = binding.node
-            if not isinstance(node, dict) or node.get('type') != 'VariableDeclarator':
+            declaration_node = binding.node
+            if not isinstance(declaration_node, dict):
                 continue
-            if not node.get('init'):
+            if declaration_node.get('type') != 'VariableDeclarator':
                 continue
-            safe_declarators.add(id(node))
+            if not declaration_node.get('init'):
+                continue
+            safe_declarator_ids.add(id(declaration_node))
 
-        for child in scope.children:
-            self._collect_let_const_candidates(child, safe_declarators)
+        for child_scope in scope.children:
+            self._collect_let_const_candidates(child_scope, safe_declarator_ids)
 
 
 class VarToConst(Transform):
-    """Convert `var` declarations to `const` when the binding is never reassigned.
+    """Convert ``var`` declarations to ``const`` when the binding is never reassigned.
 
-    Only converts `var` to `const` when:
+    Only converts ``var`` to ``const`` when:
     - The declaration has exactly one declarator with an initializer
     - The binding has no assignments after declaration
     - The declaration is a direct child of a function body (not inside a
-      nested block like if/for/try/switch), since var is function-scoped
-      but const is block-scoped
+      nested block like if/for/try/switch), since ``var`` is function-scoped
+      but ``const`` is block-scoped
     """
 
     def execute(self) -> bool:
-        if self.scope_tree is not None:
-            scope_tree = self.scope_tree
-        else:
-            scope_tree, _ = build_scope_tree(self.ast)
-        safe_declarators: set[int] = set()
-        self._collect_const_candidates(scope_tree, safe_declarators, in_function=True)
+        """Promote single-declarator ``var`` bindings to ``const`` when safe."""
+        scope_tree = self.scope_tree if self.scope_tree is not None else build_scope_tree(self.ast)[0]
+        safe_declarator_ids: set[int] = set()
+        self._collect_const_candidates(scope_tree, safe_declarator_ids, in_function=True)
 
-        if not safe_declarators:
+        if not safe_declarator_ids:
             return False
 
-        # Track which BlockStatements are direct function bodies
-        func_body_ids: set[int] = set()
-        self._collect_func_bodies(self.ast, func_body_ids)
+        function_body_ids: set[int] = set()
+        self._collect_function_bodies(self.ast, function_body_ids)
 
-        def enter(node: dict, parent: dict | None, key: str | None, index: int | None) -> None:
+        def enter(
+            node: dict,
+            parent: dict | None,
+            key: str | None,
+            index: int | None,
+        ) -> None:
             if node.get('type') != 'VariableDeclaration':
                 return
             if node.get('kind') != 'var':
                 return
-            # Only convert if parent is a function body or Program
             if not parent:
                 return
-            parent_type = parent.get('type')
-            if parent_type == 'Program':
-                pass  # Top-level var — safe to convert
-            elif parent_type == 'BlockStatement':
-                if id(parent) not in func_body_ids:
-                    return  # Inside a nested block — unsafe
-            else:
+            if not self._is_safe_parent_for_var(parent, function_body_ids):
                 return
             declarations = node.get('declarations', [])
-            if len(declarations) == 1 and id(declarations[0]) in safe_declarators:
+            if len(declarations) == 1 and id(declarations[0]) in safe_declarator_ids:
                 node['kind'] = 'const'
                 self.set_changed()
 
         traverse(self.ast, {'enter': enter})
         return self.has_changed()
 
-    def _collect_func_bodies(self, ast: dict, func_body_ids: set[int]) -> None:
+    @staticmethod
+    def _is_safe_parent_for_var(parent: dict, function_body_ids: set[int]) -> bool:
+        """Return True if ``parent`` is a safe location to convert var to const."""
+        match parent.get('type'):
+            case 'Program':
+                return True
+            case 'BlockStatement':
+                return id(parent) in function_body_ids
+            case _:
+                return False
+
+    def _collect_function_bodies(self, ast: dict, function_body_ids: set[int]) -> None:
         """Collect ids of BlockStatements that are direct function bodies."""
 
         def callback(node: dict, parent: dict | None) -> None:
-            if node.get('type') in ('FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'):
-                body = node.get('body')
-                if body and body.get('type') == 'BlockStatement':
-                    func_body_ids.add(id(body))
+            if node.get('type') not in _FUNCTION_NODE_TYPES:
+                return
+            body = node.get('body')
+            if body and body.get('type') == 'BlockStatement':
+                function_body_ids.add(id(body))
 
         simple_traverse(ast, callback)
 
-    def _collect_const_candidates(self, scope: object, safe_declarators: set[int], in_function: bool = False) -> None:
-        """Find var bindings that are never reassigned and have initializers."""
+    def _collect_const_candidates(
+        self,
+        scope: Scope,
+        safe_declarator_ids: set[int],
+        in_function: bool = False,
+    ) -> None:
+        """Find ``var`` bindings that are never reassigned and have initializers."""
         if in_function:
-            for name, binding in scope.bindings.items():
+            for binding_name, binding in scope.bindings.items():
                 if binding.kind != 'var':
                     continue
                 if binding.assignments:
                     continue
-                node = binding.node
-                if not isinstance(node, dict) or node.get('type') != 'VariableDeclarator':
+                declaration_node = binding.node
+                if not isinstance(declaration_node, dict):
                     continue
-                if not node.get('init'):
+                if declaration_node.get('type') != 'VariableDeclarator':
                     continue
-                safe_declarators.add(id(node))
+                if not declaration_node.get('init'):
+                    continue
+                safe_declarator_ids.add(id(declaration_node))
 
-        for child in scope.children:
-            self._collect_const_candidates(child, safe_declarators, in_function or child.is_function)
+        for child_scope in scope.children:
+            self._collect_const_candidates(child_scope, safe_declarator_ids, in_function or child_scope.is_function)

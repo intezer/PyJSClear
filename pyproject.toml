@@ -44,13 +44,14 @@ version = {attr = "pyjsclear.__version__"}
 line-length = 120
 target-version = ['py311']
 skip-string-normalization = true
-extend-exclude = 'tests/resources/'
+extend-exclude = 'tests/resources/|\.venv|\.nodeenv'
 
 [tool.isort]
 profile = "black"
 force_single_line = true
 lines_after_imports = 2
 line_length = 120
+skip = ["tests/resources", ".venv", ".nodeenv"]
 
 [tool.commitizen]
 name = "cz_customize"
