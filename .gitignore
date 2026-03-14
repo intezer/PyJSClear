@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+.idea/
+.nodeenv/
+.venv/
+uv.lock
+tests/resources/jsimplifier
+tests/resources/obfuscated-javascript-dataset

@@ -12,7 +12,7 @@ from .deobfuscator import Deobfuscator
 
 __all__ = ['Deobfuscator', 'deobfuscate', 'deobfuscate_file']
 
-__version__ = '0.1.4'
+__version__ = '0.1.5'
 
 
 def deobfuscate(code: str, max_iterations: int = 50) -> str:
