@@ -20,7 +20,7 @@ from .base import Transform
 
 
 # Pair of (object_name, property_name) for tracking member accesses.
-type PropertyPair = tuple[str, str]
+PropertyPair = tuple[str, str]
 
 # Objects that may be externally observed; never remove their property assignments.
 _GLOBAL_OBJECTS = frozenset(

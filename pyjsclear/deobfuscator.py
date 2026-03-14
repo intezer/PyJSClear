@@ -63,7 +63,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     # Type alias for detector/decoder pairs used in pre-passes
-    type PrePassEntry = tuple[Callable[[str], bool], Callable[[str], str | None]]
+    PrePassEntry = tuple[Callable[[str], bool], Callable[[str], str | None]]
 
 _SCOPE_TRANSFORMS: frozenset[type] = frozenset(
     {

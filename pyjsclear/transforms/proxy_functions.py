@@ -43,10 +43,10 @@ _FUNCTION_EXPR_TYPES = frozenset(
 )
 
 # Proxy info tuple: (func_node, scope, binding)
-type ProxyInfo = tuple[dict, Scope, Binding]
+ProxyInfo = tuple[dict, 'Scope', Binding]
 
 # Call site tuple: (call_node, parent, key, index, proxy_info, depth)
-type CallSite = tuple[dict, dict, str, int | None, ProxyInfo, int]
+CallSite = tuple[dict, dict, str, int | None, ProxyInfo, int]
 
 
 class ProxyFunctionInliner(Transform):
