@@ -94,5 +94,6 @@ See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) and
 [NOTICE](NOTICE) for full attribution.
 
 Test samples include obfuscated JavaScript from the
-[JSIMPLIFIER dataset](https://zenodo.org/records/17531662) (GPL-3.0),
+[JSIMPLIFIER dataset](https://zenodo.org/records/17531662) (GPL-3.0)
+and the [Obfuscated JavaScript Dataset](https://www.kaggle.com/datasets/fanbyprinciple/obfuscated-javascript-dataset),
 used solely for evaluation purposes.
