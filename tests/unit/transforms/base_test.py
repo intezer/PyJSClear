@@ -1,6 +1,8 @@
 import pytest
 
+from pyjsclear.parser import parse
 from pyjsclear.transforms.base import Transform
+from pyjsclear.traverser import build_parent_map
 
 
 class TestTransformInit:
@@ -50,6 +52,60 @@ class TestTransformChangedTracking:
         transform.set_changed()
         transform.set_changed()
         assert transform.has_changed() is True
+
+
+class TestRecordReplacement:
+    def test_find_parent_returns_recorded_entry_without_rebuild(self):
+        ast = parse('f(1);')
+        transform = Transform(ast)
+        cached_map = transform.get_parent_map()
+
+        call = ast['body'][0]['expression']
+        replacement = {'type': 'Literal', 'value': 2, 'raw': '2'}
+        call['arguments'][0] = replacement
+        transform.record_replacement(replacement, call, 'arguments', 0)
+
+        parent, key, index = transform.find_parent(replacement)
+        assert parent is call
+        assert key == 'arguments'
+        assert index == 0
+        # The lookup was served by the patched cache, not a full rebuild.
+        assert transform._parent_map is cached_map
+
+    def test_noop_when_map_not_built(self):
+        ast = parse('f(1);')
+        transform = Transform(ast)
+
+        call = ast['body'][0]['expression']
+        replacement = {'type': 'Literal', 'value': 2, 'raw': '2'}
+        call['arguments'][0] = replacement
+        transform.record_replacement(replacement, call, 'arguments', 0)
+
+        assert transform._parent_map is None
+
+    def test_recorded_entry_matches_rebuild_for_list_child(self):
+        ast = parse('f(1);')
+        transform = Transform(ast)
+        transform.get_parent_map()
+
+        call = ast['body'][0]['expression']
+        replacement = {'type': 'Literal', 'value': 2, 'raw': '2'}
+        call['arguments'][0] = replacement
+        transform.record_replacement(replacement, call, 'arguments', 0)
+
+        assert transform.find_parent(replacement) == build_parent_map(ast)[id(replacement)]
+
+    def test_recorded_entry_matches_rebuild_for_dict_child(self):
+        ast = parse('x + 1;')
+        transform = Transform(ast)
+        transform.get_parent_map()
+
+        statement = ast['body'][0]
+        replacement = {'type': 'Literal', 'value': 2, 'raw': '2'}
+        statement['expression'] = replacement
+        transform.record_replacement(replacement, statement, 'expression', None)
+
+        assert transform.find_parent(replacement) == build_parent_map(ast)[id(replacement)]
 
 
 class TestTransformRebuildScope:
