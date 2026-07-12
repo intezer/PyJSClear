@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from .generator import generate
 from .parser import parse
 from .scope import build_scope_tree
@@ -171,9 +173,15 @@ class Deobfuscator:
 
     _MAX_OUTER_CYCLES: int = 5
 
-    def __init__(self, code: str, max_iterations: int = 50) -> None:
+    def __init__(
+        self,
+        code: str,
+        max_iterations: int = 50,
+        time_budget_seconds: float | None = None,
+    ) -> None:
         self.original_code: str = code
         self.max_iterations: int = max_iterations
+        self.time_budget_seconds: float | None = time_budget_seconds
 
     def _run_pre_passes(self, code: str) -> str | None:
         """Detect whole-file encodings (JSFuck, AAEncode, etc.) and decode them.
@@ -209,7 +217,11 @@ class Deobfuscator:
 
         decoded = self._run_pre_passes(code)
         if decoded:
-            recursive_deobfuscator = Deobfuscator(decoded, max_iterations=self.max_iterations)
+            recursive_deobfuscator = Deobfuscator(
+                decoded,
+                max_iterations=self.max_iterations,
+                time_budget_seconds=self.time_budget_seconds,
+            )
             return recursive_deobfuscator.execute()
 
         syntax_tree = self._try_parse_or_fallback(code)
@@ -235,13 +247,28 @@ class Deobfuscator:
     def _transform_loop(self, syntax_tree: dict, code: str) -> str:
         """Run the outer generate-reparse convergence loop and post-passes.
 
+        When ``time_budget_seconds`` is set, the elapsed wall-clock time is
+        checked inline at the top of each outer cycle (never via exceptions,
+        which the pipeline's broad ``except Exception`` handlers would
+        swallow); once exceeded, the loop stops and the best result so far
+        flows into the normal return path. The budget restarts at each nested
+        decode layer (JSFuck/eval-packed recursion); it is not a global
+        deadline for the whole call.
+
         Returns the best deobfuscated source produced.
         """
         previous_code = code
         last_changed_tree: dict | None = None
+        start_time = time.monotonic()
 
         try:
             for _cycle in range(self._MAX_OUTER_CYCLES):
+                if (
+                    self.time_budget_seconds is not None
+                    and time.monotonic() - start_time >= self.time_budget_seconds
+                ):
+                    break
+
                 changed = self._run_ast_transforms(
                     syntax_tree,
                     code_size=len(previous_code),
