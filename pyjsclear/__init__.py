@@ -15,35 +15,23 @@ __all__ = ['Deobfuscator', 'deobfuscate', 'deobfuscate_file']
 __version__ = '0.1.6'
 
 
-def deobfuscate(
-    code: str,
-    max_iterations: int = 50,
-    time_budget_seconds: float | None = None,
-) -> str:
+def deobfuscate(code: str, max_iterations: int = 50) -> str:
     """Deobfuscate JavaScript code and return cleaned source.
 
     Args:
         code: JavaScript source code string.
         max_iterations: Maximum transform passes (default 50).
-        time_budget_seconds: Optional coarse wall-clock budget checked between transform
-            cycles (a stuck transform is not interrupted — enforce a hard bound externally);
-            restarts per nested decode layer, returning the best result so far on expiry. None disables it.
 
     Returns:
         Deobfuscated JavaScript source code.
     """
-    return Deobfuscator(
-        code,
-        max_iterations=max_iterations,
-        time_budget_seconds=time_budget_seconds,
-    ).execute()
+    return Deobfuscator(code, max_iterations=max_iterations).execute()
 
 
 def deobfuscate_file(
     input_path: str | Path,
     output_path: str | Path | None = None,
     max_iterations: int = 50,
-    time_budget_seconds: float | None = None,
 ) -> str | bool:
     """Deobfuscate a JavaScript file.
 
@@ -51,9 +39,6 @@ def deobfuscate_file(
         input_path: Path to input JS file.
         output_path: Path to write output (if None, returns string).
         max_iterations: Maximum transform passes.
-        time_budget_seconds: Optional coarse wall-clock budget checked between transform
-            cycles (a stuck transform is not interrupted — enforce a hard bound externally);
-            restarts per nested decode layer, returning the best result so far on expiry. None disables it.
 
     Returns:
         True if content changed (when output_path given), or the deobfuscated string.
@@ -61,7 +46,7 @@ def deobfuscate_file(
     with open(input_path, 'r', errors='replace') as input_file:
         code = input_file.read()
 
-    result = deobfuscate(code, max_iterations=max_iterations, time_budget_seconds=time_budget_seconds)
+    result = deobfuscate(code, max_iterations=max_iterations)
 
     if not output_path:
         return result
