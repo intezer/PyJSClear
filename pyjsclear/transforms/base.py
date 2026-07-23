@@ -54,24 +54,18 @@ class Transform:
     def invalidate_parent_map(self) -> None:
         """Drop the cached parent map so the next lookup rebuilds it.
 
-        Prefer record_replacement() after an in-place node swap: it keeps the
-        cached map valid in O(1) instead of forcing an O(N) full rebuild on the
-        next find_parent (which is quadratic when many nodes are replaced).
+        Prefer record_replacement() after an in-place swap: it keeps the map valid in O(1)
+        instead of forcing an O(N) rebuild on the next find_parent (quadratic over many swaps).
         """
         self._parent_map = None
 
-    def record_replacement(
-        self, replacement: dict, parent: dict, key: str, index: int | None
-    ) -> None:
+    def record_replacement(self, replacement: dict, parent: dict, key: str, index: int | None) -> None:
         """Patch the cached parent map after an in-place node swap.
 
-        Only valid for in-place swaps (parent[key][index] = replacement or
-        parent[key] = replacement) that leave list indices unchanged; for
-        insertions/removals that shift indices, call invalidate_parent_map()
-        instead. The detached original subtree's entries go stale — callers
-        must not look them up afterwards — and descendants of the replacement
-        are not registered, so find_parent on them returns None until a full
-        rebuild.
+        Valid only for swaps that leave list indices unchanged; for insertions/removals that
+        shift indices, call invalidate_parent_map() instead. The detached original subtree's
+        entries go stale (don't look them up), and descendants of the replacement aren't
+        registered, so find_parent returns None on them until a full rebuild.
         """
         if self._parent_map is not None:
             self._parent_map[id(replacement)] = (parent, key, index)

@@ -25,11 +25,9 @@ def deobfuscate(
     Args:
         code: JavaScript source code string.
         max_iterations: Maximum transform passes (default 50).
-        time_budget_seconds: Optional coarse wall-clock budget, checked between
-            transform cycles (a stuck transform is not interrupted — enforce a
-            hard bound externally). Restarts at each nested decode layer, so it
-            is not a global deadline; on expiry the best result so far is
-            returned. ``None`` (default) disables it.
+        time_budget_seconds: Optional coarse wall-clock budget checked between transform
+            cycles (a stuck transform is not interrupted — enforce a hard bound externally);
+            restarts per nested decode layer, returning the best result so far on expiry. None disables it.
 
     Returns:
         Deobfuscated JavaScript source code.
@@ -53,11 +51,9 @@ def deobfuscate_file(
         input_path: Path to input JS file.
         output_path: Path to write output (if None, returns string).
         max_iterations: Maximum transform passes.
-        time_budget_seconds: Optional coarse wall-clock budget, checked between
-            transform cycles (a stuck transform is not interrupted — enforce a
-            hard bound externally). Restarts at each nested decode layer, so it
-            is not a global deadline; on expiry the best result so far is
-            returned. ``None`` (default) disables it.
+        time_budget_seconds: Optional coarse wall-clock budget checked between transform
+            cycles (a stuck transform is not interrupted — enforce a hard bound externally);
+            restarts per nested decode layer, returning the best result so far on expiry. None disables it.
 
     Returns:
         True if content changed (when output_path given), or the deobfuscated string.

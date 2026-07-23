@@ -247,13 +247,10 @@ class Deobfuscator:
     def _transform_loop(self, syntax_tree: dict, code: str) -> str:
         """Run the outer generate-reparse convergence loop and post-passes.
 
-        When ``time_budget_seconds`` is set, the elapsed wall-clock time is
-        checked inline at the top of each outer cycle (never via exceptions,
-        which the pipeline's broad ``except Exception`` handlers would
-        swallow); once exceeded, the loop stops and the best result so far
-        flows into the normal return path. The budget restarts at each nested
-        decode layer (JSFuck/eval-packed recursion); it is not a global
-        deadline for the whole call.
+        When ``time_budget_seconds`` is set, elapsed wall-clock is polled at the top of each
+        outer cycle (not raised as an exception, which the pipeline's broad ``except Exception``
+        handlers would swallow); on expiry the loop stops and the best result so far is returned.
+        The budget restarts at each nested decode layer, so it is not a global deadline.
 
         Returns the best deobfuscated source produced.
         """
@@ -263,10 +260,7 @@ class Deobfuscator:
 
         try:
             for _cycle in range(self._MAX_OUTER_CYCLES):
-                if (
-                    self.time_budget_seconds is not None
-                    and time.monotonic() - start_time >= self.time_budget_seconds
-                ):
+                if self.time_budget_seconds is not None and time.monotonic() - start_time >= self.time_budget_seconds:
                     break
 
                 changed = self._run_ast_transforms(

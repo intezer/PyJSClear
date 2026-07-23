@@ -27,14 +27,6 @@ class TestDeobfuscateBudget:
         result = pyjsclear.deobfuscate_file(str(input_file), time_budget_seconds=0.001)
         assert isinstance(result, str)
 
-    def test_without_budget_behavior_is_unchanged(self):
-        # Mirrors an existing proven deobfuscation (hex escape decoding) to show
-        # the default (no kwarg) path still fully deobfuscates.
-        code = 'var x = "\\x48\\x65\\x6c\\x6c\\x6f";'
-        result = pyjsclear.deobfuscate(code)
-        assert '\\x48' not in result
-        assert 'Hello' in result
-
 
 class TestDeobfuscatorBudgetInternals:
     def test_budget_defaults_to_none_and_is_stored_when_given(self):
