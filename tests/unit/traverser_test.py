@@ -389,6 +389,12 @@ class TestCollectNodes:
         assert True in values
         assert 42 in values
 
+    def test_recurses_into_optional_chain(self):
+        # obj?.[k] is wrapped in a ChainExpression; traversal must still reach the identifiers inside.
+        ast = parse('var y = obj?.[key];')
+        names = {n['name'] for n in collect_nodes(ast, 'Identifier')}
+        assert {'obj', 'key'} <= names
+
 
 # ===========================================================================
 # 8. find_parent

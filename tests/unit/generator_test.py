@@ -245,6 +245,30 @@ class TestBinaryExpressions:
         assert generate(node) == 'a ?? b'
 
 
+class TestNullishMixingParentheses:
+    """ES forbids ?? adjacent to || or && without parens."""
+
+    @staticmethod
+    def _logical(operator, left, right):
+        return {'type': 'LogicalExpression', 'operator': operator, 'left': left, 'right': right}
+
+    def test_nullish_left_of_or_is_parenthesized(self):
+        node = self._logical('||', self._logical('??', _id('a'), _id('b')), _id('c'))
+        assert generate(node) == '(a ?? b) || c'
+
+    def test_or_left_of_nullish_is_parenthesized(self):
+        node = self._logical('??', self._logical('||', _id('a'), _id('b')), _id('c'))
+        assert generate(node) == '(a || b) ?? c'
+
+    def test_nullish_with_higher_precedence_and_is_parenthesized(self):
+        node = self._logical('??', _id('a'), self._logical('&&', _id('b'), _id('c')))
+        assert generate(node) == 'a ?? (b && c)'
+
+    def test_nullish_chained_with_nullish_is_not_parenthesized(self):
+        node = self._logical('??', self._logical('??', _id('a'), _id('b')), _id('c'))
+        assert generate(node) == 'a ?? b ?? c'
+
+
 class TestUnaryExpressions:
     def test_typeof(self):
         node = {

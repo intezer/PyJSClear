@@ -1,3 +1,1 @@
-# Cap below 5.0.2: it changed optional-chaining (a?.b) parsing to the ESTree ChainExpression
-# wrapper, which the generator and transforms don't yet support (tracked as a follow-up).
-esprima2>=5.0.0,<5.0.2
+esprima2==6.0.0
