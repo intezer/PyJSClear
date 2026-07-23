@@ -180,7 +180,7 @@ class ObjectSimplifier(Transform):
             parent[key][index] = replacement
         else:
             parent[key] = replacement
-        self.invalidate_parent_map()
+        self.record_replacement(replacement, parent, key, index)
         return True
 
     def _inline_function(self, function_node: dict, arguments: list[dict]) -> dict | None:

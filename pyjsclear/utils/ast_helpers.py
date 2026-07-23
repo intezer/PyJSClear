@@ -171,6 +171,7 @@ _CHILD_KEYS: dict[str, tuple[str, ...]] = {
     'AssignmentExpression': ('left', 'right'),
     'MemberExpression': ('object', 'property'),
     'CallExpression': ('callee', 'arguments'),
+    'ChainExpression': ('expression',),
     'NewExpression': ('callee', 'arguments'),
     'ConditionalExpression': ('test', 'consequent', 'alternate'),
     'SequenceExpression': ('expressions',),

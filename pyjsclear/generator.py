@@ -298,6 +298,18 @@ def _gen_expr_stmt(node: dict, indent: int) -> str:
     return generate(node['expression'], indent)
 
 
+def _mixes_nullish_and_logical(operator: str, operand: dict | None) -> bool:
+    # ES forbids ?? adjacent to || or && without parens.
+    if not isinstance(operand, dict) or operand.get('type') != 'LogicalExpression':
+        return False
+    operand_operator = operand.get('operator', '')
+    if operator == '??':
+        return operand_operator in ('||', '&&')
+    if operator in ('||', '&&'):
+        return operand_operator == '??'
+    return False
+
+
 def _gen_binary(node: dict, indent: int) -> str:
     operator = node.get('operator', '')
     left = generate(node['left'], indent)
@@ -305,9 +317,13 @@ def _gen_binary(node: dict, indent: int) -> str:
     my_prec = _PRECEDENCE.get(operator, 1)
     left_prec = _expr_precedence(node['left'])
     right_prec = _expr_precedence(node['right'])
-    if left_prec < my_prec:
+    if left_prec < my_prec or _mixes_nullish_and_logical(operator, node['left']):
         left = f'({left})'
-    if right_prec < my_prec or (right_prec == my_prec and operator not in ('+', '*', '|', '&', '^')):
+    if (
+        right_prec < my_prec
+        or (right_prec == my_prec and operator not in ('+', '*', '|', '&', '^'))
+        or _mixes_nullish_and_logical(operator, node['right'])
+    ):
         right = f'({right})'
     return f'{left} {operator} {right}'
 
@@ -383,6 +399,11 @@ def _gen_call(node: dict, indent: int) -> str:
     if node.get('optional'):
         return f'{callee}?.({argument_string})'
     return f'{callee}({argument_string})'
+
+
+def _gen_chain(node: dict, indent: int) -> str:
+    # ChainExpression wraps an optional chain; the ?. is on the inner node.
+    return generate(node.get('expression'), indent)
 
 
 def _gen_new(node: dict, indent: int) -> str:
@@ -700,7 +721,7 @@ def _expr_precedence(node: dict) -> int:
             | 'TemplateLiteral'
         ):
             return 20
-        case 'MemberExpression' | 'CallExpression' | 'NewExpression' | 'TaggedTemplateExpression':
+        case 'MemberExpression' | 'CallExpression' | 'NewExpression' | 'TaggedTemplateExpression' | 'ChainExpression':
             return 19
         case 'UpdateExpression':
             return 17 if node.get('prefix') else 18
@@ -749,6 +770,7 @@ _GENERATORS = {
     'AssignmentExpression': _gen_assignment,
     'MemberExpression': _gen_member,
     'CallExpression': _gen_call,
+    'ChainExpression': _gen_chain,
     'NewExpression': _gen_new,
     'ConditionalExpression': _gen_conditional,
     'SequenceExpression': _gen_sequence,

@@ -227,3 +227,4 @@ class ClassStaticResolver(Transform):
             parent[key][index] = replacement
         else:
             parent[key] = replacement
+        self.record_replacement(replacement, parent, key, index)

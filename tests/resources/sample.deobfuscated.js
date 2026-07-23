@@ -2822,7 +2822,7 @@
           try {
             const data9 = JSON.parse(fs11.readFileSync(vg, "utf8"));
             const vh = await this.g4EE56L("wv-key");
-            if (data9[nr.E506IW4.w668BQY] ?? (true || (data9[nr.E506IW4.q4D91PM]?.[nr.E506IW4.P5D7IHK] ?? true) || (data9[nr.E506IW4.r6BA6EQ] ?? true) || (data9[nr.E506IW4.g65BAO8] ?? true))) {
+            if ((data9[nr.E506IW4.w668BQY] ?? true) || (data9[nr.E506IW4.q4D91PM]?.[nr.E506IW4.P5D7IHK] ?? true) || (data9[nr.E506IW4.r6BA6EQ] ?? true) || (data9[nr.E506IW4.g65BAO8] ?? true)) {
               if (0 == vh || ve) {
                 await this.D45AYQ3(nr.E506IW4.D472X8L);
                 data9[nr.E506IW4.w668BQY] = false;
@@ -2915,7 +2915,7 @@
             let flag8 = true;
             if ("shift" in data11 && "browser" in data11.shift) {
               const vt = data11.shift.browser;
-              flag8 = vt.launch_on_login_enabled ?? (true || (vt.launch_on_wake_enabled ?? true) || (vt.run_in_background_enabled ?? true));
+              flag8 = (vt.launch_on_login_enabled ?? true) || (vt.launch_on_wake_enabled ?? true) || (vt.run_in_background_enabled ?? true);
             }
             const vs = await this.g4EE56L("sf-key");
             if (flag8) {

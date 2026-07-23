@@ -1297,7 +1297,7 @@ class StringRevealer(Transform):
                 parent[key][index] = replacement
             else:
                 parent[key] = replacement
-            self.invalidate_parent_map()
+            self.record_replacement(replacement, parent, key, index)
 
     # ================================================================
     # Strategy 3: Simple static array unpacking
