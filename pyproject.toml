@@ -9,7 +9,9 @@ description = "Pure Python JavaScript deobfuscator"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
-dependencies = ["esprima2>=5.0.1"]
+# esprima2 capped below 5.0.2: it switched optional-chaining to the ChainExpression AST wrapper
+# the generator/transforms don't yet support (tracked as a follow-up).
+dependencies = ["esprima2>=5.0.1,<5.0.2"]
 keywords = ["javascript", "deobfuscator", "deobfuscation", "security", "malware-analysis", "ast"]
 authors = [
     {name = "Intezer Labs", email = "info@intezer.com"},
