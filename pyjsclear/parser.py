@@ -2,7 +2,10 @@
 
 import re
 
-import esprima
+
+# Apply the esprima quadratic-scan patch before esprima is used to parse
+import pyjsclear.esprima_patch  # noqa: F401 isort:skip
+import esprima  # isort: skip
 
 
 _ASYNC_KEY_MAP: dict[str, str] = {'isAsync': 'async', 'allowAwait': 'await'}
